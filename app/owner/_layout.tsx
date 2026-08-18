@@ -13,6 +13,9 @@ export default function OwnerLayout() {
       >
         <Tabs.Screen name="index" />
         <Tabs.Screen name="calendar" />
+        <Tabs.Screen name="bookings" />
+        <Tabs.Screen name="customers" />
+        <Tabs.Screen name="more" />
       </Tabs>
     </View>
   );

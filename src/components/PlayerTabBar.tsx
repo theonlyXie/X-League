@@ -8,14 +8,13 @@ import type { TabBarProps } from './tabBarTypes';
  * The five-tab bar from option 1h, model one — labelled tabs with a gold tick
  * on the active one, matching the spec's player IA (§3.1) one-to-one.
  *
- * Cups and Chat are drawn but inert: the design ships no screens behind them,
- * and inventing some would be inventing product.
+ * Cups and Chat open their own tabs (P-15–P-20, P-10–P-14).
  */
 const ITEMS: { label: string; route?: string }[] = [
   { label: 'Home', route: 'index' },
   { label: 'Play', route: 'play' },
-  { label: 'Cups' },
-  { label: 'Chat' },
+  { label: 'Cups', route: 'cups' },
+  { label: 'Chat', route: 'chat' },
   { label: 'Me', route: 'me' },
 ];
 
