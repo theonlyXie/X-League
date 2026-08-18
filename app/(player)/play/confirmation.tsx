@@ -18,7 +18,7 @@ import { useBooking } from '@/state/booking';
  */
 export default function Confirmation() {
   const router = useRouter();
-  const { slotLabel, slotEndLabel } = useBooking();
+  const { slotLabel, slotEndLabel, code } = useBooking();
 
   return (
     <Screen
@@ -74,12 +74,12 @@ export default function Confirmation() {
             borderColor: 'rgba(198,163,75,.35)',
           }}
         >
-          <View style={{ gap: 4 }} accessibilityLabel={`Booking code ${BOOKING.code}`}>
+          <View style={{ gap: 4 }} accessibilityLabel={`Booking code ${code}`}>
             <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
               Booking code
             </Txt>
             <Txt size={21} weight="bold" em={0.14} color={gold.base} style={{ fontFamily: mono }}>
-              {BOOKING.code}
+              {code}
             </Txt>
           </View>
           <View style={{ flex: 1 }} />

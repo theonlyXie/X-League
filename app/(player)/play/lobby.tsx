@@ -6,6 +6,7 @@ import { Button, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { BOOKING, LOBBY_CHAT, ROSTER, RosterEntry } from '@/data/player';
+import { useBooking } from '@/state/booking';
 
 /** The booking's life so far, as the lobby header shows it (§7.2). */
 const STAGES = [
@@ -21,6 +22,7 @@ const STAGES = [
  */
 export default function Lobby() {
   const router = useRouter();
+  const { code } = useBooking();
   const filled = ROSTER.filter((p) => p.filled).length;
 
   return (
@@ -48,7 +50,7 @@ export default function Lobby() {
             Match lobby
           </Txt>
           <Txt size={11.5} color={onVoid.faint}>
-            {BOOKING.code} · {BOOKING.venue} · {BOOKING.pitch}
+            {code} · {BOOKING.venue} · {BOOKING.pitch}
           </Txt>
         </View>
       </View>

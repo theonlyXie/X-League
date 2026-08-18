@@ -188,8 +188,8 @@ export default function Checkout() {
           height={52}
           round={radius.control}
           size={15}
-          onPress={() => {
-            confirmBooking();
+          onPress={async () => {
+            await confirmBooking();
             router.push('/play/confirmation');
           }}
         />

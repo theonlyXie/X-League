@@ -1,14 +1,14 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from '@/components/Txt';
 import { Button, Divider, Eyebrow } from '@/components/ui';
 import { Star } from '@/components/icons';
 import { SlotGrid } from '@/components/SlotGrid';
-import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
+import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOTS_TAKEN, SLOT_TIMES, VENUES } from '@/data/player';
+import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOT_TIMES, VENUES } from '@/data/player';
 import { useBooking } from '@/state/booking';
 
 /**
@@ -19,7 +19,8 @@ import { useBooking } from '@/state/booking';
 export default function PitchDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { slot, selectSlot, slotLabel, beginHold } = useBooking();
+  const { slot, selectSlot, slotLabel, beginHold, taken, loading, conflict, clearConflict } =
+    useBooking();
   const venue = VENUES[0];
 
   return (
@@ -81,10 +82,40 @@ export default function PitchDetail() {
                 {BOOKING.pitch}
               </Txt>
             </View>
-            <SlotGrid times={SLOT_TIMES} taken={SLOTS_TAKEN} selected={slot} onSelect={selectSlot} />
+            <SlotGrid times={SLOT_TIMES} taken={taken} selected={slot} onSelect={selectSlot} />
+
+            {/* BKG-011: losing the slot is a real outcome, so it gets said. */}
+            {conflict ? (
+              <Pressable
+                accessibilityRole="alert"
+                accessibilityLabel={conflict.reason}
+                onPress={clearConflict}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  borderRadius: radius.chip,
+                  borderWidth: 1,
+                  borderColor: 'rgba(101,21,37,.5)',
+                  backgroundColor: 'rgba(101,21,37,.09)',
+                  gap: 4,
+                }}
+              >
+                <Txt size={12.5} weight="semibold" color={burgundy.action}>
+                  {conflict.reason}
+                </Txt>
+                {conflict.alternatives.length ? (
+                  <Txt size={11.5} color={onVoid.muted}>
+                    Still free: {conflict.alternatives.join(' · ')} PM
+                  </Txt>
+                ) : null}
+              </Pressable>
+            ) : null}
+
             {/* §5.4: one canonical timeline, every channel included. */}
             <Txt size={11.5} color={onVoid.dim}>
-              Slots update live from the venue calendar — phone and walk-in bookings included.
+              {loading
+                ? 'Checking the venue calendar…'
+                : 'Slots update live from the venue calendar — phone and walk-in bookings included.'}
             </Txt>
           </View>
 
@@ -126,9 +157,9 @@ export default function PitchDetail() {
           height={50}
           round={radius.control}
           size={15}
-          onPress={() => {
-            beginHold();
-            router.push('/play/checkout');
+          onPress={async () => {
+            // Only move on if the slot is actually ours now.
+            if (await beginHold()) router.push('/play/checkout');
           }}
         />
       </LinearGradient>

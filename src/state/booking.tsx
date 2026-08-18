@@ -1,114 +1,247 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_SLOT, HOLD_SECONDS, SLOTS_TAKEN, SlotTime } from '@/data/player';
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { DEFAULT_SLOT, HOLD_SECONDS, SLOTS_TAKEN, SlotTime, BOOKING } from '@/data/player';
+import { isLive } from '@/lib/supabase';
+import * as api from '@/data/api';
+import { DEMO_PITCH_ID, BOOKING_DATE } from '@/data/venue';
 
 /**
  * The booking spine's shared state.
  *
  * §5.4 is the rule this models: one hold owns a pitch-time interval, the hold
  * carries a visible countdown, and confirmation converts that same hold into a
- * booking. The countdown only runs while the player is actually in checkout —
- * leaving checkout releases the hold, exactly as the design behaves.
+ * booking.
+ *
+ * The countdown is derived from an expiry *instant*, never from a decrementing
+ * counter. When a database is configured that instant is the server's
+ * `expires_at`, so the interface cannot drift from the row that actually owns
+ * the slot — a backgrounded app resumes showing the truth rather than however
+ * far its own timer happened to get.
  */
 
 export type HoldState = 'idle' | 'holding' | 'expired' | 'confirmed';
 
 type BookingContextValue = {
-  /** The hour the player has selected on the pitch page. */
   slot: SlotTime;
   selectSlot: (slot: SlotTime) => void;
-  /** `9:00 PM` — the slot as the interface labels it. */
   slotLabel: string;
-  /** `10:00 PM` — one hour later. */
   slotEndLabel: string;
-  /** Hours already sold through any channel. */
+  /** Hours already sold, through any channel. */
   taken: SlotTime[];
+  /** True while availability is being re-read from the venue calendar. */
+  loading: boolean;
 
   hold: HoldState;
-  /** Seconds left on the hold. */
-  holdSeconds: number;
-  /** `4:52` */
   holdText: string;
-  beginHold: () => void;
-  releaseHold: () => void;
-  confirmBooking: () => void;
+  /** Non-null once a hold exists on the server. */
+  bookingId: string | null;
+  /** The confirmed booking's reference (BKG-006). */
+  code: string;
+  /** Set when a hold was lost to someone else — BKG-011 alternatives. */
+  conflict: { reason: string; alternatives: SlotTime[] } | null;
+  clearConflict: () => void;
 
-  /** Owner mode: whether the 9 PM arrival has been checked in and cash taken. */
+  /** Resolves true when the hold was taken; false when the slot had gone. */
+  beginHold: () => Promise<boolean>;
+  releaseHold: () => void;
+  confirmBooking: () => Promise<void>;
+
   checkedIn: boolean;
   toggleCheckIn: () => void;
+
+  /** Re-read availability from the venue calendar. */
+  refresh: () => Promise<void>;
 };
 
 const BookingContext = createContext<BookingContextValue | null>(null);
 
+const hourOf = (t: SlotTime) => parseInt(t, 10);
+
+/** The venue sells evening hours, so a 24h hour maps onto the PM label. */
+const labelOf = (s: api.Slot) => `${s.hour - 12}:00` as SlotTime;
+
 export function BookingProvider({ children }: { children: ReactNode }) {
   const [slot, setSlot] = useState<SlotTime>(DEFAULT_SLOT);
-  const [hold, setHold] = useState<HoldState>('idle');
-  const [holdSeconds, setHoldSeconds] = useState(HOLD_SECONDS);
-  const [checkedIn, setCheckedIn] = useState(false);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [taken, setTaken] = useState<SlotTime[]>(SLOTS_TAKEN);
+  const [slots, setSlots] = useState<api.Slot[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const stopTimer = useCallback(() => {
-    if (timer.current) {
-      clearInterval(timer.current);
-      timer.current = null;
+  const [hold, setHold] = useState<HoldState>('idle');
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [code, setCode] = useState<string>(BOOKING.code);
+  const [conflict, setConflict] = useState<BookingContextValue['conflict']>(null);
+  const [checkedIn, setCheckedIn] = useState(false);
+
+  /** Ticks once a second purely to re-render the derived countdown. */
+  const [, setNow] = useState(() => Date.now());
+  const ticker = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (hold !== 'holding') {
+      if (ticker.current) clearInterval(ticker.current);
+      ticker.current = null;
+      return;
+    }
+    ticker.current = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      if (ticker.current) clearInterval(ticker.current);
+      ticker.current = null;
+    };
+  }, [hold]);
+
+  const remaining = expiresAt === null ? 0 : Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
+
+  // AC-03: the countdown reaching zero is the hold ending, not a display state.
+  useEffect(() => {
+    if (hold === 'holding' && remaining === 0 && expiresAt !== null) setHold('expired');
+  }, [hold, remaining, expiresAt]);
+
+  const refresh = useCallback(async () => {
+    if (!isLive) return;
+    setLoading(true);
+    try {
+      const fetched = await api.searchAvailability(DEMO_PITCH_ID, BOOKING_DATE);
+      setSlots(fetched);
+      setTaken(fetched.filter((s) => !s.available).map(labelOf));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (hold !== 'holding') {
-      stopTimer();
+    void refresh();
+  }, [refresh]);
+
+  const beginHold = useCallback(async (): Promise<boolean> => {
+    setConflict(null);
+
+    if (!isLive) {
+      setBookingId(null);
+      setCode(BOOKING.code);
+      setExpiresAt(Date.now() + HOLD_SECONDS * 1000);
+      setHold('holding');
+      return true;
+    }
+
+    // Hold the exact instant search returned. The app never assembles a
+    // timestamp of its own — Egypt observes DST, and a client-side offset
+    // would address the wrong hour for part of the year.
+    const chosen = slots.find((s) => labelOf(s) === slot);
+    if (!chosen) {
+      setConflict({ reason: 'That hour is no longer on sale.', alternatives: [] });
+      void refresh();
+      return false;
+    }
+
+    const result = await api.holdSlot(DEMO_PITCH_ID, chosen.startsAt, {
+      captainName: 'Basel Elsayed',
+      holdSeconds: HOLD_SECONDS,
+    });
+
+    if (!result.ok) {
+      // Someone else took it between the search and the tap. That is a real
+      // outcome, so say so and offer what is still there.
+      setConflict({
+        reason: result.reason,
+        alternatives: result.alternatives.map(labelOf),
+      });
+      setHold('idle');
+      void refresh();
+      return false;
+    }
+
+    setBookingId(result.bookingId);
+    setExpiresAt(new Date(result.expiresAt).getTime());
+    setHold('holding');
+    return true;
+  }, [slot, slots, refresh]);
+
+  const releaseHold = useCallback(() => {
+    setHold((h) => {
+      if (h === 'confirmed') return h;
+      if (isLive && bookingId && h === 'holding') void api.releaseHold(bookingId);
+      return 'idle';
+    });
+  }, [bookingId]);
+
+  const confirmBooking = useCallback(async () => {
+    if (!isLive || !bookingId) {
+      setHold('confirmed');
       return;
     }
-    timer.current = setInterval(() => {
-      setHoldSeconds((s) => {
-        if (s <= 1) {
-          setHold('expired');
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return stopTimer;
-  }, [hold, stopTimer]);
+    const result = await api.confirmBooking(bookingId);
+    if (!result.ok) {
+      setHold('expired');
+      return;
+    }
+    setCode(result.code);
+    setHold('confirmed');
+  }, [bookingId]);
 
-  const beginHold = useCallback(() => {
-    setHoldSeconds(HOLD_SECONDS);
-    setHold('holding');
-  }, []);
+  const toggleCheckIn = useCallback(() => {
+    setCheckedIn((c) => {
+      if (isLive && bookingId && !c) void api.checkInBooking(bookingId, 'staff M.A.');
+      return !c;
+    });
+  }, [bookingId]);
 
-  /** Leaving checkout without confirming returns the slot to inventory. */
-  const releaseHold = useCallback(() => {
-    setHold((h) => (h === 'confirmed' ? h : 'idle'));
-  }, []);
-
-  const confirmBooking = useCallback(() => setHold('confirmed'), []);
-
-  const toggleCheckIn = useCallback(() => setCheckedIn((c) => !c), []);
-
-  const selectSlot = useCallback((next: SlotTime) => {
-    if (SLOTS_TAKEN.includes(next)) return;
-    setSlot(next);
-  }, []);
+  const selectSlot = useCallback(
+    (next: SlotTime) => {
+      if (taken.includes(next)) return;
+      setSlot(next);
+    },
+    [taken],
+  );
 
   const value = useMemo<BookingContextValue>(() => {
-    const endHour = parseInt(slot, 10) + 1;
-    const minutes = Math.floor(holdSeconds / 60);
-    const seconds = String(holdSeconds % 60).padStart(2, '0');
+    const minutes = Math.floor(remaining / 60);
+    const seconds = String(remaining % 60).padStart(2, '0');
     return {
       slot,
       selectSlot,
       slotLabel: `${slot} PM`,
-      slotEndLabel: `${endHour}:00 PM`,
-      taken: SLOTS_TAKEN,
+      slotEndLabel: `${hourOf(slot) + 1}:00 PM`,
+      taken,
+      loading,
       hold,
-      holdSeconds,
       holdText: `${minutes}:${seconds}`,
+      bookingId,
+      code,
+      conflict,
+      clearConflict: () => setConflict(null),
       beginHold,
       releaseHold,
       confirmBooking,
       checkedIn,
       toggleCheckIn,
+      refresh,
     };
-  }, [slot, selectSlot, hold, holdSeconds, beginHold, releaseHold, confirmBooking, checkedIn, toggleCheckIn]);
+  }, [
+    slot,
+    selectSlot,
+    taken,
+    loading,
+    hold,
+    remaining,
+    bookingId,
+    code,
+    conflict,
+    beginHold,
+    releaseHold,
+    confirmBooking,
+    checkedIn,
+    toggleCheckIn,
+    refresh,
+  ]);
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;
 }
