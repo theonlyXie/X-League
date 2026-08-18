@@ -10,15 +10,31 @@ export type Locale = 'en' | 'ar';
  * — `٩:٠٠ م`, `١٠٠ ج.م`. That is a formatting decision, not a translation one,
  * so it lives here rather than in the string tables.
  */
-const tag = (locale: Locale) => (locale === 'ar' ? 'ar-EG-u-nu-arab' : 'en-GB');
+const tag = (locale: Locale) => (locale === 'ar' ? 'ar-EG' : 'en-GB');
+
+const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+
+/**
+ * Map ASCII digits onto Arabic-Indic ones.
+ *
+ * The locale extension `-u-nu-arab` would do this, but engines disagree about
+ * whether they honour it — Hermes is built with Intl on both platforms, yet its
+ * iOS implementation is backed by NSFormatter and does not reliably apply the
+ * numbering-system extension. Doing the substitution here means the digits look
+ * the same on every device instead of only on the ones that happen to support
+ * it, and it costs nothing.
+ */
+const toArabicDigits = (text: string) => text.replace(/[0-9]/g, (d) => ARABIC_DIGITS[Number(d)]);
 
 /** A plain number: counts, XP, distances. */
 export function num(value: number, locale: Locale): string {
+  let formatted: string;
   try {
-    return new Intl.NumberFormat(tag(locale)).format(value);
+    formatted = new Intl.NumberFormat(tag(locale)).format(value);
   } catch {
-    return String(value);
+    formatted = String(value);
   }
+  return locale === 'ar' ? toArabicDigits(formatted) : formatted;
 }
 
 /**
@@ -30,45 +46,69 @@ export function money(value: number, locale: Locale): string {
   return locale === 'ar' ? `${amount} ج.م` : `EGP ${amount}`;
 }
 
-/** An hour of the day, in the venue's own zone. */
+/**
+ * An hour of the day, in the venue's own zone.
+ *
+ * A formatting failure must never leak an ISO timestamp to a player standing at
+ * a gate, so every fallback here degrades to something a person can read.
+ */
 export function hour(iso: string, locale: Locale): string {
+  const when = new Date(iso);
   try {
-    return new Intl.DateTimeFormat(tag(locale), {
+    const text = new Intl.DateTimeFormat(tag(locale), {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
       timeZone: VENUE_TIMEZONE,
-    }).format(new Date(iso));
+    }).format(when);
+    return locale === 'ar' ? toArabicDigits(text) : text;
   } catch {
-    return iso;
+    const h = when.getHours();
+    const m = String(when.getMinutes()).padStart(2, '0');
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return pmLabel(`${h12}:${m}`, locale);
   }
 }
 
 /** A date the way each surface writes it: `Tue 18 Aug`, `الثلاثاء ١٨ أغسطس`. */
 export function shortDate(iso: string, locale: Locale): string {
+  const when = new Date(iso);
   try {
-    return new Intl.DateTimeFormat(tag(locale), {
+    const text = new Intl.DateTimeFormat(tag(locale), {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
       timeZone: VENUE_TIMEZONE,
-    }).format(new Date(iso));
+    }).format(when);
+    return locale === 'ar' ? toArabicDigits(text) : text;
   } catch {
-    return iso;
+    return plainDate(when, locale);
   }
 }
 
 export function longDate(iso: string, locale: Locale): string {
+  const when = new Date(iso);
   try {
-    return new Intl.DateTimeFormat(tag(locale), {
+    const text = new Intl.DateTimeFormat(tag(locale), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       timeZone: VENUE_TIMEZONE,
-    }).format(new Date(iso));
+    }).format(when);
+    return locale === 'ar' ? toArabicDigits(text) : text;
   } catch {
-    return iso;
+    return plainDate(when, locale);
   }
+}
+
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+
+/** Last resort when Intl is unavailable — readable, never an ISO string. */
+function plainDate(when: Date, locale: Locale): string {
+  const day = String(when.getDate());
+  const month = (locale === 'ar' ? MONTHS_AR : MONTHS_EN)[when.getMonth()];
+  return locale === 'ar' ? `${toArabicDigits(day)} ${month}` : `${day} ${month}`;
 }
 
 /**
@@ -76,8 +116,7 @@ export function longDate(iso: string, locale: Locale): string {
  * so this converts the digits without adding a meridiem.
  */
 export function slotLabel(label: string, locale: Locale): string {
-  if (locale !== 'ar') return label;
-  return label.replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+  return locale === 'ar' ? toArabicDigits(label) : label;
 }
 
 /** The countdown on a hold — mono digits, converted for Arabic. */

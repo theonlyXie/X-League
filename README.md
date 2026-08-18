@@ -40,6 +40,38 @@ The three surfaces share one identity, so Player and Owner mode switch without
 signing out (RBAC-005): the switch lives on the player card under **Workspace**,
 and the black `OWNER` chip in the venue header switches back.
 
+## Building an APK
+
+The native projects are not committed — `android/` and `ios/` are generated from
+`app.json` by prebuild, so configuration lives in one place.
+
+```bash
+# Cloud build (needs a free Expo account; EAS generates and keeps the keystore)
+npx eas login
+npx eas build --platform android --profile preview   # -> installable .apk
+
+# Local build (needs Android SDK 36 + JDK 17-21)
+npx expo prebuild --platform android --clean
+cd android && ./gradlew assembleRelease
+# -> android/app/build/outputs/apk/release/app-release.apk
+```
+
+`preview` produces an APK for sideloading; `production` produces an AAB for
+Play. A local `assembleRelease` signs with the **debug** keystore — fine for
+installing on a device, not for distribution. Generate a real keystore before
+publishing.
+
+To point a build at the database, set `EXPO_PUBLIC_SUPABASE_URL`,
+`EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_VENUE_ID` and
+`EXPO_PUBLIC_PITCH_ID` (locally in `.env`, or `eas env:create` for cloud
+builds). Without them the APK still installs and runs — on fixtures, in demo
+mode. The anon key is publishable by design and ships inside any client build.
+
+Permissions are deliberately narrow: `INTERNET` and `VIBRATE`. Storage,
+overlay and microphone permissions that arrive from library manifests are
+stripped via `android.blockedPermissions`, because the app does not use them
+and each one is something Play review would want justified.
+
 ## Layout
 
 ```
