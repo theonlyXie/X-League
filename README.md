@@ -102,11 +102,11 @@ it is used at.
 ```bash
 npm install
 npx expo prebuild --platform android --non-interactive
-cd android && ./gradlew assembleRelease
+cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
 # android/app/build/outputs/apk/release/app-release.apk
 ```
 
-Or, with an Expo account: `npx eas-cli build --platform android --profile preview`.
+The release APK is arm64-v8a (typical phones) and debug-signed so it can be sideloaded. Or, with an Expo account: `npx eas-cli build --platform android --profile preview`.
 
 ## Not yet built
 
