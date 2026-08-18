@@ -9,6 +9,8 @@ import { StrokeLine } from '@/components/StrokeLine';
 import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { CARD } from '@/data/player';
+import { useSession } from '@/state/session';
+import { isLive } from '@/lib/supabase';
 
 /**
  * P-08 Profile / P-09 Card detail — the persistent football identity (§4.3).
@@ -18,6 +20,7 @@ import { CARD } from '@/data/player';
  */
 export default function Me() {
   const router = useRouter();
+  const { signedIn, displayName, venues, signOut } = useSession();
   const explained = CARD.attributes.find((a) => a.key === CARD.explained)!;
   const evidencePct = 100 - CARD.selfAssessedPct;
 
@@ -62,20 +65,42 @@ export default function Me() {
         </Txt>
       </View>
 
-      {/* RBAC-005 / §3.1: hold more than one role, switch without signing out. */}
+      {/* RBAC-005 / §3.1: hold more than one role, switch without signing out.
+          Which venues appear is the server's answer (`my_venues`), not a guess
+          the client makes — RBAC-002 scoping is enforced on every call anyway. */}
       <View style={{ width: '100%', gap: 12 }}>
-        <Eyebrow>Workspace</Eyebrow>
+        <Eyebrow>{signedIn || !isLive ? 'Workspace' : 'Account'}</Eyebrow>
         <View style={{ gap: 8 }}>
-          <WorkspaceRow
-            title="Owner mode"
-            detail="Stadium One · calendar, arrivals and CRM"
-            onPress={() => router.push('/owner')}
-          />
+          {isLive && !signedIn ? (
+            <WorkspaceRow
+              title="Sign in"
+              detail="Verify your number to book and to reach owner mode"
+              onPress={() => router.push('/sign-in?next=/me')}
+            />
+          ) : null}
+
+          {(isLive ? venues : [{ venueId: 'demo', name: 'Stadium One', role: 'manager' as const }]).map((v) => (
+            <WorkspaceRow
+              key={v.venueId}
+              title="Owner mode"
+              detail={`${v.name} · calendar, arrivals and CRM`}
+              onPress={() => router.push('/owner')}
+            />
+          ))}
+
           <WorkspaceRow
             title="Admin console"
             detail="Platform operations · audited"
             onPress={() => router.push('/admin')}
           />
+
+          {signedIn ? (
+            <WorkspaceRow
+              title="Sign out"
+              detail={displayName ? `Signed in as ${displayName}` : 'End this session'}
+              onPress={() => void signOut()}
+            />
+          ) : null}
         </View>
       </View>
     </Screen>

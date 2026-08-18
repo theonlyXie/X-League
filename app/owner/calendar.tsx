@@ -4,7 +4,8 @@ import { Txt } from '@/components/Txt';
 import { hitSlopTo44 } from '@/components/ui';
 import { ChevronLeft, ChevronRight } from '@/components/icons';
 import { burgundy, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
-import { BookingSource, CALENDAR, CALENDAR_LEGEND, Cell, VENUE } from '@/data/owner';
+import { BookingSource, CALENDAR_LEGEND, Cell, VENUE } from '@/data/owner';
+import { useOwnerDay } from '@/state/ownerDay';
 
 /**
  * O-02 Calendar — control inventory (§4.5).
@@ -23,6 +24,7 @@ const SOURCE: Record<BookingSource, { bg: string; border: string; dashed: boolea
 
 export default function OwnerCalendar() {
   const [range, setRange] = useState<'Day' | 'Week'>('Day');
+  const { rows, live, loading, error, venueName } = useOwnerDay();
 
   return (
     <ScrollView
@@ -106,7 +108,7 @@ export default function OwnerCalendar() {
           ))}
         </View>
 
-        {CALENDAR.map((row) => (
+        {rows.map((row) => (
           <View key={row.time} style={{ flexDirection: 'row' }}>
             <View
               style={{
@@ -129,6 +131,18 @@ export default function OwnerCalendar() {
           </View>
         ))}
       </View>
+
+      {/* Say where the grid came from, rather than letting fixtures pass as
+          this evening's real occupancy (§4.7). */}
+      <Txt size={11} color={error ? burgundy.ink : onOperative.faint}>
+        {loading
+          ? 'Reading the venue calendar…'
+          : error
+            ? error
+            : live
+              ? `Live from ${venueName}'s calendar`
+              : 'Sample day — sign in as venue staff to see live occupancy'}
+      </Txt>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         {CALENDAR_LEGEND.map((entry) => {

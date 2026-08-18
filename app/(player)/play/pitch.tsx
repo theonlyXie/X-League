@@ -10,6 +10,8 @@ import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens
 import { mono } from '@/theme/typography';
 import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOT_TIMES, VENUES } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { useSession } from '@/state/session';
+import { isLive } from '@/lib/supabase';
 
 /**
  * P-04 Pitch detail — build confidence before purchase (§4.2). VEN-005: media,
@@ -21,6 +23,7 @@ export default function PitchDetail() {
   const insets = useSafeAreaInsets();
   const { slot, selectSlot, slotLabel, beginHold, taken, loading, unreachable, conflict, clearConflict } =
     useBooking();
+  const { signedIn } = useSession();
   const venue = VENUES[0];
 
   return (
@@ -154,12 +157,19 @@ export default function PitchDetail() {
           </Txt>
         </View>
         <Button
-          label={`Hold ${slotLabel}`}
+          label={isLive && !signedIn ? `Sign in to hold ${slotLabel}` : `Hold ${slotLabel}`}
           flex={1}
           height={50}
           round={radius.control}
           size={15}
           onPress={async () => {
+            // AUTH-001: holding inventory is for signed-in people. The server
+            // refuses an anonymous hold regardless; asking here just saves the
+            // player a pointless round trip and a confusing error.
+            if (isLive && !signedIn) {
+              router.push('/sign-in?next=/play/pitch');
+              return;
+            }
             // Only move on if the slot is actually ours now.
             if (await beginHold()) router.push('/play/checkout');
           }}

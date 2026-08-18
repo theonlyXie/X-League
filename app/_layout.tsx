@@ -11,6 +11,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { View } from 'react-native';
 import { BookingProvider } from '@/state/booking';
+import { SessionProvider } from '@/state/session';
 import { void_ } from '@/theme/tokens';
 
 export default function RootLayout() {
@@ -28,14 +29,17 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <BookingProvider>
-        <StatusBar style="light" />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
-          <Stack.Screen name="(player)" />
-          <Stack.Screen name="owner" />
-          <Stack.Screen name="admin" />
-        </Stack>
-      </BookingProvider>
+      <SessionProvider>
+        <BookingProvider>
+          <StatusBar style="light" />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
+            <Stack.Screen name="(player)" />
+            <Stack.Screen name="owner" />
+            <Stack.Screen name="admin" />
+            <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
+          </Stack>
+        </BookingProvider>
+      </SessionProvider>
     </SafeAreaProvider>
   );
 }

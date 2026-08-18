@@ -149,14 +149,16 @@ export async function releaseHold(bookingId: string): Promise<boolean> {
   return Boolean(data);
 }
 
-/** BKG-009: the venue marks arrival and takes the cash. */
-export async function checkInBooking(
-  bookingId: string,
-  actor: string,
-): Promise<{ ok: boolean; reason?: string }> {
+/**
+ * BKG-009: the venue marks arrival and takes the cash.
+ *
+ * There is no `actor` argument any more. The server derives who acted from the
+ * session and checks it against the venue (RBAC-002) — an actor string supplied
+ * by the caller was forgeable and made the audit trail worthless.
+ */
+export async function checkInBooking(bookingId: string): Promise<{ ok: boolean; reason?: string }> {
   const { data, error } = await supabase().rpc('check_in_booking', {
     p_booking_id: bookingId,
-    p_actor: actor,
   });
   if (error) throw error;
   const row = (data as { ok: boolean; reason: string | null }[])[0];
@@ -169,7 +171,6 @@ export async function recordOfflineBooking(
   startsAt: string,
   source: BookingSource,
   captainName: string,
-  actor: string,
   minutes = 60,
 ): Promise<{ ok: boolean; bookingId?: string; reason?: string }> {
   const { data, error } = await supabase().rpc('record_offline_booking', {
@@ -178,7 +179,6 @@ export async function recordOfflineBooking(
     p_minutes: minutes,
     p_source: source,
     p_captain_name: captainName,
-    p_actor: actor,
   });
   if (error) throw error;
   const row = (data as { ok: boolean; booking_id: string | null; reason: string | null }[])[0];

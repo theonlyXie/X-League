@@ -212,7 +212,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
 
   const toggleCheckIn = useCallback(() => {
     setCheckedIn((c) => {
-      if (isLive && bookingId && !c) api.checkInBooking(bookingId, 'staff M.A.').catch(() => {});
+      if (isLive && bookingId && !c) api.checkInBooking(bookingId).catch(() => {});
       return !c;
     });
   }, [bookingId]);

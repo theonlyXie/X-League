@@ -83,6 +83,28 @@ goes through a Postgres function so the check and the write share a transaction
 reservation is the same kind of thing in the same timeline, which is what makes
 AC-05 work — staff enter a phone booking and it disappears from player search.
 
+### Identity and staff scoping
+
+AUTH-001: sign-in is a verified mobile number plus a one-time password.
+AUTH-005: one identity carries the player role and any venue roles, which is
+what makes the workspace switch in §3.1 possible without a second account.
+
+`venue_staff` is the RBAC-002 answer — a person is staff *at named venues*,
+stored as a row rather than a claim in a token, so revoking access takes effect
+on the next call. `is_venue_staff()` is the predicate; `check_in_booking`,
+`record_offline_booking` and `owner_day` all go through it.
+
+The privileged functions no longer accept an `actor` argument. It was
+forgeable, which made ADM-012's audit trail worthless; the actor is now derived
+from the session by `current_actor()`. A hold also belongs to whoever took it,
+so confirming or releasing someone else's is refused.
+
+**SMS is not configured yet.** `auth/v1/otp` answers `phone_provider_disabled`
+until an SMS provider is set up under Authentication → Providers → Phone in the
+Supabase dashboard (Twilio, MessageBird, Vonage or Textlocal). The sign-in
+screen says so in plain language rather than leaking the provider's error. Until
+then, `supabase/seed_identities.sql` creates three test identities directly.
+
 ### Access control
 
 RLS is on for every table with no policy granting direct access, so the tables
@@ -91,12 +113,13 @@ are unreachable through the API. The only way in is a function, and each is
 row and sidestep the exclusion constraint, because a client cannot touch the
 table at all (RBAC-001).
 
-`search_availability`, `hold_slot`, `confirm_booking`, `release_hold` and
-`nearest_alternatives` are callable by `anon` — a guest may browse, and holding
-is open while there is no sign-in. `check_in_booking`, `record_offline_booking`
-and `owner_day` are not: writing into a venue's calendar is privileged, and
-`authenticated` is the floor rather than the finished answer. RBAC-002 still
-needs auth and a `venue_staff` table before staff scoping is real.
+`search_availability` and `nearest_alternatives` are callable by `anon` — §2
+says a guest may browse. Everything that changes inventory needs a session:
+`hold_slot` accepts an anonymous call only so it can answer "Sign in to hold a
+slot" instead of a bare `42501`, and it writes nothing without `auth.uid()`.
+`confirm_booking`, `release_hold`, `check_in_booking`, `record_offline_booking`
+and `owner_day` require `authenticated`, and the venue-side three then check
+the caller against `venue_staff` inside the function.
 
 ### Running it
 
@@ -108,6 +131,10 @@ psql -f supabase/migrations/20260818090200_access_control.sql
 psql -f supabase/seed.sql        # the evening the design books
 
 ./supabase/tests/booking_spine_test.sh
+
+# identity and staff scoping
+psql -f supabase/seed_identities.sql
+psql -f supabase/tests/rbac_probe.sql
 ```
 
 The test suite covers the release gates the database is responsible for —
@@ -163,6 +190,9 @@ Venue discovery still reads fixtures: the pitch the app books is the one named
 in `.env`. The player card, roster, tournaments and admin ledger are fixtures
 too — only the booking spine is backed by the database.
 
-Owner mode still reads fixtures. `owner_day` and `check_in_booking` exist and
-work, but they are not `anon`-callable by design, so wiring owner mode to them
-waits on authentication rather than on a widened grant.
+Onboarding beyond sign-in: position, the anchored self-assessment and the
+provisional card (P-01, PRO-002, PRO-003) are not built, so a new account has
+no player card of its own — the card screen still shows the design's fixture.
+
+Owner mode's Today screen still reads fixtures; only the Calendar is wired to
+`owner_day`. Admin remains entirely fixtures.
