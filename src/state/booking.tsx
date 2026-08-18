@@ -38,6 +38,8 @@ type BookingContextValue = {
   taken: SlotTime[];
   /** True while availability is being re-read from the venue calendar. */
   loading: boolean;
+  /** True when the venue calendar could not be reached (§4.7 error state). */
+  unreachable: boolean;
 
   hold: HoldState;
   holdText: string;
@@ -73,6 +75,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   const [taken, setTaken] = useState<SlotTime[]>(SLOTS_TAKEN);
   const [slots, setSlots] = useState<api.Slot[]>([]);
   const [loading, setLoading] = useState(false);
+  const [unreachable, setUnreachable] = useState(false);
 
   const [hold, setHold] = useState<HoldState>('idle');
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
@@ -112,6 +115,12 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       const fetched = await api.searchAvailability(DEMO_PITCH_ID, BOOKING_DATE);
       setSlots(fetched);
       setTaken(fetched.filter((s) => !s.available).map(labelOf));
+      setUnreachable(false);
+    } catch {
+      // §4.7 requires an error state, not a silent failure: availability we
+      // cannot verify must not be presented as if it were live. The grid keeps
+      // whatever it last knew and the screen says the calendar is unreachable.
+      setUnreachable(true);
     } finally {
       setLoading(false);
     }
@@ -142,10 +151,19 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    const result = await api.holdSlot(DEMO_PITCH_ID, chosen.startsAt, {
-      captainName: 'Basel Elsayed',
-      holdSeconds: HOLD_SECONDS,
-    });
+    let result: Awaited<ReturnType<typeof api.holdSlot>>;
+    try {
+      result = await api.holdSlot(DEMO_PITCH_ID, chosen.startsAt, {
+        captainName: 'Basel Elsayed',
+        holdSeconds: HOLD_SECONDS,
+      });
+    } catch {
+      // A hold we could not place is not a hold. Never advance to checkout on
+      // the strength of a request that failed.
+      setConflict({ reason: 'Could not reach the venue calendar. Try again.', alternatives: [] });
+      setUnreachable(true);
+      return false;
+    }
 
     if (!result.ok) {
       // Someone else took it between the search and the tap. That is a real
@@ -168,7 +186,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   const releaseHold = useCallback(() => {
     setHold((h) => {
       if (h === 'confirmed') return h;
-      if (isLive && bookingId && h === 'holding') void api.releaseHold(bookingId);
+      if (isLive && bookingId && h === 'holding') api.releaseHold(bookingId).catch(() => {});
       return 'idle';
     });
   }, [bookingId]);
@@ -178,18 +196,23 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       setHold('confirmed');
       return;
     }
-    const result = await api.confirmBooking(bookingId);
-    if (!result.ok) {
-      setHold('expired');
-      return;
+    try {
+      const result = await api.confirmBooking(bookingId);
+      if (!result.ok) {
+        setHold('expired');
+        return;
+      }
+      setCode(result.code);
+      setHold('confirmed');
+    } catch {
+      setConflict({ reason: 'Could not reach the venue calendar. Try again.', alternatives: [] });
+      setUnreachable(true);
     }
-    setCode(result.code);
-    setHold('confirmed');
   }, [bookingId]);
 
   const toggleCheckIn = useCallback(() => {
     setCheckedIn((c) => {
-      if (isLive && bookingId && !c) void api.checkInBooking(bookingId, 'staff M.A.');
+      if (isLive && bookingId && !c) api.checkInBooking(bookingId, 'staff M.A.').catch(() => {});
       return !c;
     });
   }, [bookingId]);
@@ -212,6 +235,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       slotEndLabel: `${hourOf(slot) + 1}:00 PM`,
       taken,
       loading,
+      unreachable,
       hold,
       holdText: `${minutes}:${seconds}`,
       bookingId,
@@ -230,6 +254,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     selectSlot,
     taken,
     loading,
+    unreachable,
     hold,
     remaining,
     bookingId,

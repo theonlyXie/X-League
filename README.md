@@ -83,12 +83,28 @@ goes through a Postgres function so the check and the write share a transaction
 reservation is the same kind of thing in the same timeline, which is what makes
 AC-05 work — staff enter a phone booking and it disappears from player search.
 
+### Access control
+
+RLS is on for every table with no policy granting direct access, so the tables
+are unreachable through the API. The only way in is a function, and each is
+`SECURITY DEFINER` with a pinned `search_path`. A client cannot insert a booking
+row and sidestep the exclusion constraint, because a client cannot touch the
+table at all (RBAC-001).
+
+`search_availability`, `hold_slot`, `confirm_booking`, `release_hold` and
+`nearest_alternatives` are callable by `anon` — a guest may browse, and holding
+is open while there is no sign-in. `check_in_booking`, `record_offline_booking`
+and `owner_day` are not: writing into a venue's calendar is privileged, and
+`authenticated` is the floor rather than the finished answer. RBAC-002 still
+needs auth and a `venue_staff` table before staff scoping is real.
+
 ### Running it
 
 ```bash
 # any Postgres 14+
 psql -f supabase/migrations/20260818090000_booking_spine.sql
 psql -f supabase/migrations/20260818090100_booking_operations.sql
+psql -f supabase/migrations/20260818090200_access_control.sql
 psql -f supabase/seed.sql        # the evening the design books
 
 ./supabase/tests/booking_spine_test.sh
@@ -147,6 +163,6 @@ Venue discovery still reads fixtures: the pitch the app books is the one named
 in `.env`. The player card, roster, tournaments and admin ledger are fixtures
 too — only the booking spine is backed by the database.
 
-The client layer (`src/data/api.ts`) has not been exercised against a running
-PostgREST, only against Postgres directly through the test suite. The SQL is
-proven; the wire format between supabase-js and these functions is not.
+Owner mode still reads fixtures. `owner_day` and `check_in_booking` exist and
+work, but they are not `anon`-callable by design, so wiring owner mode to them
+waits on authentication rather than on a widened grant.

@@ -19,7 +19,7 @@ import { useBooking } from '@/state/booking';
 export default function PitchDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { slot, selectSlot, slotLabel, beginHold, taken, loading, conflict, clearConflict } =
+  const { slot, selectSlot, slotLabel, beginHold, taken, loading, unreachable, conflict, clearConflict } =
     useBooking();
   const venue = VENUES[0];
 
@@ -115,7 +115,9 @@ export default function PitchDetail() {
             <Txt size={11.5} color={onVoid.dim}>
               {loading
                 ? 'Checking the venue calendar…'
-                : 'Slots update live from the venue calendar — phone and walk-in bookings included.'}
+                : unreachable
+                  ? 'Could not reach the venue calendar — these times may be out of date.'
+                  : 'Slots update live from the venue calendar — phone and walk-in bookings included.'}
             </Txt>
           </View>
 
