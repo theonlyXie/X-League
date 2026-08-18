@@ -8,6 +8,7 @@ import { Star } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { VENUES, Venue } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { useI18n } from '@/i18n';
 
 const DAYS = ['Tonight', 'Tomorrow', 'Pick date'];
 const WINDOWS = ['6–8 PM', '8–10 PM', '10–12'];
@@ -22,11 +23,14 @@ export default function PlaySearch() {
   const [day, setDay] = useState('Tonight');
   const [window_, setWindow] = useState('8–10 PM');
   const [view, setView] = useState<'List' | 'Map'>('List');
+  const { t, num } = useI18n();
+  const dayLabels: Record<string, string> = { Tonight: t.tonight, Tomorrow: t.tomorrow, 'Pick date': t.pickDate };
+  const viewLabels: Record<string, string> = { List: t.list, Map: t.map };
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
       <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-        When do you want to play?
+        {t.whenPlay}
       </Txt>
 
       <View style={{ gap: 10 }}>
@@ -53,7 +57,7 @@ export default function PlaySearch() {
                 }}
               >
                 <Txt size={13} weight={on ? 'bold' : 'semibold'} color={on ? void_.bg : 'rgba(243,238,229,.65)'}>
-                  {d}
+                  {dayLabels[d] ?? d}
                 </Txt>
               </Pressable>
             );
@@ -141,7 +145,7 @@ export default function PlaySearch() {
                 }}
               >
                 <Txt size={11.5} weight={on ? 'bold' : 'semibold'} color={on ? gold.base : onVoid.faint}>
-                  {v}
+                  {viewLabels[v] ?? v}
                 </Txt>
               </Pressable>
             );
@@ -150,10 +154,10 @@ export default function PlaySearch() {
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <Eyebrow>12 live slots</Eyebrow>
+        <Eyebrow>{t.liveSlots(num(12))}</Eyebrow>
         {/* VEN-002: results must say when availability was last confirmed. */}
         <Txt size={11} color="rgba(243,238,229,.3)">
-          Updated 9 sec ago
+          {t.updatedAgo(num(9))}
         </Txt>
       </View>
 

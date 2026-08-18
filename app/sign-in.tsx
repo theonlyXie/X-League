@@ -9,13 +9,14 @@ import { VoidMark } from '@/components/VoidMark';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { face, mono } from '@/theme/typography';
 import { useSession } from '@/state/session';
+import { myCard } from '@/data/api';
 
 /**
  * P-01 Onboarding, the sign-in step.
  *
- * AUTH-001: a verified mobile number and a one-time password. The rest of
- * onboarding — position, self-assessment, the provisional card — is not built
- * yet; this is the gate that everything privileged now sits behind.
+ * AUTH-001: a verified mobile number and a one-time password. This is the gate
+ * everything privileged sits behind; a verified number with no card yet
+ * continues into the anchored assessment on `/onboarding`.
  */
 export default function SignIn() {
   const router = useRouter();
@@ -51,7 +52,13 @@ export default function SignIn() {
       setError(problem);
       return;
     }
-    // Back to whatever the player was trying to do.
+    // A verified number with no card yet means onboarding is unfinished, so
+    // finish it rather than dropping them somewhere that shows no identity.
+    const card = await myCard().catch(() => null);
+    if (!card) {
+      router.replace('/onboarding');
+      return;
+    }
     if (params.next) router.replace(params.next as never);
     else router.replace('/');
   };

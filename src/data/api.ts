@@ -227,3 +227,140 @@ export async function ownerDay(venueId: string, date: string): Promise<OwnerCell
     priceEgp: r.price_egp,
   }));
 }
+
+// ---------------------------------------------------------------------------
+// The player card (§5.1)
+// ---------------------------------------------------------------------------
+
+export type Card = {
+  displayName: string;
+  ovr: number;
+  position: string;
+  /** Attribute key -> 1..99, in the order the position's rule weights them. */
+  attributes: { key: string; value: number }[];
+  confidence: 'provisional' | 'emerging' | 'established';
+  /** Completed, verified matches standing behind the card. */
+  evidenceCount: number;
+  /** Share still supplied by the player's own assessment, 0..1. */
+  selfWeight: number;
+  ruleVersion: string;
+  snapshotAt: string;
+};
+
+type CardRow = {
+  display_name: string;
+  ovr: number;
+  position_code: string;
+  attributes: Record<string, number>;
+  confidence: Card['confidence'];
+  evidence_count: number;
+  self_weight: number | string;
+  rule_version: string;
+  snapshot_at: string;
+};
+
+/** Keep the six attributes in the order the design's card lays them out. */
+const ATTRIBUTE_ORDER: Record<string, string[]> = {
+  GK: ['DIV', 'HAN', 'KIC', 'REF', 'SPD', 'POS'],
+  DEFAULT: ['SPD', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'],
+};
+
+const toCard = (r: CardRow): Card => {
+  const order = ATTRIBUTE_ORDER[r.position_code] ?? ATTRIBUTE_ORDER.DEFAULT;
+  const keys = [...new Set([...order.filter((k) => k in r.attributes), ...Object.keys(r.attributes)])];
+  return {
+    displayName: r.display_name,
+    ovr: r.ovr,
+    position: r.position_code,
+    attributes: keys.map((key) => ({ key, value: r.attributes[key] })),
+    confidence: r.confidence,
+    evidenceCount: r.evidence_count,
+    selfWeight: Number(r.self_weight),
+    ruleVersion: r.rule_version,
+    snapshotAt: r.snapshot_at,
+  };
+};
+
+/** PRO-003: the card, with its confidence and evidence count exposed. */
+export async function myCard(): Promise<Card | null> {
+  const { data, error } = await supabase().rpc('my_card');
+  if (error) throw error;
+  const rows = data as CardRow[];
+  return rows.length ? toCard(rows[0]) : null;
+}
+
+/** PRO-002: the anchored assessment, which yields a provisional card. */
+export async function submitSelfAssessment(
+  position: string,
+  answers: Record<string, number>,
+): Promise<Card | null> {
+  const { data, error } = await supabase().rpc('submit_self_assessment', {
+    p_position: position,
+    p_answers: answers,
+  });
+  if (error) throw error;
+  const rows = data as Omit<CardRow, 'display_name' | 'snapshot_at'>[];
+  if (!rows.length) return null;
+  return toCard({ ...rows[0], display_name: '', snapshot_at: new Date().toISOString() } as CardRow);
+}
+
+// ---------------------------------------------------------------------------
+// Owner Today (O-01)
+// ---------------------------------------------------------------------------
+
+export type Arrival = {
+  bookingId: string;
+  pitchLabel: string;
+  startsAt: string;
+  hour: number;
+  state: BookingState;
+  source: BookingSource;
+  code: string | null;
+  captainName: string | null;
+  depositEgp: number;
+  checkedIn: boolean;
+};
+
+export async function ownerArrivals(venueId: string, date: string): Promise<Arrival[]> {
+  const { data, error } = await supabase().rpc('owner_arrivals', {
+    p_venue_id: venueId,
+    p_date: date,
+  });
+  if (error) throw error;
+  return (data as Record<string, never>[]).map((r: any) => ({
+    bookingId: r.booking_id,
+    pitchLabel: r.pitch_label,
+    startsAt: r.starts_at,
+    hour: r.hour,
+    state: r.state,
+    source: r.source,
+    code: r.code,
+    captainName: r.captain_name,
+    depositEgp: r.deposit_egp,
+    checkedIn: r.checked_in,
+  }));
+}
+
+export type OwnerSummary = {
+  occupancyPct: number;
+  openSlots: number;
+  cashDueEgp: number;
+  cashGates: number;
+  conflicts: number;
+};
+
+export async function ownerSummary(venueId: string, date: string): Promise<OwnerSummary> {
+  const { data, error } = await supabase().rpc('owner_summary', {
+    p_venue_id: venueId,
+    p_date: date,
+  });
+  if (error) throw error;
+  const r = (data as any[])[0];
+  return {
+    occupancyPct: r.occupancy_pct,
+    openSlots: r.open_slots,
+    cashDueEgp: r.cash_due_egp,
+    cashGates: r.cash_gates,
+    conflicts: r.conflicts,
+  };
+}

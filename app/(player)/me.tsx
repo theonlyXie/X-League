@@ -3,12 +3,16 @@ import { Pressable, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Eyebrow } from '@/components/ui';
+import { Button, Eyebrow } from '@/components/ui';
 import { ChevronRight, TrendUp } from '@/components/icons';
 import { StrokeLine } from '@/components/StrokeLine';
+import { VoidMark } from '@/components/VoidMark';
 import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { CARD } from '@/data/player';
+import { useCard } from '@/state/card';
+import { CONFIDENCE_COPY } from '@/data/assessment';
+import { useI18n } from '@/i18n';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
 
@@ -21,26 +25,53 @@ import { isLive } from '@/lib/supabase';
 export default function Me() {
   const router = useRouter();
   const { signedIn, displayName, venues, signOut } = useSession();
-  const explained = CARD.attributes.find((a) => a.key === CARD.explained)!;
-  const evidencePct = 100 - CARD.selfAssessedPct;
+  const { card, loading } = useCard();
+  const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
+
+  // Signed in with a real card: show theirs. Otherwise the design's fixture,
+  // labelled as such — showing someone else's numbers as if they were yours is
+  // the one thing §5.1 is most careful about.
+  const live = card !== null;
+  const name = live ? card.displayName || displayName || CARD.name : CARD.name;
+  const ovr = live ? card.ovr : CARD.ovr;
+  const positionCode = live ? card.position : CARD.position;
+  const confidence = live ? card.confidence : 'established';
+  const attributes = live ? card.attributes : CARD.attributes.map((a) => ({ key: a.key, value: a.value }));
+  const selfPct = live ? Math.round(card.selfWeight * 100) : CARD.selfAssessedPct;
+  const evidenceCount = live ? card.evidenceCount : CARD.verifiedMatches;
+  const evidencePct = 100 - selfPct;
+  // The attribute whose provenance the card explains: the strongest one.
+  const explained = attributes.reduce((best, a) => (a.value > best.value ? a : best), attributes[0]);
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20, alignItems: 'center' }}>
       <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
-          Your card
+          {t.yourCard}
         </Txt>
         <Txt size={11.5} color={onVoid.dim}>
-          Season 1
+          {t.season(num(1))}
         </Txt>
       </View>
 
-      <VoidCard />
+      {isLive && signedIn && !live && !loading ? (
+        <NoCardYet onStart={() => router.push('/onboarding')} />
+      ) : (
+        <VoidCard
+          name={name}
+          ovr={ovr}
+          positionCode={positionCode}
+          confidence={confidence}
+          attributes={attributes}
+          explained={explained.key}
+          level={CARD.level}
+        />
+      )}
 
       <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
-        <StatTile label="FORM" value={`${CARD.form}`} gold icon />
-        <StatTile label="VERIFIED" value={`${CARD.verifiedMatches} matches`} />
-        <StatTile label="RATERS" value={`${CARD.raters}`} />
+        <StatTile label={t.form} value={live ? '—' : `${CARD.form}`} gold={!live} icon={!live} />
+        <StatTile label={t.verifiedMatches} value={t.matches(num(evidenceCount))} />
+        <StatTile label={t.raters} value={num(live ? 0 : CARD.raters)} />
       </View>
 
       {/* §5.1: every displayed score exposes where it came from. */}
@@ -55,25 +86,30 @@ export default function Me() {
           gap: 10,
         }}
       >
-        <Eyebrow>
-          Where {explained.value} {CARD.explained} comes from
-        </Eyebrow>
-        <EvidenceBar label="Match evidence" pct={evidencePct} color={gold.base} />
-        <EvidenceBar label="Self-assessment" pct={CARD.selfAssessedPct} color="rgba(198,163,75,.45)" />
+        <Eyebrow>{t.whereFrom(num(explained.value), explained.key)}</Eyebrow>
+        <EvidenceBar label={t.matchEvidence} pct={evidencePct} color={gold.base} />
+        <EvidenceBar label={t.selfAssessment} pct={selfPct} color="rgba(198,163,75,.45)" />
         <Txt size={11.5} lh={1.55} color={onVoid.dim}>
-          Individual raters stay anonymous. No single match can move an attribute more than ±2.
+          {live
+            ? CONFIDENCE_COPY[confidence]
+            : 'Individual raters stay anonymous. No single match can move an attribute more than ±2.'}
         </Txt>
+        {live ? (
+          <Txt size={11} color="rgba(243,238,229,.3)">
+            Scoring rule {card.ruleVersion}
+          </Txt>
+        ) : null}
       </View>
 
       {/* RBAC-005 / §3.1: hold more than one role, switch without signing out.
           Which venues appear is the server's answer (`my_venues`), not a guess
           the client makes — RBAC-002 scoping is enforced on every call anyway. */}
       <View style={{ width: '100%', gap: 12 }}>
-        <Eyebrow>{signedIn || !isLive ? 'Workspace' : 'Account'}</Eyebrow>
+        <Eyebrow>{signedIn || !isLive ? t.workspace : t.account}</Eyebrow>
         <View style={{ gap: 8 }}>
           {isLive && !signedIn ? (
             <WorkspaceRow
-              title="Sign in"
+              title={t.signIn}
               detail="Verify your number to book and to reach owner mode"
               onPress={() => router.push('/sign-in?next=/me')}
             />
@@ -82,21 +118,79 @@ export default function Me() {
           {(isLive ? venues : [{ venueId: 'demo', name: 'Stadium One', role: 'manager' as const }]).map((v) => (
             <WorkspaceRow
               key={v.venueId}
-              title="Owner mode"
+              title={t.ownerMode}
               detail={`${v.name} · calendar, arrivals and CRM`}
               onPress={() => router.push('/owner')}
             />
           ))}
 
           <WorkspaceRow
-            title="Admin console"
+            title={t.adminConsole}
             detail="Platform operations · audited"
             onPress={() => router.push('/admin')}
           />
 
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              borderRadius: radius.control,
+              backgroundColor: void_.surface,
+              borderWidth: 1,
+              borderColor: onVoid.edgeFaint,
+            }}
+          >
+            <View style={{ flex: 1, gap: 3 }}>
+              <Txt size={14.5} weight="semibold" color={onVoid.primary}>
+                {t.language}
+              </Txt>
+              {needsRestart ? (
+                <Txt size={11.5} color={gold.base}>
+                  Restart the app to mirror the layout
+                </Txt>
+              ) : null}
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                padding: 3,
+                borderRadius: radius.pill,
+                backgroundColor: void_.bg,
+                borderWidth: 1,
+                borderColor: onVoid.edge,
+              }}
+            >
+              {(['en', 'ar'] as const).map((code) => {
+                const on = code === locale;
+                return (
+                  <Pressable
+                    key={code}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={code === 'ar' ? 'العربية' : 'English'}
+                    onPress={() => void setLocale(code)}
+                    style={{
+                      paddingVertical: 6,
+                      paddingHorizontal: 14,
+                      borderRadius: radius.pill,
+                      backgroundColor: on ? 'rgba(198,163,75,.16)' : 'transparent',
+                    }}
+                  >
+                    <Txt size={12} weight={on ? 'bold' : 'semibold'} color={on ? gold.base : onVoid.faint}>
+                      {code === 'ar' ? 'العربية' : 'English'}
+                    </Txt>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
           {signedIn ? (
             <WorkspaceRow
-              title="Sign out"
+              title={t.signOut}
               detail={displayName ? `Signed in as ${displayName}` : 'End this session'}
               onPress={() => void signOut()}
             />
@@ -108,7 +202,23 @@ export default function Me() {
 }
 
 /** The Void card itself — X-to-void geometry behind the numbers. */
-function VoidCard() {
+function VoidCard({
+  name,
+  ovr,
+  positionCode,
+  confidence,
+  attributes,
+  explained,
+  level,
+}: {
+  name: string;
+  ovr: number;
+  positionCode: string;
+  confidence: string;
+  attributes: { key: string; value: number }[];
+  explained: string;
+  level: number;
+}) {
   return (
     <LinearGradient
       colors={[void_.cardTop, void_.bg]}
@@ -173,10 +283,10 @@ function VoidCard() {
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <View>
           <Txt size={52} weight="extrabold" em={-0.04} lh={0.9} color={gold.base}>
-            {CARD.ovr}
+            {ovr}
           </Txt>
           <Txt size={12} weight="bold" em={0.16} color="rgba(243,238,229,.7)" style={{ marginTop: 4 }}>
-            {CARD.position}
+            {positionCode}
           </Txt>
         </View>
         <View
@@ -189,7 +299,7 @@ function VoidCard() {
           }}
         >
           <Txt size={9.5} weight="bold" em={0.12} color={gold.base}>
-            {CARD.confidence}
+            {confidence.toUpperCase()}
           </Txt>
         </View>
       </View>
@@ -198,10 +308,10 @@ function VoidCard() {
 
       <View style={{ alignItems: 'center', gap: 3 }}>
         <Txt size={21} weight="bold" em={0.02} color={onVoid.primary}>
-          {CARD.name}
+          {name.toUpperCase()}
         </Txt>
         <Txt size={9.5} weight="semibold" em={0.2} color="rgba(198,163,75,.85)">
-          VOID CARD · LVL {CARD.level}
+          VOID CARD · LVL {level}
         </Txt>
       </View>
 
@@ -209,12 +319,12 @@ function VoidCard() {
       <View style={{ marginTop: 18, gap: 9 }}>
         {[0, 2, 4].map((start) => (
           <View key={start} style={{ flexDirection: 'row', gap: 22 }}>
-            {CARD.attributes.slice(start, start + 2).map((attr) => (
+            {attributes.slice(start, start + 2).map((attr) => (
               <View key={attr.key} style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Txt size={11} em={0.1} color={onVoid.muted}>
                   {attr.key}
                 </Txt>
-                <Txt size={13} weight="bold" color={attr.key === CARD.explained ? gold.base : onVoid.primary}>
+                <Txt size={13} weight="bold" color={attr.key === explained ? gold.base : onVoid.primary}>
                   {attr.value}
                 </Txt>
               </View>
@@ -301,5 +411,41 @@ function WorkspaceRow({ title, detail, onPress }: { title: string; detail: strin
       </View>
       <ChevronRight size={16} color={onVoid.dim} />
     </Pressable>
+  );
+}
+
+/**
+ * A signed-in player who has not done the assessment yet has no card. Showing
+ * the design's fixture here would be showing them somebody else's rating.
+ */
+function NoCardYet({ onStart }: { onStart: () => void }) {
+  const { t } = useI18n();
+  return (
+    <View
+      style={{
+        width: 262,
+        height: 372,
+        borderRadius: radius.card,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: goldAlpha.accent,
+        backgroundColor: void_.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 26,
+        gap: 18,
+      }}
+    >
+      <VoidMark size={96} rings={2} />
+      <View style={{ gap: 8, alignItems: 'center' }}>
+        <Txt size={17} weight="bold" align="center" color={onVoid.primary}>
+          {t.noCardYet}
+        </Txt>
+        <Txt size={12.5} lh={1.5} align="center" color={onVoid.faint}>
+          {t.noCardBlurb}
+        </Txt>
+      </View>
+      <Button label={t.buildMyCard} height={44} round={radius.row} size={14} onPress={onStart} />
+    </View>
   );
 }

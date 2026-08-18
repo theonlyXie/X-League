@@ -7,10 +7,12 @@ import { AvatarStack, Button, CornerVoid, Eyebrow, TurfSwatch } from '@/componen
 import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { BOOKING, INVITATION, PLAYER, PROGRESSION, VENUES } from '@/data/player';
+import { useI18n } from '@/i18n';
 
 /** P-02 Home — show immediate reasons to return (§4.2). */
 export default function Home() {
   const router = useRouter();
+  const { t, num, money, pm } = useI18n();
   const xpPct = (PROGRESSION.xp / PROGRESSION.nextLevelXp) * 100;
   const xpToNext = PROGRESSION.nextLevelXp - PROGRESSION.xp;
   const nearby = VENUES.slice(0, 2);
@@ -19,9 +21,9 @@ export default function Home() {
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 22 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ gap: 3 }}>
-          <Eyebrow>{PLAYER.today}</Eyebrow>
+          <Eyebrow>{t.today}</Eyebrow>
           <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-            {PLAYER.greeting}, {PLAYER.firstName}
+            {t.greetingEvening}, {PLAYER.firstName}
           </Txt>
         </View>
         <Link href="/me" asChild>
@@ -77,7 +79,7 @@ export default function Home() {
         <CornerVoid />
         <View style={{ gap: 14 }}>
           <Txt size={10} weight="bold" em={0.2} upper color={gold.base}>
-            Tonight · 9:00 PM
+            {t.tonightAt} · {pm('9:00')}
           </Txt>
           <View style={{ gap: 5 }}>
             <Txt size={24} weight="bold" em={-0.02} color={onVoid.primary}>
@@ -90,17 +92,17 @@ export default function Home() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <AvatarStack initials={['BE', 'OK', 'YA', 'MH']} openSlot />
             <Txt size={12} color={onVoid.muted}>
-              4 of 5 · 2 sub slots open
+              {t.confirmedOf(num(4), num(5), num(2))}
             </Txt>
           </View>
           <View style={{ flexDirection: 'row', gap: 10, paddingTop: 2 }}>
-            <Button label="Match lobby" flex={1} onPress={() => router.push('/play/lobby')} />
-            <Button label="Navigate" variant="ghost" flex={1} onPress={() => {}} />
+            <Button label={t.matchLobby} flex={1} onPress={() => router.push('/play/lobby')} />
+            <Button label={t.navigate} variant="ghost" flex={1} onPress={() => {}} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 2 }}>
             <View style={{ width: 5, height: 5, borderRadius: radius.pill, backgroundColor: gold.base }} />
             <Txt size={11.5} color={onVoid.muted}>
-              EGP {BOOKING.deposit} cash deposit due at the gate
+              {t.cashDepositAtGate(money(BOOKING.deposit))}
             </Txt>
           </View>
         </View>
@@ -108,7 +110,7 @@ export default function Home() {
 
       <View style={{ gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Eyebrow>Live near you</Eyebrow>
+          <Eyebrow>{t.liveNearYou}</Eyebrow>
           <Pressable
             accessibilityRole="link"
             accessibilityLabel="See all 12 live slots"
@@ -116,7 +118,7 @@ export default function Home() {
             onPress={() => router.push('/play')}
           >
             <Txt size={11.5} weight="semibold" color={gold.base}>
-              12 slots
+              {t.slotsCount(num(12))}
             </Txt>
           </Pressable>
         </View>
@@ -145,15 +147,15 @@ export default function Home() {
                   {venue.name}
                 </Txt>
                 <Txt size={11.5} color={onVoid.faint}>
-                  {venue.distanceKm} km · 5-a-side · EGP {venue.hourly}/hr
+                  {t.venueMeta(num(venue.distanceKm), money(venue.hourly))}
                 </Txt>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
                 <Txt size={11} weight="bold" color={gold.base}>
-                  {venue.nextSlot}
+                  {pm(venue.nextSlot.replace(' PM', ''))}
                 </Txt>
                 <Txt size={10} color={onVoid.dim}>
-                  +{venue.moreSlots} slot{venue.moreSlots === 1 ? '' : 's'}
+                  {t.moreSlots(num(venue.moreSlots))}
                 </Txt>
               </View>
             </Pressable>
@@ -163,7 +165,7 @@ export default function Home() {
 
       {/* §5.5: a structured invitation carries the match facts, not just text. */}
       <View style={{ gap: 12 }}>
-        <Eyebrow>Invitation</Eyebrow>
+        <Eyebrow>{t.invitation}</Eyebrow>
         <View
           style={{
             padding: 16,
@@ -191,7 +193,7 @@ export default function Home() {
             </View>
             <View style={{ gap: 2 }}>
               <Txt size={13.5} weight="semibold" color={onVoid.primary}>
-                {INVITATION.from} needs a {INVITATION.need}
+                {t.needsA(INVITATION.from, INVITATION.need)}
               </Txt>
               <Txt size={11.5} color={onVoid.faint}>
                 {INVITATION.when}
@@ -199,8 +201,8 @@ export default function Home() {
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button label="Accept" variant="accept" flex={1} height={38} round={radius.chip} size={13} onPress={() => {}} />
-            <Button label="Decline" variant="decline" flex={1} height={38} round={radius.chip} size={13} onPress={() => {}} />
+            <Button label={t.accept} variant="accept" flex={1} height={38} round={radius.chip} size={13} onPress={() => {}} />
+            <Button label={t.decline} variant="decline" flex={1} height={38} round={radius.chip} size={13} onPress={() => {}} />
           </View>
         </View>
       </View>
@@ -208,9 +210,9 @@ export default function Home() {
       {/* §5.3: XP and level are activity, never ability. */}
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Eyebrow>Progression</Eyebrow>
+          <Eyebrow>{t.progression}</Eyebrow>
           <Txt size={11.5} color={onVoid.faint}>
-            {PROGRESSION.xp.toLocaleString()} / {PROGRESSION.nextLevelXp.toLocaleString()} XP
+            {t.xpOf(num(PROGRESSION.xp), num(PROGRESSION.nextLevelXp))}
           </Txt>
         </View>
         <View
@@ -221,7 +223,7 @@ export default function Home() {
           <View style={{ width: `${xpPct}%`, height: '100%', backgroundColor: gold.base }} />
         </View>
         <Txt size={11.5} color={onVoid.faint}>
-          Level {PROGRESSION.level} · {xpToNext} XP to Level {PROGRESSION.level + 1}
+          {t.levelToNext(num(PROGRESSION.level), num(xpToNext), num(PROGRESSION.level + 1))}
         </Txt>
       </View>
     </Screen>

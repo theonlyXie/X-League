@@ -105,6 +105,41 @@ Supabase dashboard (Twilio, MessageBird, Vonage or Textlocal). The sign-in
 screen says so in plain language rather than leaking the provider's error. Until
 then, `supabase/seed_identities.sql` creates three test identities directly.
 
+### The player card
+
+§5.1's model, in `supabase/migrations/20260818090400_player_card.sql`. A
+self-assessment creates a **provisional** card, never a verified claim:
+self-assessment supplies up to 70% until three verified matches, is
+progressively replaced between three and nine, and is capped at 15% from ten.
+Confidence follows the same ladder — Provisional, Emerging, Established.
+
+OVR is a weighted summary of *position-relevant* attributes, from a versioned
+`scoring_rule` (§5.1's central-midfielder weights are the published example).
+The same attributes score 76 as a forward and 66 in midfield, which is the
+point. Every snapshot records the rule version that produced it (PRO-004), and
+snapshots are append-only, so changing position writes a new one rather than
+overwriting history (PRO-011).
+
+There is no match system yet, so every real card reads Provisional with zero
+evidence — which is the honest state, not a placeholder.
+
+### Language and direction
+
+English LTR and Arabic RTL (NFR-LOC-001), switchable from the profile
+(AUTH-002). Arabic uses IBM Plex Sans Arabic, Arabic-Indic numerals, EGP as
+`٣٠٠ ج.م`, and Cairo-zone dates — all through `src/i18n/format.ts` rather than
+scattered through screens.
+
+Two bidi traps are handled deliberately, because both produced wrong output
+before they were: two numerals either side of a neutral separator get reordered
+and read as one number (`٤ من ٥ · ٢` rendered as `٤ من ٢٠٥`), so Arabic
+phrasing keeps a word between them; and a meridiem written as a separate Latin
+run jumps to the wrong side, so `pmLabel` composes it into the Arabic string.
+
+On native, mirroring is a process-level setting — `I18nManager.forceRTL` needs
+a reload — so the switch says so rather than pretending the layout flipped. On
+web the document direction changes immediately.
+
 ### Access control
 
 RLS is on for every table with no policy granting direct access, so the tables
@@ -135,6 +170,7 @@ psql -f supabase/seed.sql        # the evening the design books
 # identity and staff scoping
 psql -f supabase/seed_identities.sql
 psql -f supabase/tests/rbac_probe.sql
+psql -f supabase/tests/card_probe.sql
 ```
 
 The test suite covers the release gates the database is responsible for —
@@ -190,9 +226,13 @@ Venue discovery still reads fixtures: the pitch the app books is the one named
 in `.env`. The player card, roster, tournaments and admin ledger are fixtures
 too — only the booking spine is backed by the database.
 
-Onboarding beyond sign-in: position, the anchored self-assessment and the
-provisional card (P-01, PRO-002, PRO-003) are not built, so a new account has
-no player card of its own — the card screen still shows the design's fixture.
+Tournaments (P-15–P-20), messaging and recruitment (P-10–P-14), the remaining
+owner screens (O-03–O-08) and admin sections (A-02–A-08). These are the M2/M3
+subsystems; most have no artboards, so building them means designing them too.
 
-Owner mode's Today screen still reads fixtures; only the Calendar is wired to
-`owner_day`. Admin remains entirely fixtures.
+The admin console is still entirely fixtures. Owner Mode is wired to the
+database but not translated — Arabic covers the player surface only.
+
+Venue discovery still reads fixtures: the pitch the app books is the one named
+in `.env`. Peer ratings, XP and levels do not exist yet, so the card's form and
+rater tiles read as empty for a real account.

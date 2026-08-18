@@ -9,9 +9,17 @@ import {
   Inter_700Bold,
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
+import {
+  IBMPlexSansArabic_400Regular,
+  IBMPlexSansArabic_500Medium,
+  IBMPlexSansArabic_600SemiBold,
+  IBMPlexSansArabic_700Bold,
+} from '@expo-google-fonts/ibm-plex-sans-arabic';
 import { View } from 'react-native';
 import { BookingProvider } from '@/state/booking';
 import { SessionProvider } from '@/state/session';
+import { CardProvider } from '@/state/card';
+import { I18nProvider } from '@/i18n';
 import { void_ } from '@/theme/tokens';
 
 export default function RootLayout() {
@@ -21,6 +29,10 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
     Inter_800ExtraBold,
+    IBMPlexSansArabic_400Regular,
+    IBMPlexSansArabic_500Medium,
+    IBMPlexSansArabic_600SemiBold,
+    IBMPlexSansArabic_700Bold,
   });
 
   // Hold the Void ground until Inter is ready so type never reflows from a
@@ -29,17 +41,22 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <SessionProvider>
-        <BookingProvider>
+      <I18nProvider>
+        <SessionProvider>
+        <CardProvider>
+          <BookingProvider>
           <StatusBar style="light" />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
             <Stack.Screen name="(player)" />
             <Stack.Screen name="owner" />
             <Stack.Screen name="admin" />
             <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="onboarding" />
           </Stack>
-        </BookingProvider>
-      </SessionProvider>
+          </BookingProvider>
+        </CardProvider>
+        </SessionProvider>
+      </I18nProvider>
     </SafeAreaProvider>
   );
 }

@@ -10,6 +10,7 @@ import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { useI18n } from '@/i18n';
 
 /**
  * P-05 Checkout — reserve without ambiguity (§4.2).
@@ -21,6 +22,7 @@ import { useBooking } from '@/state/booking';
 export default function Checkout() {
   const router = useRouter();
   const { slotLabel, slotEndLabel, holdText, hold, releaseHold, confirmBooking } = useBooking();
+  const { t, money, clock } = useI18n();
   const expired = hold === 'expired';
 
   // AC-03: leaving checkout without confirming returns the slot to inventory.
@@ -47,7 +49,7 @@ export default function Checkout() {
           <ArrowLeft size={16} color={onVoid.secondary} />
         </Pressable>
         <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
-          Confirm your slot
+          {t.confirmYourSlot}
         </Txt>
       </View>
 
@@ -55,8 +57,8 @@ export default function Checkout() {
         accessibilityRole="alert"
         accessibilityLabel={
           expired
-            ? 'Your hold expired. The slot is back on sale'
-            : `Slot held for you, ${holdText} remaining`
+            ? t.holdExpired
+            : `${t.slotHeld}, ${clock(holdText)}`
         }
         style={{
           flexDirection: 'row',
@@ -76,7 +78,7 @@ export default function Checkout() {
           <PulseDot color={gold.base} />
         )}
         <Txt size={12.5} color="rgba(243,238,229,.72)" style={{ flex: 1 }}>
-          {expired ? 'Your hold expired — the slot is back on sale' : 'Slot held for you'}
+          {expired ? t.holdExpired : t.slotHeld}
         </Txt>
         <Txt
           size={14}
@@ -84,7 +86,7 @@ export default function Checkout() {
           color={expired ? burgundy.action : gold.base}
           style={{ fontFamily: mono }}
         >
-          {holdText}
+          {clock(holdText)}
         </Txt>
       </View>
 
@@ -98,14 +100,14 @@ export default function Checkout() {
           gap: 14,
         }}
       >
-        <DetailRow label="Venue" value={`${BOOKING.venue} · ${BOOKING.pitch}`} />
-        <DetailRow label="Date" value={BOOKING.date} />
-        <DetailRow label="Time" value={`${slotLabel} – ${slotEndLabel}`} />
-        <DetailRow label="Format" value={BOOKING.format} />
+        <DetailRow label={t.venue} value={`${BOOKING.venue} · ${BOOKING.pitch}`} />
+        <DetailRow label={t.date} value={BOOKING.date} />
+        <DetailRow label={t.time} value={`${slotLabel} – ${slotEndLabel}`} />
+        <DetailRow label={t.format} value={t.fiveASide} />
       </View>
 
       <View style={{ gap: 10 }}>
-        <Eyebrow>Payment</Eyebrow>
+        <Eyebrow>{t.payment}</Eyebrow>
         {/* The deposit is cash at the gate — a first-class method, not a fallback. */}
         <View
           accessibilityRole="radio"
@@ -136,11 +138,10 @@ export default function Checkout() {
           </View>
           <View style={{ flex: 1, gap: 5 }}>
             <Txt size={14} weight="semibold" color={onVoid.primary}>
-              Cash deposit at the venue
+              {t.cashAtVenue}
             </Txt>
             <Txt size={12} lh={1.55} color={onVoid.muted}>
-              Pay EGP {BOOKING.deposit} at the gate to hold the pitch. The remaining EGP {BOOKING.balance} is
-              settled at the venue after the match.
+              {t.cashExplainer(money(BOOKING.deposit), money(BOOKING.balance))}
             </Txt>
           </View>
         </View>
@@ -156,27 +157,27 @@ export default function Checkout() {
           borderColor: onVoid.edge,
         }}
       >
-        <PriceRow label="Pitch hour" value={`EGP ${BOOKING.hourly}`} />
-        <PriceRow label="Booking fee" value={`EGP ${BOOKING.bookingFee}`} />
+        <PriceRow label={t.pitchHour} value={money(BOOKING.hourly)} />
+        <PriceRow label={t.bookingFee} value={money(BOOKING.bookingFee)} />
         <Divider />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <Txt size={13} weight="semibold" color={gold.base}>
-            Cash at gate
+            {t.cashAtGate}
           </Txt>
           <Txt size={16} weight="bold" color={gold.base}>
-            EGP {BOOKING.deposit}
+            {money(BOOKING.deposit)}
           </Txt>
         </View>
-        <PriceRow label="Balance after match" value={`EGP ${BOOKING.balance}`} />
+        <PriceRow label={t.balanceAfter} value={money(BOOKING.balance)} />
       </View>
 
       <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-        {BOOKING.cancellation} Two unexcused no-shows in a season restrict cash-deposit bookings.
+        {t.cancellationNote}
       </Txt>
 
       {expired ? (
         <Button
-          label="Find another slot"
+          label={t.findAnotherSlot}
           height={52}
           round={radius.control}
           size={15}
@@ -184,7 +185,7 @@ export default function Checkout() {
         />
       ) : (
         <Button
-          label="Confirm booking"
+          label={t.confirmBooking}
           height={52}
           round={radius.control}
           size={15}

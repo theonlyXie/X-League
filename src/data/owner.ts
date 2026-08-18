@@ -28,6 +28,10 @@ export type Arrival = {
   money?: { text: string; tone: 'due' | 'unpaid' };
   /** The app booking that just landed gets the highlighted treatment. */
   justBooked?: { code: string };
+  /** Present when the row came from the venue calendar rather than fixtures. */
+  bookingId?: string;
+  checkedIn?: boolean;
+  depositEgp?: number;
 };
 
 export const ARRIVALS: Arrival[] = [

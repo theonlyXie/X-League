@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
 import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import type { TabBarProps } from './tabBarTypes';
+import { useI18n } from '@/i18n';
 
 /**
  * The five-tab bar from option 1h, model one — labelled tabs with a gold tick
@@ -21,6 +22,10 @@ const ITEMS: { label: string; route?: string }[] = [
 
 export function PlayerTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
+  const label: Record<string, string> = {
+    Home: t.home, Play: t.play, Cups: t.cups, Chat: t.chat, Me: t.me,
+  };
   const activeRoute = state.routes[state.index]?.name;
 
   return (
@@ -45,7 +50,7 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
           <Pressable
             key={item.label}
             accessibilityRole="tab"
-            accessibilityLabel={item.label}
+            accessibilityLabel={label[item.label] ?? item.label}
             accessibilityState={{ selected: active, disabled: !enabled }}
             disabled={!enabled}
             onPress={() => {
@@ -63,7 +68,7 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
               }}
             />
             <Txt size={10.5} weight="semibold" color={color}>
-              {item.label}
+              {label[item.label] ?? item.label}
             </Txt>
           </Pressable>
         );

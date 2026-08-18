@@ -11,6 +11,7 @@ import { mono } from '@/theme/typography';
 import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOT_TIMES, VENUES } from '@/data/player';
 import { useBooking } from '@/state/booking';
 import { useSession } from '@/state/session';
+import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 
 /**
@@ -24,6 +25,7 @@ export default function PitchDetail() {
   const { slot, selectSlot, slotLabel, beginHold, taken, loading, unreachable, conflict, clearConflict } =
     useBooking();
   const { signedIn } = useSession();
+  const { t, num, money } = useI18n();
   const venue = VENUES[0];
 
   return (
@@ -47,14 +49,14 @@ export default function PitchDetail() {
                 }}
               >
                 <Txt size={10} weight="bold" em={0.08} color={gold.base}>
-                  VERIFIED
+                  {t.verified}
                 </Txt>
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <Star size={12} color={gold.base} />
               <Txt size={12.5} color={onVoid.muted}>
-                {venue.rating} · {venue.reviews} reviews · {BOOKING.area} · {venue.distanceKm} km
+                {num(venue.rating)} · {num(venue.reviews)} reviews · {BOOKING.area} · {num(venue.distanceKm)} km
               </Txt>
             </View>
           </View>
@@ -80,7 +82,7 @@ export default function PitchDetail() {
 
           <View style={{ gap: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-              <Eyebrow>Available tonight</Eyebrow>
+              <Eyebrow>{t.availableTonight}</Eyebrow>
               <Txt size={11} color="rgba(243,238,229,.3)">
                 {BOOKING.pitch}
               </Txt>
@@ -108,7 +110,7 @@ export default function PitchDetail() {
                 </Txt>
                 {conflict.alternatives.length ? (
                   <Txt size={11.5} color={onVoid.muted}>
-                    Still free: {conflict.alternatives.join(' · ')} PM
+                    {t.stillFree(`${conflict.alternatives.join(' · ')} PM`)}
                   </Txt>
                 ) : null}
               </Pressable>
@@ -116,18 +118,14 @@ export default function PitchDetail() {
 
             {/* §5.4: one canonical timeline, every channel included. */}
             <Txt size={11.5} color={onVoid.dim}>
-              {loading
-                ? 'Checking the venue calendar…'
-                : unreachable
-                  ? 'Could not reach the venue calendar — these times may be out of date.'
-                  : 'Slots update live from the venue calendar — phone and walk-in bookings included.'}
+              {loading ? t.calendarChecking : unreachable ? t.calendarUnreachable : t.calendarNote}
             </Txt>
           </View>
 
           <Divider />
 
           <View style={{ gap: 10 }}>
-            <Eyebrow>House rules</Eyebrow>
+            <Eyebrow>{t.houseRules}</Eyebrow>
             <Txt size={12.5} lh={1.6} color="rgba(243,238,229,.55)">
               {HOUSE_RULES}
             </Txt>
@@ -150,14 +148,14 @@ export default function PitchDetail() {
       >
         <View style={{ gap: 2 }}>
           <Txt size={17} weight="bold" color={onVoid.primary}>
-            EGP {BOOKING.hourly}
+            {money(BOOKING.hourly)}
           </Txt>
           <Txt size={10.5} color={onVoid.dim}>
-            per hour
+            {t.perHourLabel}
           </Txt>
         </View>
         <Button
-          label={isLive && !signedIn ? `Sign in to hold ${slotLabel}` : `Hold ${slotLabel}`}
+          label={isLive && !signedIn ? t.signInToHold(slotLabel) : t.hold(slotLabel)}
           flex={1}
           height={50}
           round={radius.control}

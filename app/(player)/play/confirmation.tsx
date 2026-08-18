@@ -8,6 +8,7 @@ import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { useI18n } from '@/i18n';
 
 /**
  * P-06 Confirmation — make arrival effortless (§4.2).
@@ -18,7 +19,8 @@ import { useBooking } from '@/state/booking';
  */
 export default function Confirmation() {
   const router = useRouter();
-  const { slotLabel, slotEndLabel, code } = useBooking();
+  const { slot, slotLabel, slotEndLabel, code } = useBooking();
+  const { t, money, pm } = useI18n();
 
   return (
     <Screen
@@ -34,10 +36,10 @@ export default function Confirmation() {
 
       <View style={{ alignItems: 'center', gap: 8 }}>
         <Txt size={11} weight="bold" em={0.26} upper color={gold.base}>
-          You're playing
+          {t.yourePlaying}
         </Txt>
         <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
-          Tonight, {slotLabel}
+          {t.tonightAtTime(pm(slot))}
         </Txt>
       </View>
 
@@ -57,7 +59,7 @@ export default function Confirmation() {
             {BOOKING.venue} · {BOOKING.pitch}
           </Txt>
           <Txt size={12.5} color={onVoid.muted}>
-            Tue 18 Aug · {slotLabel}–{slotEndLabel} · 5-a-side
+            {t.bookingWhen('Tue 18 Aug', pm(slot), pm(slotEndLabel.replace(' PM', '')))}
           </Txt>
         </View>
 
@@ -76,7 +78,7 @@ export default function Confirmation() {
         >
           <View style={{ gap: 4 }} accessibilityLabel={`Booking code ${code}`}>
             <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
-              Booking code
+              {t.bookingCode}
             </Txt>
             <Txt size={21} weight="bold" em={0.14} color={gold.base} style={{ fontFamily: mono }}>
               {code}
@@ -85,24 +87,24 @@ export default function Confirmation() {
           <View style={{ flex: 1 }} />
           <View style={{ alignItems: 'flex-end', gap: 4 }}>
             <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
-              Cash at gate
+              {t.cashAtGate}
             </Txt>
             <Txt size={15} weight="bold" color={onVoid.primary}>
-              EGP {BOOKING.deposit}
+              {money(BOOKING.deposit)}
             </Txt>
           </View>
         </View>
 
         <Txt size={12} color={onVoid.faint}>
-          {BOOKING.gateNote}
+          {t.gateNote}
         </Txt>
       </View>
 
       <View style={{ width: '100%', gap: 10 }}>
         {/* VEN-009: navigation deep-links out to an installed maps app. */}
-        <Button label="Navigate to venue" height={50} round={radius.control} size={15} onPress={() => {}} />
+        <Button label={t.navigateToVenue} height={50} round={radius.control} size={15} onPress={() => {}} />
         <Button
-          label="Invite your 4 + subs"
+          label={t.inviteYourSquad}
           variant="ghost"
           height={50}
           round={radius.control}
