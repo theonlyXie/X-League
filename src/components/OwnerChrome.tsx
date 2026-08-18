@@ -14,9 +14,9 @@ import type { TabBarProps } from './tabBarTypes';
 const ITEMS: { label: string; route?: string }[] = [
   { label: 'Today', route: 'index' },
   { label: 'Calendar', route: 'calendar' },
-  { label: 'Bookings' },
-  { label: 'Customers' },
-  { label: 'More' },
+  { label: 'Bookings', route: 'bookings' },
+  { label: 'Customers', route: 'customers' },
+  { label: 'More', route: 'more' },
 ];
 
 export function OwnerTabBar({ state, navigation }: TabBarProps) {

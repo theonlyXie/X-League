@@ -77,3 +77,50 @@ export const AUDIT: { at: string; event: string; actor: string }[] = [
   { at: '21:12', event: 'Price updated · 9 PM daypart EGP 300', actor: 'owner:stadium-one · staff M.A.' },
   { at: '18:04', event: 'Pitch A reopened after maintenance block', actor: 'owner:stadium-one' },
 ];
+
+export const ADMIN_VENUES = [
+  { name: 'Stadium One', area: 'Nasr City', pitches: 3, occupancy: '78%', drift: 'none', status: 'Live' },
+  { name: 'The Box', area: 'Nasr City', pitches: 2, occupancy: '91%', drift: '40 min late', status: 'Watch' },
+  { name: 'Nasr Sports Club', area: 'Nasr City', pitches: 4, occupancy: '100%', drift: 'none', status: 'Live' },
+  { name: 'Zamalek 5s', area: 'Zamalek', pitches: 2, occupancy: '64%', drift: 'none', status: 'Live' },
+];
+
+export const ADMIN_USERS = [
+  { name: 'Basel Elsayed', role: 'Player · captain', card: 'OVR 78 · Established', flag: '' },
+  { name: 'M. Adel', role: 'Owner staff · Stadium One', card: 'Check-in + cash', flag: '' },
+  { name: 'Salma R.', role: 'Ops · super admin', card: 'Audited console', flag: '' },
+  { name: 'Hesham Fouad', role: 'Player', card: 'OVR 71 · Forming', flag: 'Unpaid deposit' },
+];
+
+export const ADMIN_TOURNAMENTS = [
+  { name: 'Nasr City 5s', stage: 'Group A · MD3', teams: 8, next: 'Tonight 9 PM' },
+  { name: 'Cairo Night Cup', stage: 'Round of 16', teams: 16, next: 'Thu 20 Aug' },
+  { name: 'Ramadan Invitational', stage: 'Registration', teams: 12, next: '1 Sep draw' },
+];
+
+export const MATCH_DESK = [
+  { code: 'XL-7K42', fixture: 'Void FC vs Nasr Lions', venue: 'Stadium One A', kick: '21:00', state: 'Lobby' },
+  { code: 'XL-7K51', fixture: 'Nour K. 5-a-side', venue: 'Stadium One C', kick: '22:00', state: 'Confirmed' },
+  { code: 'CUP-12', fixture: 'Box United vs Gate 2', venue: 'The Box 1', kick: 'Thu 20:00', state: 'Scheduled' },
+];
+
+export const MODERATION = [
+  { id: 'M-104', title: 'Rating ring · 5 accounts', detail: 'Reciprocal pairs across 9 matches.', action: 'Recalculate cards' },
+  { id: 'M-101', title: 'Abuse report · chat', detail: 'Match lobby XL-7K21 · 2 reports.', action: 'Mute 7 days' },
+  { id: 'M-098', title: 'Fake venue listing', detail: 'Nasr rooftop 7s · no owner KYC.', action: 'Unpublish' },
+  { id: 'M-090', title: 'Card name dispute', detail: 'Display name vs national ID mismatch.', action: 'Hold card' },
+];
+
+export const SEASON = {
+  name: 'Season 1 · 2026',
+  window: '1 Jun – 30 Sep',
+  xpCap: 'Level is activity, never ability',
+  decay: 'Unverified attributes decay 1 pt / 30 days idle',
+};
+
+export const ADMIN_REPORTS = [
+  { label: 'Bookings today', value: '1,284', detail: '+11% vs last Tuesday' },
+  { label: 'Conflict rate', value: '0.2%', detail: '3 venues drifting' },
+  { label: 'Cash at gate', value: 'EGP 128k', detail: 'Due tonight across Cairo' },
+  { label: 'Verified play share', value: '73%', detail: 'Checked-in matches / confirmed' },
+];

@@ -25,16 +25,22 @@ booking land in the same calendar that holds its phone and walk-in bookings.
 
 | Screen | Spec | Route |
 | --- | --- | --- |
+| Onboarding | P-01 | `/onboarding` |
 | Home | P-02 | `/` |
 | Play search | P-03 | `/play` |
 | Pitch detail | P-04 | `/play/pitch` |
 | Checkout | P-05 | `/play/checkout` |
 | Confirmation | P-06 | `/play/confirmation` |
+| Chat inbox / thread | P-10–P-12, P-14 | `/chat` |
 | Match lobby | P-13 | `/play/lobby` |
+| Cups / tournament | P-15–P-20 | `/cups` |
 | Player card | P-08 / P-09 | `/me` |
 | Owner Today | O-01 | `/owner` |
 | Owner Calendar | O-02 | `/owner/calendar` |
-| Admin Overview | A-01 | `/admin` |
+| Owner Bookings | O-03 | `/owner/bookings` |
+| Owner Customers | O-04 | `/owner/customers` |
+| Owner More | O-05–O-08 | `/owner/more` |
+| Admin console | A-01–A-08 | `/admin` |
 
 The three surfaces share one identity, so Player and Owner mode switch without
 signing out (RBAC-005): the switch lives on the player card under **Workspace**,
@@ -91,9 +97,17 @@ it is used at.
 - **The X strokes are gradients.** Flat lines read as a hard cross and lose the
   convergence on the void.
 
+## Android APK
+
+```bash
+npm install
+npx expo prebuild --platform android --non-interactive
+cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
+# android/app/build/outputs/apk/release/app-release.apk
+```
+
+The release APK is arm64-v8a (typical phones) and debug-signed so it can be sideloaded. Or, with an Expo account: `npx eas-cli build --platform android --profile preview`.
+
 ## Not yet built
 
-Tournaments and Messages (P-15–P-20, P-10–P-12, P-14), onboarding and the
-self-assessment (P-01), the remaining owner screens (O-03–O-08) and admin
-sections (A-02–A-08), and Arabic RTL — explored as option 1i but not wired
-across the screens. All data is fixture data; there is no API layer yet.
+Arabic copy (the RTL toggle is on Owner → More), and a live API — all data is still fixture data.

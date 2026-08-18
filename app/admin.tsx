@@ -7,6 +7,7 @@ import { VoidMark } from '@/components/VoidMark';
 import { burgundy, console_, gold, ink, onOperative, onVoid, operative, radius, status, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import { ADMIN_KPIS, ADMIN_NAV, ADMIN_USER, ATTENTION, AUDIT, KpiTone, LEDGER, LEDGER_FOOTER, LedgerRow } from '@/data/admin';
+import { AdminSectionBody } from '@/components/adminSections';
 
 /**
  * A-01 Overview — monitor the platform (§4.6).
@@ -17,34 +18,41 @@ import { ADMIN_KPIS, ADMIN_NAV, ADMIN_USER, ATTENTION, AUDIT, KpiTone, LEDGER, L
  */
 export default function AdminConsole() {
   const insets = useSafeAreaInsets();
+  const [section, setSection] = useState('Overview');
 
   return (
     <View style={{ flex: 1, backgroundColor: operative.bg, paddingTop: insets.top }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
         <View style={{ width: console_.width, flex: 1, flexDirection: 'row' }}>
-          <Rail />
+          <Rail section={section} onSection={setSection} />
           <View style={{ flex: 1 }}>
-            <TopBar />
+            <TopBar section={section} />
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingVertical: 20, paddingHorizontal: 22, gap: 18 }}
               showsVerticalScrollIndicator={false}
             >
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {ADMIN_KPIS.map((kpi) => (
-                  <Kpi key={kpi.label} {...kpi} />
-                ))}
-              </View>
+              {section === 'Overview' ? (
+                <>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {ADMIN_KPIS.map((kpi) => (
+                      <Kpi key={kpi.label} {...kpi} />
+                    ))}
+                  </View>
 
-              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
-                <View style={{ flex: 1.55 }}>
-                  <Ledger />
-                </View>
-                <View style={{ flex: 1, gap: 16 }}>
-                  <NeedsAttention />
-                  <AuditTrail />
-                </View>
-              </View>
+                  <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1.55 }}>
+                      <Ledger />
+                    </View>
+                    <View style={{ flex: 1, gap: 16 }}>
+                      <NeedsAttention />
+                      <AuditTrail />
+                    </View>
+                  </View>
+                </>
+              ) : (
+                <AdminSectionBody section={section} />
+              )}
             </ScrollView>
           </View>
         </View>
@@ -53,9 +61,8 @@ export default function AdminConsole() {
   );
 }
 
-function Rail() {
+function Rail({ section, onSection }: { section: string; onSection: (s: string) => void }) {
   const router = useRouter();
-  const [section, setSection] = useState('Overview');
 
   return (
     <View
@@ -93,7 +100,7 @@ function Rail() {
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={item.badge ? `${item.label}, ${item.badge} items` : item.label}
-              onPress={() => setSection(item.label)}
+              onPress={() => onSection(item.label)}
               style={{
                 paddingVertical: 9,
                 paddingHorizontal: 10,
@@ -143,7 +150,7 @@ function Rail() {
   );
 }
 
-function TopBar() {
+function TopBar({ section }: { section: string }) {
   return (
     <View
       style={{
@@ -158,7 +165,7 @@ function TopBar() {
       }}
     >
       <Txt size={15} weight="bold" em={-0.01} color={ink}>
-        Overview
+        {section}
       </Txt>
       <Txt size={11} color={onOperative.faint}>
         Tue 18 Aug 2026 · 21:41 EET

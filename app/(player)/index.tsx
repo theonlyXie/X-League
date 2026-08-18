@@ -1,5 +1,5 @@
 import { Link, useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
@@ -95,7 +95,14 @@ export default function Home() {
           </View>
           <View style={{ flexDirection: 'row', gap: 10, paddingTop: 2 }}>
             <Button label="Match lobby" flex={1} onPress={() => router.push('/play/lobby')} />
-            <Button label="Navigate" variant="ghost" flex={1} onPress={() => {}} />
+            <Button
+              label="Navigate"
+              variant="ghost"
+              flex={1}
+              onPress={() =>
+                Alert.alert('Stadium One', `${BOOKING.gateNote}\n${BOOKING.area}`)
+              }
+            />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 2 }}>
             <View style={{ width: 5, height: 5, borderRadius: radius.pill, backgroundColor: gold.base }} />
@@ -199,8 +206,8 @@ export default function Home() {
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button label="Accept" variant="accept" flex={1} height={38} round={radius.chip} size={13} onPress={() => {}} />
-            <Button label="Decline" variant="decline" flex={1} height={38} round={radius.chip} size={13} onPress={() => {}} />
+            <Button label="Accept" variant="accept" flex={1} height={38} round={radius.chip} size={13} onPress={() => router.push('/chat/ok-invite')} />
+            <Button label="Decline" variant="decline" flex={1} height={38} round={radius.chip} size={13} onPress={() => router.push('/chat')} />
           </View>
         </View>
       </View>
