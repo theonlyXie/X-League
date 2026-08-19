@@ -3,7 +3,7 @@
     "name": "X League",
     "slug": "x-league",
     "scheme": "xleague",
-    "version": "0.1.0",
+    "version": "0.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",

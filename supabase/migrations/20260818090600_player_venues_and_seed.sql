@@ -43,6 +43,13 @@ $$;
 
 grant execute on function list_player_venues() to anon, authenticated;
 
+create or replace function _xl_demo_code()
+returns text language sql volatile security definer set search_path = public as $$
+  select 'XL-' || string_agg(
+    substr('23456789ABCDEFGHJKMNPQRSTUVWXYZ', 1 + floor(random() * 31)::int, 1), ''
+  ) from generate_series(1, 4);
+$$;
+
 -- Idempotent demo seed — safe to call more than once on an empty project.
 create or replace function seed_demo_evening()
 returns jsonb
@@ -98,10 +105,10 @@ begin
   select
     s.pitch_id,
     tstzrange(s.starts_at, s.starts_at + interval '1 hour', '[)'),
-    'confirmed',
+    'confirmed'::booking_state,
     x.source::booking_source,
     x.captain,
-    generate_booking_code(),
+    _xl_demo_code(),
     case when s.h = 23 then 260 else 300 end,
     100
   from slot s
