@@ -1,6 +1,7 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { burgundy, gold, ink, onOperative, operative, radius } from '@/theme/tokens';
+import { Button } from '@/components/ui';
+import { burgundy, gold, ink, onOperative, operative, radius, status } from '@/theme/tokens';
 import {
   ADMIN_REPORTS,
   ADMIN_TOURNAMENTS,
@@ -11,18 +12,12 @@ import {
   SEASON,
 } from '@/data/admin';
 import { mono } from '@/theme/typography';
+import { useVenues } from '@/state/venues';
 
 export function AdminSectionBody({ section }: { section: string }) {
   switch (section) {
     case 'Venues':
-      return (
-        <Table
-          title="Venues"
-          headers={['Venue', 'Area', 'Pitches', 'Occ.', 'Status']}
-          rows={ADMIN_VENUES.map((v) => [v.name, v.area, String(v.pitches), v.occupancy, v.status])}
-          alert={ADMIN_VENUES.map((v) => v.status === 'Watch')}
-        />
-      );
+      return <AdminVenuesSection />;
     case 'Users & teams':
       return (
         <Table
@@ -136,6 +131,90 @@ export function AdminSectionBody({ section }: { section: string }) {
     default:
       return null;
   }
+}
+
+function AdminVenuesSection() {
+  const { pendingSubmissions, approve, reject } = useVenues();
+
+  return (
+    <View style={{ gap: 16 }}>
+      {pendingSubmissions.length ? (
+        <View style={{ gap: 10 }}>
+          <Txt size={12.5} weight="bold" color={ink}>
+            Pending owner signups
+          </Txt>
+          {pendingSubmissions.map((s) => (
+            <View
+              key={s.id}
+              style={{
+                padding: 14,
+                borderRadius: radius.panel,
+                backgroundColor: operative.surface,
+                borderWidth: 1,
+                borderColor: 'rgba(198,163,75,.35)',
+                gap: 10,
+              }}
+            >
+              <View style={{ gap: 4 }}>
+                <Txt size={15} weight="bold" color={ink}>
+                  {s.name}
+                </Txt>
+                <Txt size={12} color={onOperative.muted}>
+                  {s.area} · submitted by {s.ownerName}
+                </Txt>
+                <Txt size={10.5} color={onOperative.faint} style={{ fontFamily: mono }}>
+                  {s.id}
+                </Txt>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Button label="Approve" variant="operative" flex={1} onPress={() => approve(s.id)} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reject ${s.name}`}
+                  onPress={() => reject(s.id)}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    height: 44,
+                    borderRadius: radius.dense,
+                    borderWidth: 1,
+                    borderColor: 'rgba(101,21,37,.35)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Txt size={13} weight="semibold" color={burgundy.ink}>
+                    Reject
+                  </Txt>
+                </Pressable>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View
+          style={{
+            padding: 14,
+            borderRadius: radius.panel,
+            backgroundColor: operative.surface,
+            borderWidth: 1,
+            borderColor: onOperative.hairline,
+          }}
+        >
+          <Txt size={12.5} color={onOperative.muted}>
+            No pending venue signups.
+          </Txt>
+        </View>
+      )}
+
+      <Table
+        title="Live venues"
+        headers={['Venue', 'Area', 'Pitches', 'Occ.', 'Status']}
+        rows={ADMIN_VENUES.map((v) => [v.name, v.area, String(v.pitches), v.occupancy, v.status])}
+        alert={ADMIN_VENUES.map((v) => v.status === 'Watch')}
+      />
+    </View>
+  );
 }
 
 function Table({

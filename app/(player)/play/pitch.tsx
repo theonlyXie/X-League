@@ -8,8 +8,9 @@ import { Star } from '@/components/icons';
 import { SlotGrid } from '@/components/SlotGrid';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOTS_TAKEN, SLOT_TIMES, VENUES } from '@/data/player';
+import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOTS_TAKEN, SLOT_TIMES } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { useVenues } from '@/state/venues';
 
 /**
  * P-04 Pitch detail — build confidence before purchase (§4.2). VEN-005: media,
@@ -20,7 +21,8 @@ export default function PitchDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { slot, selectSlot, slotLabel, beginHold, venueName } = useBooking();
-  const venue = VENUES.find((v) => v.name === venueName) ?? VENUES[0];
+  const { playerVenues } = useVenues();
+  const venue = playerVenues.find((v) => v.name === venueName) ?? playerVenues[0];
 
   return (
     <View style={{ flex: 1, backgroundColor: void_.bg, paddingTop: insets.top }}>

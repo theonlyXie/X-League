@@ -7,8 +7,9 @@ import { Eyebrow, TurfSwatch, hitSlopTo44 } from '@/components/ui';
 import { VenueMap } from '@/components/VenueMap';
 import { Star } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { VENUES, Venue } from '@/data/player';
+import { Venue } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { useVenues } from '@/state/venues';
 
 const DAYS = ['Tonight', 'Tomorrow', 'Pick date'];
 const WINDOWS = ['6–8 PM', '8–10 PM', '10–12'];
@@ -21,18 +22,19 @@ const WINDOWS = ['6–8 PM', '8–10 PM', '10–12'];
 export default function PlaySearch() {
   const router = useRouter();
   const { selectVenue } = useBooking();
+  const { playerVenues } = useVenues();
   const [day, setDay] = useState('Tonight');
   const [window_, setWindow] = useState('8–10 PM');
   const [view, setView] = useState<'List' | 'Map'>('List');
 
   const venues = useMemo(() => {
-    return VENUES.filter((venue) => {
+    return playerVenues.filter((venue) => {
       if (day === 'Tomorrow') return venue.name !== 'Nasr Sports Club';
       if (window_ === '6–8 PM') return venue.open.some((t) => ['6:00', '7:00'].includes(t));
       if (window_ === '10–12') return venue.open.some((t) => ['10:00', '11:00'].includes(t));
       return venue.open.some((t) => ['8:00', '9:00', '10:00'].includes(t));
     });
-  }, [day, window_]);
+  }, [day, window_, playerVenues]);
 
   const openPitch = (venue: Venue) => {
     selectVenue(venue.name);

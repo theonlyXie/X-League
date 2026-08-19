@@ -6,20 +6,22 @@ import { Txt } from '@/components/Txt';
 import { AvatarStack, Button, CornerVoid, Eyebrow, TurfSwatch } from '@/components/ui';
 import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { BOOKING, INVITATION, PLAYER, PROGRESSION, VENUES } from '@/data/player';
+import { BOOKING, INVITATION, PLAYER, PROGRESSION } from '@/data/player';
 import { openVenueNavigation } from '@/lib/maps';
 import { useBooking } from '@/state/booking';
 import { useProfile } from '@/state/profile';
+import { useVenues } from '@/state/venues';
 
 /** P-02 Home — show immediate reasons to return (§4.2). */
 export default function Home() {
   const router = useRouter();
   const { profile, card } = useProfile();
   const { activeBooking } = useBooking();
+  const { playerVenues } = useVenues();
   const xpPct = (PROGRESSION.xp / PROGRESSION.nextLevelXp) * 100;
   const xpToNext = PROGRESSION.nextLevelXp - PROGRESSION.xp;
-  const nearby = VENUES.slice(0, 2);
-  const venue = VENUES.find((v) => v.name === (activeBooking?.venue ?? BOOKING.venue)) ?? VENUES[0];
+  const nearby = playerVenues.slice(0, 2);
+  const venue = playerVenues.find((v) => v.name === (activeBooking?.venue ?? BOOKING.venue)) ?? playerVenues[0];
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 22 }}>

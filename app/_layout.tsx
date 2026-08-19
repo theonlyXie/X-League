@@ -14,6 +14,7 @@ import { BookingProvider } from '@/state/booking';
 import { MessagesProvider } from '@/state/messages';
 import { ProfileProvider, useProfile } from '@/state/profile';
 import { SettingsProvider } from '@/state/settings';
+import { VenuesProvider } from '@/state/venues';
 import { void_ } from '@/theme/tokens';
 
 export default function RootLayout() {
@@ -21,12 +22,14 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <SettingsProvider>
         <ProfileProvider>
-          <MessagesProvider>
-            <BookingProvider>
-              <StatusBar style="light" />
-              <RootGate />
-            </BookingProvider>
-          </MessagesProvider>
+          <VenuesProvider>
+            <MessagesProvider>
+              <BookingProvider>
+                <StatusBar style="light" />
+                <RootGate />
+              </BookingProvider>
+            </MessagesProvider>
+          </VenuesProvider>
         </ProfileProvider>
       </SettingsProvider>
     </SafeAreaProvider>

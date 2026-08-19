@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
 import { gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { VENUE } from '@/data/owner';
+import { useMyVenueSubmission } from '@/state/venues';
 import type { TabBarProps } from './tabBarTypes';
 
 /**
@@ -72,6 +73,9 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
 export function OwnerHeader() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { mine } = useMyVenueSubmission();
+  const venueName = mine?.status === 'approved' ? mine.name : VENUE.name;
+  const shift = mine?.status === 'approved' ? `${mine.area} · owner shift` : VENUE.shift;
 
   return (
     <View style={{ backgroundColor: operative.bg, paddingTop: insets.top }}>
@@ -89,10 +93,10 @@ export function OwnerHeader() {
       >
         <View style={{ gap: 2 }}>
           <Txt size={18} weight="bold" em={-0.02} color={ink}>
-            {VENUE.name}
+            {venueName}
           </Txt>
           <Txt size={11} color={onOperative.muted}>
-            {VENUE.shift}
+            {shift}
           </Txt>
         </View>
         <Pressable

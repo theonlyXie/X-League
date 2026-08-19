@@ -10,6 +10,7 @@ import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { PROGRESSION } from '@/data/player';
 import { useProfile } from '@/state/profile';
+import { useMyVenueSubmission } from '@/state/venues';
 
 /**
  * P-08 Profile / P-09 Card detail — the persistent football identity (§4.3).
@@ -20,8 +21,24 @@ import { useProfile } from '@/state/profile';
 export default function Me() {
   const router = useRouter();
   const { card } = useProfile();
+  const { mine } = useMyVenueSubmission();
   const explained = card.attributes.find((a) => a.key === card.explained)!;
   const evidencePct = 100 - card.selfAssessedPct;
+
+  const ownerDetail =
+    mine?.status === 'approved'
+      ? `${mine.name} · calendar, arrivals and CRM`
+      : mine?.status === 'pending'
+        ? `${mine.name} · awaiting admin approval`
+        : mine?.status === 'rejected'
+          ? 'Listing not approved · submit again'
+          : 'Stadium One demo · or register your venue';
+
+  const openOwner = () => {
+    if (mine?.status === 'pending' || mine?.status === 'rejected') router.push('/owner/pending');
+    else if (!mine) router.push('/owner/register');
+    else router.push('/owner');
+  };
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20, alignItems: 'center' }}>
@@ -74,10 +91,11 @@ export default function Me() {
             onPress={() => router.push('/bookings')}
           />
           <WorkspaceRow
-            title="Owner mode"
-            detail="Stadium One · calendar, arrivals and CRM"
-            onPress={() => router.push('/owner')}
+            title="Register your venue"
+            detail="Submit a listing and wait for admin approval"
+            onPress={() => router.push('/owner/register')}
           />
+          <WorkspaceRow title="Owner mode" detail={ownerDetail} onPress={openOwner} />
           <WorkspaceRow
             title="Admin console"
             detail="Platform operations · audited"

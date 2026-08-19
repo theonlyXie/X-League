@@ -6,9 +6,10 @@ import { Button } from '@/components/ui';
 import { VoidMark } from '@/components/VoidMark';
 import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { BOOKING, VENUES } from '@/data/player';
+import { BOOKING } from '@/data/player';
 import { openVenueNavigation } from '@/lib/maps';
 import { useBooking } from '@/state/booking';
+import { useVenues } from '@/state/venues';
 
 /**
  * P-06 Confirmation — make arrival effortless (§4.2).
@@ -20,7 +21,8 @@ import { useBooking } from '@/state/booking';
 export default function Confirmation() {
   const router = useRouter();
   const { slotLabel, slotEndLabel, activeBooking } = useBooking();
-  const venue = VENUES.find((v) => v.name === (activeBooking?.venue ?? BOOKING.venue)) ?? VENUES[0];
+  const { playerVenues } = useVenues();
+  const venue = playerVenues.find((v) => v.name === (activeBooking?.venue ?? BOOKING.venue)) ?? playerVenues[0];
 
   return (
     <Screen

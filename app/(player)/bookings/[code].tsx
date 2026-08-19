@@ -9,8 +9,8 @@ import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
 import { openVenueNavigation } from '@/lib/maps';
-import { VENUES } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { useVenues } from '@/state/venues';
 
 /**
  * P-07 Booking detail — reference, gate, deposit and actions (§4.2).
@@ -19,6 +19,7 @@ export default function BookingDetail() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const router = useRouter();
   const { activeBooking, bookingHistory, cancelBooking } = useBooking();
+  const { playerVenues } = useVenues();
 
   const booking =
     activeBooking?.code === code
@@ -40,7 +41,7 @@ export default function BookingDetail() {
   const slotLabel = `${booking.slot} PM`;
   const slotEndLabel = `${endHour}:00 PM`;
 
-  const venue = VENUES.find((v) => v.name === booking.venue) ?? VENUES[0];
+  const venue = playerVenues.find((v) => v.name === booking.venue) ?? playerVenues[0];
   const cancelled = booking.status === 'cancelled';
   const active = activeBooking?.code === booking.code;
 
