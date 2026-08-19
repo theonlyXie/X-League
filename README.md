@@ -112,6 +112,7 @@ Project: **ymuknkhapibmtqkrlmia** — https://ymuknkhapibmtqkrlmia.supabase.co
 2. Supabase **SQL Editor** → run `supabase/setup_remote.sql`
 3. `npm run supabase:setup` — writes venue/pitch UUIDs to `.env`
 4. Enable **Phone auth + SMS** in Supabase dashboard (or use `supabase/seed_identities.sql` for dev)
+5. **Admin console (web):** open `/admin` — requires a row in `platform_admin`. Salma Rashad (`22222222-…`) is seeded by `setup_remote.sql` and `seed_identities.sql`. Overview KPIs, ledger, audit trail, and venue approval queue read from Supabase RPCs when `.env` is set.
 
 Migrations live in `supabase/migrations/`. Do not re-run the base migration if
 `search_availability` already works on your project.

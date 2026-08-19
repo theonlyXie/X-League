@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { checkPlatformAdmin } from '@/data/adminApi';
 import { isLive, supabase } from '@/lib/supabase';
 
 /**
@@ -20,6 +21,8 @@ type SessionContextValue = {
   displayName: string | null;
   /** Venues this person may operate (RBAC-002). Empty for a plain player. */
   venues: StaffVenue[];
+  /** Platform operator — may open /admin when live. */
+  isAdmin: boolean;
   /** True until the stored session has been read back. */
   restoring: boolean;
 
@@ -60,6 +63,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [venues, setVenues] = useState<StaffVenue[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [restoring, setRestoring] = useState(isLive);
 
   /**
@@ -71,12 +75,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!active) {
       setDisplayName(null);
       setVenues([]);
+      setIsAdmin(false);
       return;
     }
     try {
-      const [{ data: profile }, { data: mine }] = await Promise.all([
+      const [{ data: profile }, { data: mine }, admin] = await Promise.all([
         supabase().from('player_profile').select('display_name').eq('id', active.user.id).maybeSingle(),
         supabase().rpc('my_venues'),
+        checkPlatformAdmin(),
       ]);
       setDisplayName((profile as { display_name: string } | null)?.display_name ?? null);
       setVenues(
@@ -86,10 +92,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           role: v.role,
         })),
       );
+      setIsAdmin(admin);
     } catch {
       // A profile we cannot read is not a reason to drop the session; the
       // booking spine checks authority on the server for every call anyway.
       setVenues([]);
+      setIsAdmin(false);
     }
   }, []);
 
@@ -141,12 +149,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signedIn: !!session,
       displayName,
       venues,
+      isAdmin,
       restoring,
       requestOtp,
       verifyOtp,
       signOut,
     }),
-    [session, displayName, venues, restoring, requestOtp, verifyOtp, signOut],
+    [session, displayName, venues, isAdmin, restoring, requestOtp, verifyOtp, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

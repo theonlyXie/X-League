@@ -11,13 +11,22 @@ import {
   MODERATION,
   SEASON,
 } from '@/data/admin';
+import type { AdminVenueRow } from '@/data/adminApi';
 import { mono } from '@/theme/typography';
 import { useVenues } from '@/state/venues';
+import { useAdminConsole } from '@/state/adminConsole';
+import { isLive } from '@/lib/supabase';
 
-export function AdminSectionBody({ section }: { section: string }) {
+export function AdminSectionBody({
+  section,
+  liveVenues,
+}: {
+  section: string;
+  liveVenues?: AdminVenueRow[];
+}) {
   switch (section) {
     case 'Venues':
-      return <AdminVenuesSection />;
+      return <AdminVenuesSection liveVenues={liveVenues} />;
     case 'Users & teams':
       return (
         <Table
@@ -133,8 +142,37 @@ export function AdminSectionBody({ section }: { section: string }) {
   }
 }
 
-function AdminVenuesSection() {
+function AdminVenuesSection({ liveVenues }: { liveVenues?: AdminVenueRow[] }) {
   const { pendingSubmissions, approve, reject } = useVenues();
+  const { refresh } = useAdminConsole();
+  const venueRows = liveVenues?.length
+    ? liveVenues
+    : ADMIN_VENUES.map((v) => ({
+        name: v.name,
+        area: v.area,
+        pitches: v.pitches,
+        occupancy: v.occupancy,
+        drift: v.drift,
+        status: v.status,
+      }));
+
+  const onApprove = async (id: string) => {
+    try {
+      await approve(id);
+      if (isLive) await refresh();
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const onReject = async (id: string) => {
+    try {
+      await reject(id);
+      if (isLive) await refresh();
+    } catch (e) {
+      console.warn(e);
+    }
+  };
 
   return (
     <View style={{ gap: 16 }}>
@@ -167,11 +205,11 @@ function AdminVenuesSection() {
                 </Txt>
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button label="Approve" variant="operative" flex={1} onPress={() => approve(s.id)} />
+                <Button label="Approve" variant="operative" flex={1} onPress={() => void onApprove(s.id)} />
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Reject ${s.name}`}
-                  onPress={() => reject(s.id)}
+                  onPress={() => void onReject(s.id)}
                   style={({ pressed }) => ({
                     flex: 1,
                     height: 44,
@@ -210,8 +248,8 @@ function AdminVenuesSection() {
       <Table
         title="Live venues"
         headers={['Venue', 'Area', 'Pitches', 'Occ.', 'Status']}
-        rows={ADMIN_VENUES.map((v) => [v.name, v.area, String(v.pitches), v.occupancy, v.status])}
-        alert={ADMIN_VENUES.map((v) => v.status === 'Watch')}
+        rows={venueRows.map((v) => [v.name, v.area, String(v.pitches), v.occupancy, v.status])}
+        alert={venueRows.map((v) => v.status === 'Watch')}
       />
     </View>
   );

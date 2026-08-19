@@ -16,6 +16,7 @@ import { MessagesProvider } from '@/state/messages';
 import { ProfileProvider, useProfile } from '@/state/profile';
 import { SessionProvider, useSession } from '@/state/session';
 import { SettingsProvider } from '@/state/settings';
+import { AdminConsoleProvider } from '@/state/adminConsole';
 import { VenuesProvider } from '@/state/venues';
 import { isLive } from '@/lib/supabase';
 import { loadLiveVenues } from '@/lib/venueConfig';
@@ -28,12 +29,14 @@ export default function RootLayout() {
         <SettingsProvider>
           <ProfileProvider>
             <VenuesProvider>
-              <MessagesProvider>
-                <BookingProvider>
-                  <StatusBar style="light" />
-                  <RootGate />
-                </BookingProvider>
-              </MessagesProvider>
+              <AdminConsoleProvider>
+                <MessagesProvider>
+                  <BookingProvider>
+                    <StatusBar style="light" />
+                    <RootGate />
+                  </BookingProvider>
+                </MessagesProvider>
+              </AdminConsoleProvider>
             </VenuesProvider>
           </ProfileProvider>
         </SettingsProvider>

@@ -1,32 +1,55 @@
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Redirect, useRouter } from 'expo-router';
+import { ActivityIndicator, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from '@/components/Txt';
 import { VoidMark } from '@/components/VoidMark';
 import { burgundy, console_, gold, ink, onOperative, onVoid, operative, radius, status, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { ADMIN_KPIS, ADMIN_NAV, ADMIN_USER, ATTENTION, AUDIT, KpiTone, LEDGER, LEDGER_FOOTER, LedgerRow } from '@/data/admin';
+import { KpiTone, LedgerRow } from '@/data/admin';
 import { AdminSectionBody } from '@/components/adminSections';
+import { isLive } from '@/lib/supabase';
+import { useAdminConsole } from '@/state/adminConsole';
+import { useSession } from '@/state/session';
 
 /**
  * A-01 Overview — monitor the platform (§4.6).
  *
- * The console is a protected responsive web surface, so it keeps its own fixed
- * canvas rather than collapsing to a phone layout: an operator reading the
- * ledger needs the columns side by side. On a narrow screen it pans.
+ * The console is a protected responsive web surface. On wide screens it fills
+ * the viewport; on narrow screens it pans horizontally so ledger columns stay
+ * side by side.
  */
 export default function AdminConsole() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const { signedIn, isAdmin, restoring } = useSession();
+  const admin = useAdminConsole();
   const [section, setSection] = useState('Overview');
+
+  if (isLive && !restoring && !signedIn) return <Redirect href="/sign-in" />;
+  if (isLive && !restoring && signedIn && !isAdmin) return <AdminDenied />;
+  if (!admin.ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: operative.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={gold.base} />
+      </View>
+    );
+  }
+
+  const canvasWidth = Math.max(width, console_.width);
+  const wide = width >= console_.width;
 
   return (
     <View style={{ flex: 1, backgroundColor: operative.bg, paddingTop: insets.top }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={{ width: console_.width, flex: 1, flexDirection: 'row' }}>
-          <Rail section={section} onSection={setSection} />
+      <ScrollView
+        horizontal={!wide}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1, minWidth: wide ? undefined : canvasWidth }}
+      >
+        <View style={{ width: wide ? '100%' : canvasWidth, flex: 1, flexDirection: 'row', minHeight: wide ? '100%' : console_.height }}>
+          <Rail section={section} onSection={setSection} nav={admin.nav} user={admin.user} />
           <View style={{ flex: 1 }}>
-            <TopBar section={section} />
+            <TopBar section={section} asOf={admin.asOf} onRefresh={() => void admin.refresh()} />
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingVertical: 20, paddingHorizontal: 22, gap: 18 }}
@@ -34,24 +57,28 @@ export default function AdminConsole() {
             >
               {section === 'Overview' ? (
                 <>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {ADMIN_KPIS.map((kpi) => (
+                  <View style={{ flexDirection: 'row', flexWrap: wide ? 'nowrap' : 'wrap', gap: 10 }}>
+                    {admin.kpis.map((kpi) => (
                       <Kpi key={kpi.label} {...kpi} />
                     ))}
                   </View>
 
-                  <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
-                    <View style={{ flex: 1.55 }}>
-                      <Ledger />
+                  <View style={{ flexDirection: wide ? 'row' : 'column', gap: 16, alignItems: 'flex-start' }}>
+                    <View style={{ flex: wide ? 1.55 : undefined, width: wide ? undefined : '100%' }}>
+                      <Ledger
+                        rows={admin.ledger}
+                        footer={admin.ledgerFooter}
+                        onFilter={(f) => void admin.refreshLedger(f)}
+                      />
                     </View>
-                    <View style={{ flex: 1, gap: 16 }}>
-                      <NeedsAttention />
-                      <AuditTrail />
+                    <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%', gap: 16 }}>
+                      <NeedsAttention items={admin.attention} />
+                      <AuditTrail entries={admin.audit} />
                     </View>
                   </View>
                 </>
               ) : (
-                <AdminSectionBody section={section} />
+                <AdminSectionBody section={section} liveVenues={admin.venues} />
               )}
             </ScrollView>
           </View>
@@ -61,7 +88,47 @@ export default function AdminConsole() {
   );
 }
 
-function Rail({ section, onSection }: { section: string; onSection: (s: string) => void }) {
+function AdminDenied() {
+  const router = useRouter();
+  return (
+    <View style={{ flex: 1, backgroundColor: operative.bg, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 }}>
+      <Txt size={22} weight="bold" color={ink}>
+        Admin access required
+      </Txt>
+      <Txt size={14} color={onOperative.muted} style={{ textAlign: 'center', maxWidth: 360 }}>
+        This console is restricted to platform operators. Sign in with an admin account or continue in player mode.
+      </Txt>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.replace('/')}
+        style={({ pressed }) => ({
+          marginTop: 8,
+          paddingVertical: 12,
+          paddingHorizontal: 20,
+          borderRadius: radius.dense,
+          backgroundColor: void_.bg,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Txt size={13} weight="semibold" color={operative.bg}>
+          Back to app
+        </Txt>
+      </Pressable>
+    </View>
+  );
+}
+
+function Rail({
+  section,
+  onSection,
+  nav,
+  user,
+}: {
+  section: string;
+  onSection: (s: string) => void;
+  nav: { label: string; badge: string }[];
+  user: { role: string; scope: string };
+}) {
   const router = useRouter();
 
   return (
@@ -92,7 +159,7 @@ function Rail({ section, onSection }: { section: string; onSection: (s: string) 
       </Pressable>
 
       <View style={{ gap: 2 }}>
-        {ADMIN_NAV.map((item) => {
+        {nav.map((item) => {
           const on = item.label === section;
           return (
             <Pressable
@@ -126,7 +193,6 @@ function Rail({ section, onSection }: { section: string; onSection: (s: string) 
 
       <View style={{ flex: 1 }} />
 
-      {/* ADM-012 / RBAC-004: who is acting is part of the record. */}
       <View
         style={{
           padding: 10,
@@ -140,17 +206,22 @@ function Rail({ section, onSection }: { section: string; onSection: (s: string) 
           SIGNED IN
         </Txt>
         <Txt size={12} weight="semibold" color={operative.bg}>
-          {ADMIN_USER.role}
+          {user.role}
         </Txt>
         <Txt size={10.5} color={onVoid.dim}>
-          {ADMIN_USER.scope}
+          {user.scope}
         </Txt>
+        {isLive ? (
+          <Txt size={9.5} color={gold.base} style={{ marginTop: 4 }}>
+            Live · Supabase
+          </Txt>
+        ) : null}
       </View>
     </View>
   );
 }
 
-function TopBar({ section }: { section: string }) {
+function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; onRefresh: () => void }) {
   return (
     <View
       style={{
@@ -168,13 +239,13 @@ function TopBar({ section }: { section: string }) {
         {section}
       </Txt>
       <Txt size={11} color={onOperative.faint}>
-        Tue 18 Aug 2026 · 21:41 EET
+        {asOf}
       </Txt>
       <View style={{ flex: 1 }} />
       <View
         style={{
           height: 32,
-          width: 260,
+          width: Platform.OS === 'web' ? 260 : 180,
           borderRadius: radius.denseChip,
           borderWidth: 1,
           borderColor: 'rgba(20,18,16,.16)',
@@ -186,7 +257,24 @@ function TopBar({ section }: { section: string }) {
           Search booking, venue, user or code…
         </Txt>
       </View>
-      {/* ADM-009: exports carry permission, purpose and an audit trail. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Refresh admin data"
+        onPress={onRefresh}
+        style={({ pressed }) => ({
+          height: 32,
+          paddingHorizontal: 12,
+          borderRadius: radius.denseChip,
+          borderWidth: 1,
+          borderColor: onOperative.hairline,
+          justifyContent: 'center',
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Txt size={11.5} weight="semibold" color={ink}>
+          Refresh
+        </Txt>
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Export"
@@ -219,6 +307,7 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub: s
     <View
       style={{
         flex: 1,
+        minWidth: 140,
         padding: 14,
         borderRadius: radius.panel,
         backgroundColor: operative.surface,
@@ -240,11 +329,18 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub: s
   );
 }
 
-/** Column widths straight from the design's grid template. */
 const COLS = { code: 96, venue: 1.3, captain: 1, source: 78, deposit: 92, status: 84 };
 
-function Ledger() {
-  const [filter, setFilter] = useState('All');
+function Ledger({
+  rows,
+  footer,
+  onFilter,
+}: {
+  rows: LedgerRow[];
+  footer: string;
+  onFilter: (f: 'all' | 'app' | 'failed') => void;
+}) {
+  const [filter, setFilter] = useState<'all' | 'app' | 'failed'>('all');
 
   return (
     <View
@@ -276,15 +372,19 @@ function Ledger() {
         </Txt>
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: 'row', gap: 5 }}>
-          {['All', 'App', 'Failed'].map((f) => {
-            const on = f === filter;
+          {(['All', 'App', 'Failed'] as const).map((f) => {
+            const key = f === 'All' ? 'all' : f === 'App' ? 'app' : 'failed';
+            const on = key === filter;
             return (
               <Pressable
                 key={f}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={`${f} bookings`}
-                onPress={() => setFilter(f)}
+                onPress={() => {
+                  setFilter(key);
+                  onFilter(key);
+                }}
                 style={{
                   paddingVertical: 4,
                   paddingHorizontal: 9,
@@ -335,17 +435,19 @@ function Ledger() {
         ))}
       </View>
 
-      {LEDGER.filter((row) => {
-        if (filter === 'All') return true;
-        if (filter === 'App') return row.source === 'App';
-        return row.kind === 'fail';
-      }).map((row) => (
-        <LedgerRowView key={row.code} row={row} />
-      ))}
+      {rows.length ? (
+        rows.map((row) => <LedgerRowView key={row.code + row.venue} row={row} />)
+      ) : (
+        <View style={{ padding: 16 }}>
+          <Txt size={12} color={onOperative.muted}>
+            No bookings match this filter today.
+          </Txt>
+        </View>
+      )}
 
       <View style={{ paddingVertical: 11, paddingHorizontal: 16 }}>
         <Txt size={11} color="rgba(20,18,16,.42)">
-          {LEDGER_FOOTER}
+          {footer}
         </Txt>
       </View>
     </View>
@@ -359,7 +461,11 @@ function LedgerRowView({ row }: { row: LedgerRow }) {
   const depositFg =
     row.deposit === 'Unpaid' ? burgundy.ink : row.deposit === 'Cash · due' ? gold.ink : 'rgba(20,18,16,.6)';
   const statusFg =
-    row.status === 'FAILED' ? burgundy.ink : row.status === 'CONFIRMED' ? status.positive : onOperative.muted;
+    row.status.includes('FAIL') || row.status.includes('CANCEL')
+      ? burgundy.ink
+      : row.status.includes('CONFIRM')
+        ? status.positive
+        : onOperative.muted;
 
   return (
     <View
@@ -407,7 +513,7 @@ function LedgerRowView({ row }: { row: LedgerRow }) {
   );
 }
 
-function NeedsAttention() {
+function NeedsAttention({ items }: { items: { title: string; detail: string; severe: boolean }[] }) {
   return (
     <View
       style={{
@@ -441,35 +547,44 @@ function NeedsAttention() {
           }}
         >
           <Txt size={10} weight="bold" color={burgundy.ink}>
-            {ATTENTION.length + 1}
+            {items.length}
           </Txt>
         </View>
       </View>
-      {ATTENTION.map((item, i) => (
-        <View
-          key={item.title}
-          style={{
-            paddingVertical: 12,
-            paddingHorizontal: 15,
-            gap: 3,
-            ...(i < ATTENTION.length - 1
-              ? { borderBottomWidth: 1, borderBottomColor: onOperative.edgeFaint }
-              : null),
-          }}
-        >
-          <Txt size={12} weight="semibold" color={item.severe ? burgundy.ink : ink}>
-            {item.title}
-          </Txt>
-          <Txt size={11} lh={1.5} color="rgba(20,18,16,.55)">
-            {item.detail}
+      {items.length ? (
+        items.map((item, i) => (
+          <View
+            key={item.title}
+            style={{
+              paddingVertical: 12,
+              paddingHorizontal: 15,
+              gap: 3,
+              ...(i < items.length - 1
+                ? { borderBottomWidth: 1, borderBottomColor: onOperative.edgeFaint }
+                : null),
+            }}
+          >
+            <Txt size={12} weight="semibold" color={item.severe ? burgundy.ink : ink}>
+              {item.title}
+            </Txt>
+            <Txt size={11} lh={1.5} color="rgba(20,18,16,.55)">
+              {item.detail}
+            </Txt>
+          </View>
+        ))
+      ) : (
+        <View style={{ padding: 15 }}>
+          <Txt size={12} color={onOperative.muted}>
+            Nothing flagged right now.
           </Txt>
         </View>
-      ))}
+      )}
     </View>
   );
 }
 
-function AuditTrail() {
+function AuditTrail({ entries }: { entries: { at: string; event: string; actor: string; bookingCode?: string }[] }) {
+  const headline = entries[0]?.bookingCode ? `Audit trail · ${entries[0].bookingCode}` : 'Audit trail';
   return (
     <View
       style={{
@@ -489,11 +604,11 @@ function AuditTrail() {
         }}
       >
         <Txt size={12.5} weight="bold" color={ink}>
-          Audit trail · XL-7K42
+          {headline}
         </Txt>
       </View>
       <View style={{ paddingVertical: 12, paddingHorizontal: 15, gap: 11 }}>
-        {AUDIT.map((entry) => (
+        {entries.map((entry) => (
           <View key={entry.at + entry.event} style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}>
             <Txt size={10} color={onOperative.dim} style={{ width: 44, paddingTop: 1, fontFamily: mono }}>
               {entry.at}

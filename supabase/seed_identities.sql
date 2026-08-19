@@ -28,3 +28,7 @@ select '22222222-2222-2222-2222-222222222222'::uuid, id, 'manager'::venue_role f
 union all
 select '33333333-3333-3333-3333-333333333333'::uuid, id, 'staff'::venue_role   from venue where name = 'The Box'
 on conflict (user_id, venue_id) do nothing;
+
+insert into platform_admin (user_id, role)
+values ('22222222-2222-2222-2222-222222222222'::uuid, 'super')
+on conflict (user_id) do nothing;
