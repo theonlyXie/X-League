@@ -130,9 +130,9 @@ export default function PitchDetail() {
           height={50}
           round={radius.control}
           size={15}
-          onPress={() => {
-            beginHold();
-            router.push('/play/checkout');
+          onPress={async () => {
+            const ok = await beginHold();
+            if (ok !== false) router.push('/play/checkout');
           }}
         />
       </LinearGradient>
