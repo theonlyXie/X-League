@@ -22,7 +22,8 @@ export default function Confirmation() {
   const router = useRouter();
   const { slotLabel, slotEndLabel, activeBooking } = useBooking();
   const { playerVenues } = useVenues();
-  const venue = playerVenues.find((v) => v.name === (activeBooking?.venue ?? BOOKING.venue)) ?? playerVenues[0];
+  const booking = activeBooking;
+  const venue = playerVenues.find((v) => v.name === (booking?.venue ?? BOOKING.venue)) ?? playerVenues[0];
 
   return (
     <Screen
@@ -58,10 +59,10 @@ export default function Confirmation() {
       >
         <View style={{ gap: 4 }}>
           <Txt size={17} weight="bold" color={onVoid.primary}>
-            {BOOKING.venue} · {BOOKING.pitch}
+            {booking?.venue ?? BOOKING.venue} · {booking?.pitch ?? BOOKING.pitch}
           </Txt>
           <Txt size={12.5} color={onVoid.muted}>
-            Tue 18 Aug · {slotLabel}–{slotEndLabel} · 5-a-side
+            {BOOKING.date} · {slotLabel}–{slotEndLabel} · 5-a-side
           </Txt>
         </View>
 
@@ -78,12 +79,12 @@ export default function Confirmation() {
             borderColor: 'rgba(198,163,75,.35)',
           }}
         >
-          <View style={{ gap: 4 }} accessibilityLabel={`Booking code ${BOOKING.code}`}>
+          <View style={{ gap: 4 }} accessibilityLabel={`Booking code ${booking?.code ?? BOOKING.code}`}>
             <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
               Booking code
             </Txt>
             <Txt size={21} weight="bold" em={0.14} color={gold.base} style={{ fontFamily: mono }}>
-              {BOOKING.code}
+              {booking?.code ?? BOOKING.code}
             </Txt>
           </View>
           <View style={{ flex: 1 }} />
@@ -92,7 +93,7 @@ export default function Confirmation() {
               Cash at gate
             </Txt>
             <Txt size={15} weight="bold" color={onVoid.primary}>
-              EGP {BOOKING.deposit}
+              EGP {booking?.deposit ?? BOOKING.deposit}
             </Txt>
           </View>
         </View>

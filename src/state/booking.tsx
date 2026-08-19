@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { BOOKING, DEFAULT_SLOT, HOLD_SECONDS, ROSTER, RosterEntry, SLOTS_TAKEN, SlotTime, VENUES } from '@/data/player';
 import { loadJson, saveJson } from '@/lib/storage';
+import { newBookingCode, quoteFromHourly } from '@/lib/venueQuote';
 
 const STORAGE_KEY = 'xleague.booking.v1';
 
@@ -25,6 +26,7 @@ export type SavedBooking = {
 type Persisted = {
   slot: SlotTime;
   venueName: string;
+  venueHourly: number;
   hold: HoldState;
   holdSeconds: number;
   checkedIn: boolean;
@@ -41,7 +43,8 @@ type BookingContextValue = {
   slotEndLabel: string;
   taken: SlotTime[];
   venueName: string;
-  selectVenue: (name: string) => void;
+  venueHourly: number;
+  selectVenue: (name: string, hourly?: number) => void;
 
   hold: HoldState;
   holdSeconds: number;
@@ -68,6 +71,7 @@ type BookingContextValue = {
 const DEFAULT: Persisted = {
   slot: DEFAULT_SLOT,
   venueName: VENUES[0].name,
+  venueHourly: VENUES[0].hourly,
   hold: 'idle',
   holdSeconds: HOLD_SECONDS,
   checkedIn: false,
@@ -99,11 +103,12 @@ export function BookingProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadJson<Persisted>(STORAGE_KEY, DEFAULT).then((loaded) => {
+      const normalized = { ...DEFAULT, ...loaded, venueHourly: loaded.venueHourly ?? VENUES[0].hourly };
       // Demo seed: first open shows tonight's confirmed booking on Home.
       const next =
-        loaded.activeBooking || loaded.history.length
-          ? loaded
-          : { ...loaded, activeBooking: seedActiveBooking(), hold: 'confirmed' as HoldState };
+        normalized.activeBooking || normalized.history.length
+          ? normalized
+          : { ...normalized, activeBooking: seedActiveBooking(), hold: 'confirmed' as HoldState };
       setData(next);
       setReady(true);
     });
@@ -145,28 +150,38 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   }, [data, persist]);
 
   const releaseHold = useCallback(() => {
-    if (data.hold === 'confirmed' || data.hold === 'cancelled') return;
-    persist({ ...data, hold: 'idle', holdSeconds: HOLD_SECONDS });
-  }, [data, persist]);
+    setData((prev) => {
+      if (prev.hold === 'confirmed' || prev.hold === 'cancelled') return prev;
+      const next = { ...prev, hold: 'idle' as HoldState, holdSeconds: HOLD_SECONDS };
+      saveJson(STORAGE_KEY, next);
+      return next;
+    });
+  }, []);
 
   const confirmBooking = useCallback(() => {
-    const booking: SavedBooking = {
-      code: BOOKING.code,
-      venue: data.venueName,
-      pitch: BOOKING.pitch,
-      area: BOOKING.area,
-      slot: data.slot,
-      deposit: BOOKING.deposit,
-      status: 'confirmed',
-      confirmedAt: Date.now(),
-    };
-    persist({
-      ...data,
-      hold: 'confirmed',
-      activeBooking: booking,
-      history: [booking, ...data.history.filter((b) => b.code !== booking.code)],
+    setData((prev) => {
+      const quote = quoteFromHourly(prev.venueHourly);
+      const booking: SavedBooking = {
+        code: newBookingCode(),
+        venue: prev.venueName,
+        pitch: BOOKING.pitch,
+        area: BOOKING.area,
+        slot: prev.slot,
+        deposit: quote.deposit,
+        status: 'confirmed',
+        confirmedAt: Date.now(),
+      };
+      const next = {
+        ...prev,
+        hold: 'confirmed' as HoldState,
+        activeBooking: booking,
+        history: [booking, ...prev.history.filter((b) => b.code !== booking.code)],
+        checkedIn: false,
+      };
+      saveJson(STORAGE_KEY, next);
+      return next;
     });
-  }, [data, persist]);
+  }, []);
 
   const cancelBooking = useCallback(() => {
     const cancelled = data.activeBooking
@@ -189,10 +204,13 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     [data, persist],
   );
 
-  const selectVenue = useCallback(
-    (venueName: string) => persist({ ...data, venueName }),
-    [data, persist],
-  );
+  const selectVenue = useCallback((venueName: string, hourly = VENUES[0].hourly) => {
+    setData((prev) => {
+      const next = { ...prev, venueName, venueHourly: hourly };
+      saveJson(STORAGE_KEY, next);
+      return next;
+    });
+  }, []);
 
   const toggleCheckIn = useCallback(() => persist({ ...data, checkedIn: !data.checkedIn }), [data, persist]);
 
@@ -219,6 +237,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       slotEndLabel: `${endHour}:00 PM`,
       taken: SLOTS_TAKEN,
       venueName: data.venueName,
+      venueHourly: data.venueHourly,
       selectVenue,
       hold: data.hold,
       holdSeconds: data.holdSeconds,

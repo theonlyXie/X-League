@@ -109,8 +109,19 @@ The release APK is arm64-v8a (typical phones) and debug-signed so it can be side
 
 ## Persistence
 
-Bookings, profile (onboarding scores → Void card), chat messages, check-in and owner discount state are saved locally with AsyncStorage and survive app restarts. There is still no remote API.
+Bookings, profile (onboarding scores → Void card), chat messages, venue owner
+submissions (pending → admin approve/reject), check-in and owner discount state
+are saved locally with AsyncStorage and survive app restarts. There is still no
+remote API.
+
+### Owner venue signup
+
+1. **Me → Register your venue** — submit name and area
+2. Owner waits on the pending screen; calendar tabs stay locked
+3. **Admin → Venues** — approve or reject the submission
+4. Approved venues appear in **Play** search; owner mode unlocks with the venue name
 
 ## Not yet built
 
 Arabic copy (RTL toggle persists; full translation ships with the API layer).
+Live backend (auth, inventory sync, payments).

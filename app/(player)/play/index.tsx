@@ -37,7 +37,7 @@ export default function PlaySearch() {
   }, [day, window_, playerVenues]);
 
   const openPitch = (venue: Venue) => {
-    selectVenue(venue.name);
+    selectVenue(venue.name, venue.hourly);
     router.push('/play/pitch');
   };
 

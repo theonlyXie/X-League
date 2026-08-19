@@ -335,7 +335,11 @@ function Ledger() {
         ))}
       </View>
 
-      {LEDGER.map((row) => (
+      {LEDGER.filter((row) => {
+        if (filter === 'All') return true;
+        if (filter === 'App') return row.source === 'App';
+        return row.kind === 'fail';
+      }).map((row) => (
         <LedgerRowView key={row.code} row={row} />
       ))}
 

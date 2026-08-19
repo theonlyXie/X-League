@@ -16,11 +16,12 @@ import { useVenues } from '@/state/venues';
 export default function Home() {
   const router = useRouter();
   const { profile, card } = useProfile();
-  const { activeBooking } = useBooking();
+  const { activeBooking, selectVenue } = useBooking();
   const { playerVenues } = useVenues();
   const xpPct = (PROGRESSION.xp / PROGRESSION.nextLevelXp) * 100;
   const xpToNext = PROGRESSION.nextLevelXp - PROGRESSION.xp;
   const nearby = playerVenues.slice(0, 2);
+  const liveSlotCount = playerVenues.reduce((sum, v) => sum + v.open.length, 0);
   const venue = playerVenues.find((v) => v.name === (activeBooking?.venue ?? BOOKING.venue)) ?? playerVenues[0];
 
   return (
@@ -157,7 +158,7 @@ export default function Home() {
             onPress={() => router.push('/play')}
           >
             <Txt size={11.5} weight="semibold" color={gold.base}>
-              12 slots
+              {liveSlotCount} slots
             </Txt>
           </Pressable>
         </View>
@@ -167,7 +168,10 @@ export default function Home() {
               key={venue.name}
               accessibilityRole="button"
               accessibilityLabel={`${venue.name}, ${venue.distanceKm} km, next slot ${venue.nextSlot}, EGP ${venue.hourly} per hour`}
-              onPress={() => router.push('/play/pitch')}
+              onPress={() => {
+                selectVenue(venue.name, venue.hourly);
+                router.push('/play/pitch');
+              }}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',

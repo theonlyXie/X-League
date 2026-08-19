@@ -35,19 +35,21 @@ export default function PitchDetail() {
               <Txt size={24} weight="bold" em={-0.02} color={onVoid.primary}>
                 {venue.name}
               </Txt>
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: goldAlpha.accent,
-                  borderRadius: radius.badge,
-                  paddingVertical: 2,
-                  paddingHorizontal: 5,
-                }}
-              >
-                <Txt size={10} weight="bold" em={0.08} color={gold.base}>
-                  VERIFIED
-                </Txt>
-              </View>
+              {venue.verified ? (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: goldAlpha.accent,
+                    borderRadius: radius.badge,
+                    paddingVertical: 2,
+                    paddingHorizontal: 5,
+                  }}
+                >
+                  <Txt size={10} weight="bold" em={0.08} color={gold.base}>
+                    VERIFIED
+                  </Txt>
+                </View>
+              ) : null}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <Star size={12} color={gold.base} />
@@ -116,7 +118,7 @@ export default function PitchDetail() {
       >
         <View style={{ gap: 2 }}>
           <Txt size={17} weight="bold" color={onVoid.primary}>
-            EGP {BOOKING.hourly}
+            EGP {venue.hourly}
           </Txt>
           <Txt size={10.5} color={onVoid.dim}>
             per hour

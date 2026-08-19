@@ -1,7 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/ui';
-import { burgundy, gold, ink, onOperative, operative, radius, status } from '@/theme/tokens';
+import { burgundy, gold, ink, onOperative, operative, radius } from '@/theme/tokens';
 import {
   ADMIN_REPORTS,
   ADMIN_TOURNAMENTS,

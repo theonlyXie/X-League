@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Txt } from '@/components/Txt';
 import { ink, onOperative, operative, radius, gold, burgundy, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import { DESK_BOOKINGS, DeskBooking } from '@/data/ownerOps';
+import { useBooking } from '@/state/booking';
+import { useProfile } from '@/state/profile';
 
 /**
  * O-03 Bookings desk — every channel, one list (§4.5).
@@ -12,12 +14,32 @@ const FILTERS = ['All', 'App', 'Phone', 'Walk-in'] as const;
 
 export default function OwnerBookings() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All');
-  const rows = DESK_BOOKINGS.filter((b) => {
-    if (filter === 'All') return true;
-    if (filter === 'App') return b.source === 'app';
-    if (filter === 'Phone') return b.source === 'phone';
-    return b.source === 'walk';
-  });
+  const { activeBooking } = useBooking();
+  const { card } = useProfile();
+
+  const rows = useMemo(() => {
+    const live: DeskBooking[] =
+      activeBooking && activeBooking.status === 'confirmed'
+        ? [
+            {
+              code: activeBooking.code,
+              when: `${activeBooking.slot} PM`,
+              who: card.name,
+              pitch: activeBooking.pitch.replace('Pitch ', ''),
+              source: 'app',
+              deposit: 'due',
+              status: 'Confirmed',
+            },
+          ]
+        : [];
+    const merged = [...live, ...DESK_BOOKINGS.filter((b) => !live.some((l) => l.code === b.code))];
+    return merged.filter((b) => {
+      if (filter === 'All') return true;
+      if (filter === 'App') return b.source === 'app';
+      if (filter === 'Phone') return b.source === 'phone';
+      return b.source === 'walk';
+    });
+  }, [activeBooking, card.name, filter]);
 
   return (
     <ScrollView

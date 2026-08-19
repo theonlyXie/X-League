@@ -36,7 +36,6 @@ export default function Me() {
 
   const openOwner = () => {
     if (mine?.status === 'pending' || mine?.status === 'rejected') router.push('/owner/pending');
-    else if (!mine) router.push('/owner/register');
     else router.push('/owner');
   };
 

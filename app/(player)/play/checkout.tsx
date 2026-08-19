@@ -9,6 +9,7 @@ import { PulseDot } from '@/components/PulseDot';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
+import { quoteFromHourly } from '@/lib/venueQuote';
 import { useBooking } from '@/state/booking';
 
 /**
@@ -20,7 +21,8 @@ import { useBooking } from '@/state/booking';
  */
 export default function Checkout() {
   const router = useRouter();
-  const { slotLabel, slotEndLabel, holdText, hold, releaseHold, confirmBooking } = useBooking();
+  const { slotLabel, slotEndLabel, holdText, hold, releaseHold, confirmBooking, venueName, venueHourly } = useBooking();
+  const quote = quoteFromHourly(venueHourly);
   const expired = hold === 'expired';
 
   // AC-03: leaving checkout without confirming returns the slot to inventory.
@@ -98,7 +100,7 @@ export default function Checkout() {
           gap: 14,
         }}
       >
-        <DetailRow label="Venue" value={`${BOOKING.venue} · ${BOOKING.pitch}`} />
+        <DetailRow label="Venue" value={`${venueName} · ${BOOKING.pitch}`} />
         <DetailRow label="Date" value={BOOKING.date} />
         <DetailRow label="Time" value={`${slotLabel} – ${slotEndLabel}`} />
         <DetailRow label="Format" value={BOOKING.format} />
@@ -139,7 +141,7 @@ export default function Checkout() {
               Cash deposit at the venue
             </Txt>
             <Txt size={12} lh={1.55} color={onVoid.muted}>
-              Pay EGP {BOOKING.deposit} at the gate to hold the pitch. The remaining EGP {BOOKING.balance} is
+              Pay EGP {quote.deposit} at the gate to hold the pitch. The remaining EGP {quote.balance} is
               settled at the venue after the match.
             </Txt>
           </View>
@@ -156,18 +158,18 @@ export default function Checkout() {
           borderColor: onVoid.edge,
         }}
       >
-        <PriceRow label="Pitch hour" value={`EGP ${BOOKING.hourly}`} />
-        <PriceRow label="Booking fee" value={`EGP ${BOOKING.bookingFee}`} />
+        <PriceRow label="Pitch hour" value={`EGP ${quote.hourly}`} />
+        <PriceRow label="Booking fee" value={`EGP ${quote.bookingFee}`} />
         <Divider />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <Txt size={13} weight="semibold" color={gold.base}>
             Cash at gate
           </Txt>
           <Txt size={16} weight="bold" color={gold.base}>
-            EGP {BOOKING.deposit}
+            EGP {quote.deposit}
           </Txt>
         </View>
-        <PriceRow label="Balance after match" value={`EGP ${BOOKING.balance}`} />
+        <PriceRow label="Balance after match" value={`EGP ${quote.balance}`} />
       </View>
 
       <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
