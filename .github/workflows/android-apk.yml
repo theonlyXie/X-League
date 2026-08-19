@@ -1,0 +1,94 @@
+# Builds an installable APK and attaches it to the run.
+#
+# This exists because an APK for a React Native app is ~60-100 MB — too large
+# to hand over any other way — and because building one otherwise needs a local
+# Android SDK or an Expo account. Push, or run it by hand, then download the
+# artifact from the run summary.
+name: Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      abi:
+        description: 'ABIs to build'
+        required: false
+        default: 'arm64-v8a,armeabi-v7a'
+        type: choice
+        options:
+          - 'arm64-v8a,armeabi-v7a'
+          - 'arm64-v8a'
+          - 'arm64-v8a,armeabi-v7a,x86,x86_64'
+  push:
+    branches: [main, 'claude/**']
+    paths-ignore: ['**.md', 'supabase/**']
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # AGP 8.x needs 17 or newer; 17 is the version Expo tests against.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # The native project is generated rather than committed, so app.json stays
+      # the single source of Android configuration.
+      - name: Generate the native project
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build the APK
+        working-directory: android
+        env:
+          # Absent, the app builds in demo mode on fixtures — which still
+          # installs and runs. Set these as repository variables to point a
+          # build at the database. The anon key is publishable by design and
+          # ships inside any client build.
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_VENUE_ID: ${{ vars.EXPO_PUBLIC_VENUE_ID }}
+          EXPO_PUBLIC_PITCH_ID: ${{ vars.EXPO_PUBLIC_PITCH_ID }}
+        run: |
+          ./gradlew assembleRelease --no-daemon \
+            -PreactNativeArchitectures=${{ github.event.inputs.abi || 'arm64-v8a,armeabi-v7a' }}
+
+      - name: Name it after the commit
+        id: name
+        run: echo "apk=x-league-${GITHUB_SHA::7}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Report what was built
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          echo "### APK built" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          "$ANDROID_HOME"/build-tools/*/aapt2 dump badging "$APK" \
+            | grep -E "^package|^application-label:|uses-permission" >> "$GITHUB_STEP_SUMMARY" || true
+          ls -lh "$APK" | awk '{print "size: " $5}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "Signed with the debug keystore — installable, not publishable." >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.name.outputs.apk }}
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
