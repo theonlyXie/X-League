@@ -32,7 +32,7 @@ async function main() {
   let { data: seedResult, error: seedErr } = await sb.rpc('seed_demo_evening');
   if (seedErr?.message?.includes('Could not find the function')) {
     console.log('\n⚠️  Run this SQL in Supabase → SQL Editor first:\n');
-    console.log('   supabase/migrations/20260818090600_player_venues_and_seed.sql\n');
+    console.log('   supabase/setup_remote.sql\n');
     console.log('Then re-run: node scripts/setup-supabase.mjs\n');
     process.exit(1);
   }

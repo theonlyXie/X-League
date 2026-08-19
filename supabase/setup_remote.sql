@@ -1,6 +1,16 @@
--- Player venue discovery + one-call demo seed for remote projects.
+-- =============================================================================
+-- X League — Supabase SQL Editor setup (safe for project ymuknkhapibmtqkrlmia)
+--
+-- Run this ENTIRE file once in: Supabase Dashboard → SQL Editor → New query → Run
+--
+-- Do NOT re-run supabase/migrations/20260818090000_*.sql if search_availability
+-- already works — those tables exist and will error with "already exists".
+-- =============================================================================
 
-create or replace function list_player_venues()
+-- ---------------------------------------------------------------------------
+-- 1. Player venue list (for Play search)
+-- ---------------------------------------------------------------------------
+create or replace function public.list_player_venues()
 returns table (
   venue_id uuid,
   venue_name text,
@@ -27,12 +37,15 @@ as $$
     p.id,
     p.label,
     coalesce(
-      (select pr.price_egp::integer from price_rule pr
+      (
+        select pr.price_egp::integer
+        from price_rule pr
         where pr.pitch_id = p.id
           and pr.valid_from <= current_date
           and (pr.valid_to is null or pr.valid_to > current_date)
         order by pr.start_hour
-        limit 1),
+        limit 1
+      ),
       300
     )
   from venue v
@@ -41,10 +54,28 @@ as $$
   order by v.name, p.label;
 $$;
 
-grant execute on function list_player_venues() to anon, authenticated;
+grant execute on function public.list_player_venues() to anon, authenticated;
 
--- Idempotent demo seed — safe to call more than once on an empty project.
-create or replace function seed_demo_evening()
+-- ---------------------------------------------------------------------------
+-- 2. Inline booking code (avoids calling generate_booking_code, which is internal)
+-- ---------------------------------------------------------------------------
+create or replace function public._xl_demo_code()
+returns text
+language sql
+volatile
+security definer
+set search_path = public
+as $$
+  select 'XL-' || string_agg(
+    substr('23456789ABCDEFGHJKMNPQRSTUVWXYZ', 1 + floor(random() * 31)::int, 1), ''
+  )
+  from generate_series(1, 4);
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 3. Idempotent demo seed
+-- ---------------------------------------------------------------------------
+create or replace function public.seed_demo_evening()
 returns jsonb
 language plpgsql
 security definer
@@ -76,7 +107,7 @@ begin
   ) as x(venue, label, surface, indoor) on x.venue = v.name;
 
   insert into availability_rule (pitch_id, day_of_week, open_hour, close_hour, slot_minutes)
-  select p.id, d, 18, 24, 60 from pitch p, generate_series(0, 6) as d;
+  select p.id, d, 18, 24, 60 from pitch p cross join generate_series(0, 6) as d;
 
   insert into price_rule (pitch_id, valid_from, start_hour, end_hour, price_egp, deposit_egp)
   select id, date '2026-01-01', 18, 23, 300, 100 from pitch
@@ -98,24 +129,24 @@ begin
   select
     s.pitch_id,
     tstzrange(s.starts_at, s.starts_at + interval '1 hour', '[)'),
-    'confirmed',
+    'confirmed'::booking_state,
     x.source::booking_source,
     x.captain,
-    generate_booking_code(),
+    public._xl_demo_code(),
     case when s.h = 23 then 260 else 300 end,
     100
   from slot s
   join (values
-    ('Pitch A', 18, 'walk_in', 'Walk-in'),
-    ('Pitch A', 20, 'phone',   'Amr Sabry'),
-    ('Pitch A', 22, 'phone',   'Hesham Fouad'),
-    ('Pitch B', 21, 'walk_in', 'Walk-in'),
-    ('Pitch B', 22, 'walk_in', 'Walk-in'),
-    ('Pitch C', 18, 'phone',   'Sameh Adel'),
-    ('Pitch C', 19, 'phone',   'Sameh Adel'),
-    ('Pitch C', 20, 'block',   'Blocked · watering'),
-    ('Pitch C', 21, 'phone',   'Ziad Magdy'),
-    ('Indoor 1', 20, 'phone',  'Hesham Fouad')
+    ('Pitch A',  18, 'walk_in', 'Walk-in'),
+    ('Pitch A',  20, 'phone',   'Amr Sabry'),
+    ('Pitch A',  22, 'phone',   'Hesham Fouad'),
+    ('Pitch B',  21, 'walk_in', 'Walk-in'),
+    ('Pitch B',  22, 'walk_in', 'Walk-in'),
+    ('Pitch C',  18, 'phone',   'Sameh Adel'),
+    ('Pitch C',  19, 'phone',   'Sameh Adel'),
+    ('Pitch C',  20, 'block',   'Blocked · watering'),
+    ('Pitch C',  21, 'phone',   'Ziad Magdy'),
+    ('Indoor 1', 20, 'phone',   'Hesham Fouad')
   ) as x(label, hour, source, captain)
     on x.label = s.label and x.hour = s.h
   where s.venue in ('Stadium One', 'The Box');
@@ -124,4 +155,22 @@ begin
 end;
 $$;
 
-grant execute on function seed_demo_evening() to anon, authenticated;
+grant execute on function public.seed_demo_evening() to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 4. Run seed + verify
+-- ---------------------------------------------------------------------------
+select public.seed_demo_evening() as seed_result;
+
+select v.name as venue, p.label as pitch, p.id as pitch_id, v.id as venue_id
+from venue v
+join pitch p on p.venue_id = v.id
+where v.name = 'Stadium One' and p.label = 'Pitch A';
+
+select count(*) as saleable_slots
+from public.search_availability(
+  (select p.id from pitch p join venue v on v.id = p.venue_id
+   where v.name = 'Stadium One' and p.label = 'Pitch A'),
+  date '2026-08-18'
+)
+where available;
