@@ -1,18 +1,19 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Txt } from '@/components/Txt';
 import { ink, onOperative, operative, radius } from '@/theme/tokens';
 import { OWNER_REPORTS, PITCHES, STAFF } from '@/data/ownerOps';
-import { useOnboarding } from '@/state/onboarding';
+import { useProfile } from '@/state/profile';
+import { useSettings } from '@/state/settings';
 
 /**
  * O-05–O-08 Staff, pitches, reports and settings on one More surface.
  */
 export default function OwnerMore() {
   const router = useRouter();
-  const { replay } = useOnboarding();
-  const [rtl, setRtl] = useState(false);
+  const { replayOnboarding } = useProfile();
+  const { rtl, setRtl } = useSettings();
 
   return (
     <ScrollView
@@ -43,7 +44,7 @@ export default function OwnerMore() {
           accessibilityRole="switch"
           accessibilityState={{ checked: rtl }}
           accessibilityLabel="Arabic layout"
-          onPress={() => setRtl((v) => !v)}
+          onPress={() => setRtl(!rtl)}
           style={moreRow}
         >
           <View style={{ flex: 1, gap: 3 }}>
@@ -59,7 +60,7 @@ export default function OwnerMore() {
           accessibilityRole="button"
           accessibilityLabel="Replay player onboarding"
           onPress={async () => {
-            await replay();
+            await replayOnboarding();
             router.replace('/onboarding');
           }}
           style={moreRow}

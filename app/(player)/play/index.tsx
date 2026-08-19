@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Alert, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Eyebrow, TurfSwatch, hitSlopTo44 } from '@/components/ui';
+import { VenueMap } from '@/components/VenueMap';
 import { Star } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { VENUES, Venue } from '@/data/player';
@@ -19,9 +20,24 @@ const WINDOWS = ['6–8 PM', '8–10 PM', '10–12'];
  */
 export default function PlaySearch() {
   const router = useRouter();
+  const { selectVenue } = useBooking();
   const [day, setDay] = useState('Tonight');
   const [window_, setWindow] = useState('8–10 PM');
   const [view, setView] = useState<'List' | 'Map'>('List');
+
+  const venues = useMemo(() => {
+    return VENUES.filter((venue) => {
+      if (day === 'Tomorrow') return venue.name !== 'Nasr Sports Club';
+      if (window_ === '6–8 PM') return venue.open.some((t) => ['6:00', '7:00'].includes(t));
+      if (window_ === '10–12') return venue.open.some((t) => ['10:00', '11:00'].includes(t));
+      return venue.open.some((t) => ['8:00', '9:00', '10:00'].includes(t));
+    });
+  }, [day, window_]);
+
+  const openPitch = (venue: Venue) => {
+    selectVenue(venue.name);
+    router.push('/play/pitch');
+  };
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
@@ -39,7 +55,14 @@ export default function PlaySearch() {
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={d}
-                onPress={() => setDay(d)}
+                onPress={() => {
+                  if (d === 'Pick date') {
+                    Alert.alert('Pick date', 'Calendar picker ships with the live API. Showing tonight for now.');
+                    setDay('Tonight');
+                    return;
+                  }
+                  setDay(d);
+                }}
                 hitSlop={hitSlopTo44(40)}
                 style={{
                   flex: 1,
@@ -150,18 +173,22 @@ export default function PlaySearch() {
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <Eyebrow>12 live slots</Eyebrow>
+        <Eyebrow>{venues.length} live slots</Eyebrow>
         {/* VEN-002: results must say when availability was last confirmed. */}
         <Txt size={11} color="rgba(243,238,229,.3)">
           Updated 9 sec ago
         </Txt>
       </View>
 
-      <View style={{ gap: 12 }}>
-        {VENUES.map((venue) => (
-          <VenueCard key={venue.name} venue={venue} onPress={() => router.push('/play/pitch')} />
-        ))}
-      </View>
+      {view === 'Map' ? (
+        <VenueMap venues={venues} onSelect={openPitch} />
+      ) : (
+        <View style={{ gap: 12 }}>
+          {venues.map((venue) => (
+            <VenueCard key={venue.name} venue={venue} onPress={() => openPitch(venue)} />
+          ))}
+        </View>
+      )}
     </Screen>
   );
 }

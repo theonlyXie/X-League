@@ -1,20 +1,20 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
 import { VoidMark } from '@/components/VoidMark';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { ATTRIBUTES, ONBOARDING_COPY, POSITIONS } from '@/data/onboarding';
-import { useOnboarding } from '@/state/onboarding';
+import { useProfile } from '@/state/profile';
 
 /**
  * P-01 Onboarding and self-assessment — a new identity before the first hold.
  */
 export default function Onboarding() {
   const router = useRouter();
-  const { position, setPosition, scores, setScore, finish } = useOnboarding();
+  const { profile, setPosition, setScore, finishOnboarding } = useProfile();
   const [step, setStep] = useState(0);
 
   const advance = async () => {
@@ -22,7 +22,7 @@ export default function Onboarding() {
       setStep((s) => s + 1);
       return;
     }
-    await finish();
+    await finishOnboarding();
     router.replace('/');
   };
 
@@ -36,11 +36,9 @@ export default function Onboarding() {
       </View>
 
       {step === 0 ? <Welcome /> : null}
-      {step === 1 ? (
-        <PositionStep position={position} onPick={setPosition} />
-      ) : null}
-      {step === 2 ? <AssessStep scores={scores} onChange={setScore} /> : null}
-      {step === 3 ? <DoneStep position={position} /> : null}
+      {step === 1 ? <PositionStep position={profile.position} onPick={setPosition} /> : null}
+      {step === 2 ? <AssessStep scores={profile.scores} onChange={setScore} /> : null}
+      {step === 3 ? <DoneStep position={profile.position} /> : null}
 
       <View style={{ flex: 1, minHeight: 12 }} />
       <Button label={step === 3 ? 'Find a pitch' : 'Continue'} onPress={advance} />
@@ -49,7 +47,7 @@ export default function Onboarding() {
           label="I already have a card"
           variant="ghost"
           onPress={async () => {
-            await finish();
+            await finishOnboarding();
             router.replace('/');
           }}
         />

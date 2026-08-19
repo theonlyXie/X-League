@@ -12,6 +12,7 @@ export default function PlayerLayout() {
       <Tabs.Screen name="play" />
       <Tabs.Screen name="cups" />
       <Tabs.Screen name="chat" />
+      <Tabs.Screen name="bookings" options={{ href: null }} />
       <Tabs.Screen name="me" />
     </Tabs>
   );

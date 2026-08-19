@@ -1,5 +1,5 @@
 import { Link, useRouter } from 'expo-router';
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
@@ -7,13 +7,19 @@ import { AvatarStack, Button, CornerVoid, Eyebrow, TurfSwatch } from '@/componen
 import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { BOOKING, INVITATION, PLAYER, PROGRESSION, VENUES } from '@/data/player';
+import { openVenueNavigation } from '@/lib/maps';
+import { useBooking } from '@/state/booking';
+import { useProfile } from '@/state/profile';
 
 /** P-02 Home — show immediate reasons to return (§4.2). */
 export default function Home() {
   const router = useRouter();
+  const { profile, card } = useProfile();
+  const { activeBooking } = useBooking();
   const xpPct = (PROGRESSION.xp / PROGRESSION.nextLevelXp) * 100;
   const xpToNext = PROGRESSION.nextLevelXp - PROGRESSION.xp;
   const nearby = VENUES.slice(0, 2);
+  const venue = VENUES.find((v) => v.name === (activeBooking?.venue ?? BOOKING.venue)) ?? VENUES[0];
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 22 }}>
@@ -21,7 +27,7 @@ export default function Home() {
         <View style={{ gap: 3 }}>
           <Eyebrow>{PLAYER.today}</Eyebrow>
           <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-            {PLAYER.greeting}, {PLAYER.firstName}
+            {PLAYER.greeting}, {profile.firstName}
           </Txt>
         </View>
         <Link href="/me" asChild>
@@ -51,7 +57,7 @@ export default function Home() {
               }}
             >
               <Txt size={11} weight="bold" color={gold.base}>
-                {PLAYER.initials}
+                {card.initials}
               </Txt>
             </View>
             <Txt size={10} weight="bold" em={0.1} color={gold.base}>
@@ -61,57 +67,83 @@ export default function Home() {
         </Link>
       </View>
 
-      {/* The commitment-first opening: tonight's match before anything else. */}
-      <LinearGradient
-        colors={[void_.raised, void_.bg]}
-        locations={[0, 0.6]}
-        {...cssAngle(160)}
-        style={{
-          borderWidth: 1,
-          borderColor: goldAlpha.edge,
-          borderRadius: radius.signature,
-          overflow: 'hidden',
-          padding: 20,
-        }}
-      >
-        <CornerVoid />
-        <View style={{ gap: 14 }}>
-          <Txt size={10} weight="bold" em={0.2} upper color={gold.base}>
-            Tonight · 9:00 PM
+      {activeBooking ? (
+        <LinearGradient
+          colors={[void_.raised, void_.bg]}
+          locations={[0, 0.6]}
+          {...cssAngle(160)}
+          style={{
+            borderWidth: 1,
+            borderColor: goldAlpha.edge,
+            borderRadius: radius.signature,
+            overflow: 'hidden',
+            padding: 20,
+          }}
+        >
+          <CornerVoid />
+          <View style={{ gap: 14 }}>
+            <Txt size={10} weight="bold" em={0.2} upper color={gold.base}>
+              Tonight · {activeBooking.slot} PM
+            </Txt>
+            <Pressable accessibilityRole="link" accessibilityLabel="Booking detail" onPress={() => router.push(`/bookings/${activeBooking.code}`)}>
+              <View style={{ gap: 5 }}>
+                <Txt size={24} weight="bold" em={-0.02} color={onVoid.primary}>
+                  {activeBooking.venue}
+                </Txt>
+                <Txt size={13} color={onVoid.secondary}>
+                  {activeBooking.pitch} · 5-a-side · {activeBooking.area}
+                </Txt>
+              </View>
+            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <AvatarStack initials={['BE', 'OK', 'YA', 'MH']} openSlot />
+              <Txt size={12} color={onVoid.muted}>
+                4 of 5 · 2 sub slots open
+              </Txt>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, paddingTop: 2 }}>
+              <Button label="Match lobby" flex={1} onPress={() => router.push('/play/lobby')} />
+              <Button
+                label="Navigate"
+                variant="ghost"
+                flex={1}
+                onPress={() => openVenueNavigation(venue.name, venue.lat, venue.lng)}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 2 }}>
+              <View style={{ width: 5, height: 5, borderRadius: radius.pill, backgroundColor: gold.base }} />
+              <Txt size={11.5} color={onVoid.muted}>
+                EGP {activeBooking.deposit} cash deposit due at the gate
+              </Txt>
+            </View>
+          </View>
+        </LinearGradient>
+      ) : (
+        <View
+          style={{
+            padding: 20,
+            borderRadius: radius.signature,
+            borderWidth: 1,
+            borderColor: onVoid.edge,
+            backgroundColor: void_.surface,
+            gap: 12,
+          }}
+        >
+          <Txt size={18} weight="bold" color={onVoid.primary}>
+            No match tonight yet
           </Txt>
-          <View style={{ gap: 5 }}>
-            <Txt size={24} weight="bold" em={-0.02} color={onVoid.primary}>
-              {BOOKING.venue}
-            </Txt>
-            <Txt size={13} color={onVoid.secondary}>
-              {BOOKING.pitch} · 5-a-side · {BOOKING.area}
-            </Txt>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <AvatarStack initials={['BE', 'OK', 'YA', 'MH']} openSlot />
-            <Txt size={12} color={onVoid.muted}>
-              4 of 5 · 2 sub slots open
-            </Txt>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10, paddingTop: 2 }}>
-            <Button label="Match lobby" flex={1} onPress={() => router.push('/play/lobby')} />
-            <Button
-              label="Navigate"
-              variant="ghost"
-              flex={1}
-              onPress={() =>
-                Alert.alert('Stadium One', `${BOOKING.gateNote}\n${BOOKING.area}`)
-              }
-            />
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 2 }}>
-            <View style={{ width: 5, height: 5, borderRadius: radius.pill, backgroundColor: gold.base }} />
-            <Txt size={11.5} color={onVoid.muted}>
-              EGP {BOOKING.deposit} cash deposit due at the gate
-            </Txt>
-          </View>
+          <Txt size={13} color={onVoid.secondary}>
+            Search live slots, hold one, and pay the deposit at the gate.
+          </Txt>
+          <Button label="Find a pitch" onPress={() => router.push('/play')} />
         </View>
-      </LinearGradient>
+      )}
+
+      <Pressable accessibilityRole="link" accessibilityLabel="My bookings" onPress={() => router.push('/bookings')}>
+        <Txt size={12} weight="semibold" color={gold.base}>
+          My bookings →
+        </Txt>
+      </Pressable>
 
       <View style={{ gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>

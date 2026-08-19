@@ -31,10 +31,11 @@ booking land in the same calendar that holds its phone and walk-in bookings.
 | Pitch detail | P-04 | `/play/pitch` |
 | Checkout | P-05 | `/play/checkout` |
 | Confirmation | P-06 | `/play/confirmation` |
+| My bookings | P-07 | `/bookings` |
+| Player card | P-08 / P-09 | `/me` |
 | Chat inbox / thread | P-10–P-12, P-14 | `/chat` |
 | Match lobby | P-13 | `/play/lobby` |
 | Cups / tournament | P-15–P-20 | `/cups` |
-| Player card | P-08 / P-09 | `/me` |
 | Owner Today | O-01 | `/owner` |
 | Owner Calendar | O-02 | `/owner/calendar` |
 | Owner Bookings | O-03 | `/owner/bookings` |
@@ -83,9 +84,7 @@ it is used at.
 - **No painted device chrome.** The artboards draw a phone bezel, a `9:41`
   status bar and a home indicator. A real app gets those from the OS, so screens
   reserve the safe-area insets instead of drawing over them.
-- **Cups and Chat are inert.** They are in the tab bar because the spec's IA
-  has them, but the design ships no screens behind them, so they are drawn
-  disabled rather than filled with invented product.
+- **Cups and Chat are live tabs** with fixture competition and thread data.
 - **Hold expiry exists.** The artboards only draw a running countdown. AC-03
   requires the hold to expire and the slot to return to inventory, so checkout
   has an expired state that releases the hold and offers the nearest
@@ -108,6 +107,10 @@ cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
 
 The release APK is arm64-v8a (typical phones) and debug-signed so it can be sideloaded. Or, with an Expo account: `npx eas-cli build --platform android --profile preview`.
 
+## Persistence
+
+Bookings, profile (onboarding scores → Void card), chat messages, check-in and owner discount state are saved locally with AsyncStorage and survive app restarts. There is still no remote API.
+
 ## Not yet built
 
-Arabic copy (the RTL toggle is on Owner → More), and a live API — all data is still fixture data.
+Arabic copy (RTL toggle persists; full translation ships with the API layer).

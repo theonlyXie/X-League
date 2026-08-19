@@ -19,8 +19,8 @@ import { useBooking } from '@/state/booking';
 export default function PitchDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { slot, selectSlot, slotLabel, beginHold } = useBooking();
-  const venue = VENUES[0];
+  const { slot, selectSlot, slotLabel, beginHold, venueName } = useBooking();
+  const venue = VENUES.find((v) => v.name === venueName) ?? VENUES[0];
 
   return (
     <View style={{ flex: 1, backgroundColor: void_.bg, paddingTop: insets.top }}>

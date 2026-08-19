@@ -6,7 +6,8 @@ import { Button } from '@/components/ui';
 import { VoidMark } from '@/components/VoidMark';
 import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { BOOKING } from '@/data/player';
+import { BOOKING, VENUES } from '@/data/player';
+import { openVenueNavigation } from '@/lib/maps';
 import { useBooking } from '@/state/booking';
 
 /**
@@ -18,7 +19,8 @@ import { useBooking } from '@/state/booking';
  */
 export default function Confirmation() {
   const router = useRouter();
-  const { slotLabel, slotEndLabel } = useBooking();
+  const { slotLabel, slotEndLabel, activeBooking } = useBooking();
+  const venue = VENUES.find((v) => v.name === (activeBooking?.venue ?? BOOKING.venue)) ?? VENUES[0];
 
   return (
     <Screen
@@ -100,9 +102,15 @@ export default function Confirmation() {
 
       <View style={{ width: '100%', gap: 10 }}>
         {/* VEN-009: navigation deep-links out to an installed maps app. */}
-        <Button label="Navigate to venue" height={50} round={radius.control} size={15} onPress={() => {}} />
         <Button
-          label="Invite your 4 + subs"
+          label="Navigate to venue"
+          height={50}
+          round={radius.control}
+          size={15}
+          onPress={() => openVenueNavigation(venue.name, venue.lat, venue.lng)}
+        />
+        <Button
+          label="Match lobby"
           variant="ghost"
           height={50}
           round={radius.control}

@@ -11,18 +11,24 @@ import {
 } from '@expo-google-fonts/inter';
 import { View } from 'react-native';
 import { BookingProvider } from '@/state/booking';
-import { OnboardingProvider, useOnboarding } from '@/state/onboarding';
+import { MessagesProvider } from '@/state/messages';
+import { ProfileProvider, useProfile } from '@/state/profile';
+import { SettingsProvider } from '@/state/settings';
 import { void_ } from '@/theme/tokens';
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <OnboardingProvider>
-        <BookingProvider>
-          <StatusBar style="light" />
-          <RootGate />
-        </BookingProvider>
-      </OnboardingProvider>
+      <SettingsProvider>
+        <ProfileProvider>
+          <MessagesProvider>
+            <BookingProvider>
+              <StatusBar style="light" />
+              <RootGate />
+            </BookingProvider>
+          </MessagesProvider>
+        </ProfileProvider>
+      </SettingsProvider>
     </SafeAreaProvider>
   );
 }
@@ -35,11 +41,9 @@ function RootGate() {
     Inter_700Bold,
     Inter_800ExtraBold,
   });
-  const { ready, complete } = useOnboarding();
+  const { ready, profile } = useProfile();
   const segments = useSegments();
 
-  // Hold the Void ground until Inter is ready so type never reflows from a
-  // fallback face into the real one.
   if (!fontsLoaded || !ready) return <View style={{ flex: 1, backgroundColor: void_.bg }} />;
 
   const inOnboarding = segments[0] === 'onboarding';
@@ -52,8 +56,8 @@ function RootGate() {
         <Stack.Screen name="owner" />
         <Stack.Screen name="admin" />
       </Stack>
-      {!complete && !inOnboarding ? <Redirect href="/onboarding" /> : null}
-      {complete && inOnboarding ? <Redirect href="/" /> : null}
+      {!profile.onboarded && !inOnboarding ? <Redirect href="/onboarding" /> : null}
+      {profile.onboarded && inOnboarding ? <Redirect href="/" /> : null}
     </>
   );
 }

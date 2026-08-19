@@ -15,6 +15,8 @@ import { useBooking } from '@/state/booking';
  * arrival needs what, not reconciling three sources.
  */
 export default function OwnerToday() {
+  const { discountActive, toggleDiscount } = useBooking();
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: operative.bg }}
@@ -87,21 +89,27 @@ export default function OwnerToday() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Discount the open slots"
+          onPress={toggleDiscount}
           hitSlop={hitSlopTo44(34)}
           style={({ pressed }) => ({
             height: 34,
             paddingHorizontal: 12,
             borderRadius: radius.dense,
-            backgroundColor: void_.bg,
+            backgroundColor: discountActive ? gold.base : void_.bg,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Txt size={12} weight="semibold" color={operative.bg}>
-            Discount
+          <Txt size={12} weight="semibold" color={discountActive ? ink : operative.bg}>
+            {discountActive ? '10% off live' : 'Discount'}
           </Txt>
         </Pressable>
+        {discountActive ? (
+          <Txt size={11} color={gold.ink}>
+            Open slots discounted for the next hour — phone list updated
+          </Txt>
+        ) : null}
       </View>
     </ScrollView>
   );
