@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
@@ -5,7 +6,8 @@ import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { BOOKING, LOBBY_CHAT, ROSTER, RosterEntry } from '@/data/player';
+import { BOOKING, LOBBY_CHAT, RosterEntry } from '@/data/player';
+import { useBooking } from '@/state/booking';
 
 /** The booking's life so far, as the lobby header shows it (§7.2). */
 const STAGES = [
@@ -21,7 +23,22 @@ const STAGES = [
  */
 export default function Lobby() {
   const router = useRouter();
-  const filled = ROSTER.filter((p) => p.filled).length;
+  const { roster, cancelBooking, fillRosterSlot, activeBooking } = useBooking();
+  const filled = roster.filter((p) => p.filled).length;
+
+  const onCancel = () => {
+    Alert.alert('Cancel booking', BOOKING.cancellation, [
+      { text: 'Keep', style: 'cancel' },
+      {
+        text: 'Cancel',
+        style: 'destructive',
+        onPress: () => {
+          cancelBooking();
+          router.replace('/');
+        },
+      },
+    ]);
+  };
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
@@ -48,7 +65,7 @@ export default function Lobby() {
             Match lobby
           </Txt>
           <Txt size={11.5} color={onVoid.faint}>
-            {BOOKING.code} · {BOOKING.venue} · {BOOKING.pitch}
+            {BOOKING.code} · {activeBooking?.venue ?? BOOKING.venue} · {BOOKING.pitch}
           </Txt>
         </View>
       </View>
@@ -63,8 +80,12 @@ export default function Lobby() {
           </Txt>
         </View>
         <View style={{ gap: 8 }}>
-          {ROSTER.map((entry) => (
-            <RosterRow key={entry.name} entry={entry} onFill={() => router.push('/play')} />
+          {roster.map((entry) => (
+            <RosterRow
+              key={entry.name}
+              entry={entry}
+              onFill={() => fillRosterSlot('Invited player')}
+            />
           ))}
         </View>
       </View>
@@ -110,9 +131,9 @@ export default function Lobby() {
           flex={1}
           size={13.5}
           style={{ borderColor: onVoid.line }}
-          onPress={() => {}}
+          onPress={() => router.push('/chat/xl-7k42')}
         />
-        <Button label="Cancel booking" variant="danger" flex={1} size={13.5} onPress={() => {}} />
+        <Button label="Cancel booking" variant="danger" flex={1} size={13.5} onPress={onCancel} />
       </View>
     </Screen>
   );

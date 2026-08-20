@@ -1,5 +1,6 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Txt } from '@/components/Txt';
+import { Button } from '@/components/ui';
 import { burgundy, gold, ink, onOperative, operative, radius } from '@/theme/tokens';
 import {
   ADMIN_REPORTS,
@@ -10,19 +11,22 @@ import {
   MODERATION,
   SEASON,
 } from '@/data/admin';
+import type { AdminVenueRow } from '@/data/adminApi';
 import { mono } from '@/theme/typography';
+import { useVenues } from '@/state/venues';
+import { useAdminConsole } from '@/state/adminConsole';
+import { isLive } from '@/lib/supabase';
 
-export function AdminSectionBody({ section }: { section: string }) {
+export function AdminSectionBody({
+  section,
+  liveVenues,
+}: {
+  section: string;
+  liveVenues?: AdminVenueRow[];
+}) {
   switch (section) {
     case 'Venues':
-      return (
-        <Table
-          title="Venues"
-          headers={['Venue', 'Area', 'Pitches', 'Occ.', 'Status']}
-          rows={ADMIN_VENUES.map((v) => [v.name, v.area, String(v.pitches), v.occupancy, v.status])}
-          alert={ADMIN_VENUES.map((v) => v.status === 'Watch')}
-        />
-      );
+      return <AdminVenuesSection liveVenues={liveVenues} />;
     case 'Users & teams':
       return (
         <Table
@@ -136,6 +140,119 @@ export function AdminSectionBody({ section }: { section: string }) {
     default:
       return null;
   }
+}
+
+function AdminVenuesSection({ liveVenues }: { liveVenues?: AdminVenueRow[] }) {
+  const { pendingSubmissions, approve, reject } = useVenues();
+  const { refresh } = useAdminConsole();
+  const venueRows = liveVenues?.length
+    ? liveVenues
+    : ADMIN_VENUES.map((v) => ({
+        name: v.name,
+        area: v.area,
+        pitches: v.pitches,
+        occupancy: v.occupancy,
+        drift: v.drift,
+        status: v.status,
+      }));
+
+  const onApprove = async (id: string) => {
+    try {
+      await approve(id);
+      if (isLive) await refresh();
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const onReject = async (id: string) => {
+    try {
+      await reject(id);
+      if (isLive) await refresh();
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  return (
+    <View style={{ gap: 16 }}>
+      {pendingSubmissions.length ? (
+        <View style={{ gap: 10 }}>
+          <Txt size={12.5} weight="bold" color={ink}>
+            Pending owner signups
+          </Txt>
+          {pendingSubmissions.map((s) => (
+            <View
+              key={s.id}
+              style={{
+                padding: 14,
+                borderRadius: radius.panel,
+                backgroundColor: operative.surface,
+                borderWidth: 1,
+                borderColor: 'rgba(198,163,75,.35)',
+                gap: 10,
+              }}
+            >
+              <View style={{ gap: 4 }}>
+                <Txt size={15} weight="bold" color={ink}>
+                  {s.name}
+                </Txt>
+                <Txt size={12} color={onOperative.muted}>
+                  {s.area} · submitted by {s.ownerName}
+                </Txt>
+                <Txt size={10.5} color={onOperative.faint} style={{ fontFamily: mono }}>
+                  {s.id}
+                </Txt>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Button label="Approve" variant="operative" flex={1} onPress={() => void onApprove(s.id)} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reject ${s.name}`}
+                  onPress={() => void onReject(s.id)}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    height: 44,
+                    borderRadius: radius.dense,
+                    borderWidth: 1,
+                    borderColor: 'rgba(101,21,37,.35)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Txt size={13} weight="semibold" color={burgundy.ink}>
+                    Reject
+                  </Txt>
+                </Pressable>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View
+          style={{
+            padding: 14,
+            borderRadius: radius.panel,
+            backgroundColor: operative.surface,
+            borderWidth: 1,
+            borderColor: onOperative.hairline,
+          }}
+        >
+          <Txt size={12.5} color={onOperative.muted}>
+            No pending venue signups.
+          </Txt>
+        </View>
+      )}
+
+      <Table
+        title="Live venues"
+        headers={['Venue', 'Area', 'Pitches', 'Occ.', 'Status']}
+        rows={venueRows.map((v) => [v.name, v.area, String(v.pitches), v.occupancy, v.status])}
+        alert={venueRows.map((v) => v.status === 'Watch')}
+      />
+    </View>
+  );
 }
 
 function Table({

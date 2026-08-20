@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { Txt } from '@/components/Txt';
 import { hitSlopTo44 } from '@/components/ui';
 import { ChevronLeft, ChevronRight } from '@/components/icons';
 import { burgundy, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
-import { BookingSource, CALENDAR, CALENDAR_LEGEND, Cell, VENUE } from '@/data/owner';
+import { BookingSource, CALENDAR_LEGEND, Cell, VENUE } from '@/data/owner';
+import { calendarWithLiveBooking } from '@/lib/ownerLive';
+import { useBooking } from '@/state/booking';
+import { useProfile } from '@/state/profile';
 
 /**
  * O-02 Calendar — control inventory (§4.5).
@@ -23,6 +26,9 @@ const SOURCE: Record<BookingSource, { bg: string; border: string; dashed: boolea
 
 export default function OwnerCalendar() {
   const [range, setRange] = useState<'Day' | 'Week'>('Day');
+  const { activeBooking } = useBooking();
+  const { card } = useProfile();
+  const calendar = calendarWithLiveBooking(activeBooking, card.name);
 
   return (
     <ScrollView
@@ -106,7 +112,7 @@ export default function OwnerCalendar() {
           ))}
         </View>
 
-        {CALENDAR.map((row) => (
+        {calendar.map((row) => (
           <View key={row.time} style={{ flexDirection: 'row' }}>
             <View
               style={{
@@ -156,8 +162,8 @@ export default function OwnerCalendar() {
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {/* OWN-003 / OWN-005: staff enter every channel here, and block inventory. */}
-        <OwnerAction label="Add booking" filled />
-        <OwnerAction label="Block slot" />
+        <OwnerAction label="Add booking" filled onPress={() => Alert.alert('Add booking', 'Phone and walk-in entry ships with the live API.')} />
+        <OwnerAction label="Block slot" onPress={() => Alert.alert('Block slot', 'Inventory blocks sync with the venue calendar API.')} />
       </View>
     </ScrollView>
   );
@@ -203,11 +209,12 @@ function CalendarCell({ cell, first, time, pitch }: { cell: Cell; first: boolean
   );
 }
 
-function OwnerAction({ label, filled }: { label: string; filled?: boolean }) {
+function OwnerAction({ label, filled, onPress }: { label: string; filled?: boolean; onPress?: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
         height: 42,

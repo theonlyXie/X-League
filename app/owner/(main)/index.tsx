@@ -5,7 +5,9 @@ import { Check, MoreHorizontal } from '@/components/icons';
 import { burgundy, gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import { Arrival, ARRIVALS, OPEN_TONIGHT, OWNER_KPIS } from '@/data/owner';
+import { arrivalsWithLiveBooking } from '@/lib/ownerLive';
 import { useBooking } from '@/state/booking';
+import { useProfile } from '@/state/profile';
 
 /**
  * O-01 Today — run the current shift (§4.5).
@@ -15,6 +17,10 @@ import { useBooking } from '@/state/booking';
  * arrival needs what, not reconciling three sources.
  */
 export default function OwnerToday() {
+  const { discountActive, toggleDiscount, activeBooking, checkedIn, toggleCheckIn } = useBooking();
+  const { card } = useProfile();
+  const arrivals = arrivalsWithLiveBooking(activeBooking, card.name, ARRIVALS);
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: operative.bg }}
@@ -58,8 +64,13 @@ export default function OwnerToday() {
           </Txt>
         </View>
 
-        {ARRIVALS.map((arrival, i) => (
-          <ArrivalCard key={`${arrival.time}-${i}`} arrival={arrival} />
+        {arrivals.map((arrival, i) => (
+          <ArrivalCard
+            key={`${arrival.time}-${arrival.justBooked?.code ?? i}`}
+            arrival={arrival}
+            checkedIn={checkedIn}
+            onCheckIn={toggleCheckIn}
+          />
         ))}
       </View>
 
@@ -87,28 +98,41 @@ export default function OwnerToday() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Discount the open slots"
+          onPress={toggleDiscount}
           hitSlop={hitSlopTo44(34)}
           style={({ pressed }) => ({
             height: 34,
             paddingHorizontal: 12,
             borderRadius: radius.dense,
-            backgroundColor: void_.bg,
+            backgroundColor: discountActive ? gold.base : void_.bg,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Txt size={12} weight="semibold" color={operative.bg}>
-            Discount
+          <Txt size={12} weight="semibold" color={discountActive ? ink : operative.bg}>
+            {discountActive ? '10% off live' : 'Discount'}
           </Txt>
         </Pressable>
+        {discountActive ? (
+          <Txt size={11} color={gold.ink}>
+            Open slots discounted for the next hour — phone list updated
+          </Txt>
+        ) : null}
       </View>
     </ScrollView>
   );
 }
 
-function ArrivalCard({ arrival }: { arrival: Arrival }) {
-  const { checkedIn, toggleCheckIn } = useBooking();
+function ArrivalCard({
+  arrival,
+  checkedIn,
+  onCheckIn,
+}: {
+  arrival: Arrival;
+  checkedIn: boolean;
+  onCheckIn: () => void;
+}) {
   const highlighted = !!arrival.justBooked;
 
   return (
@@ -209,7 +233,7 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
               accessibilityRole="button"
               accessibilityState={{ checked: checkedIn }}
               accessibilityLabel={checkedIn ? 'Checked in' : 'Check in and collect EGP 100'}
-              onPress={toggleCheckIn}
+              onPress={onCheckIn}
               hitSlop={hitSlopTo44(38)}
               style={({ pressed }) => ({
                 flex: 1,

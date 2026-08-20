@@ -40,6 +40,8 @@ export type Venue = {
   distanceKm: number;
   surface: string;
   hourly: number;
+  lat: number;
+  lng: number;
   /** Hours still saleable tonight; empty means fully booked. */
   open: string[];
   /** Hours shown struck through on the card. */
@@ -60,6 +62,8 @@ export const VENUES: Venue[] = [
     distanceKm: 2.1,
     surface: 'Artificial turf',
     hourly: 300,
+    lat: 30.0561,
+    lng: 31.3302,
     open: ['7:00', '8:00', '9:00', '10:00'],
     nextSlot: '9:00 PM',
     moreSlots: 3,
@@ -72,6 +76,8 @@ export const VENUES: Venue[] = [
     distanceKm: 3.4,
     surface: 'Indoor',
     hourly: 260,
+    lat: 30.0622,
+    lng: 31.3411,
     open: ['10:00'],
     gone: ['8:00'],
     note: '2 slots left tonight',
@@ -86,6 +92,8 @@ export const VENUES: Venue[] = [
     distanceKm: 4.8,
     surface: 'Artificial turf',
     hourly: 280,
+    lat: 30.0488,
+    lng: 31.3188,
     open: [],
     note: 'Fully booked tonight · notify me',
     nextSlot: '—',

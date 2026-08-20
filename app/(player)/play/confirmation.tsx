@@ -7,7 +7,9 @@ import { VoidMark } from '@/components/VoidMark';
 import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
+import { openVenueNavigation } from '@/lib/maps';
 import { useBooking } from '@/state/booking';
+import { useVenues } from '@/state/venues';
 
 /**
  * P-06 Confirmation — make arrival effortless (§4.2).
@@ -18,7 +20,10 @@ import { useBooking } from '@/state/booking';
  */
 export default function Confirmation() {
   const router = useRouter();
-  const { slotLabel, slotEndLabel } = useBooking();
+  const { slotLabel, slotEndLabel, activeBooking } = useBooking();
+  const { playerVenues } = useVenues();
+  const booking = activeBooking;
+  const venue = playerVenues.find((v) => v.name === (booking?.venue ?? BOOKING.venue)) ?? playerVenues[0];
 
   return (
     <Screen
@@ -54,10 +59,10 @@ export default function Confirmation() {
       >
         <View style={{ gap: 4 }}>
           <Txt size={17} weight="bold" color={onVoid.primary}>
-            {BOOKING.venue} · {BOOKING.pitch}
+            {booking?.venue ?? BOOKING.venue} · {booking?.pitch ?? BOOKING.pitch}
           </Txt>
           <Txt size={12.5} color={onVoid.muted}>
-            Tue 18 Aug · {slotLabel}–{slotEndLabel} · 5-a-side
+            {BOOKING.date} · {slotLabel}–{slotEndLabel} · 5-a-side
           </Txt>
         </View>
 
@@ -74,12 +79,12 @@ export default function Confirmation() {
             borderColor: 'rgba(198,163,75,.35)',
           }}
         >
-          <View style={{ gap: 4 }} accessibilityLabel={`Booking code ${BOOKING.code}`}>
+          <View style={{ gap: 4 }} accessibilityLabel={`Booking code ${booking?.code ?? BOOKING.code}`}>
             <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
               Booking code
             </Txt>
             <Txt size={21} weight="bold" em={0.14} color={gold.base} style={{ fontFamily: mono }}>
-              {BOOKING.code}
+              {booking?.code ?? BOOKING.code}
             </Txt>
           </View>
           <View style={{ flex: 1 }} />
@@ -88,7 +93,7 @@ export default function Confirmation() {
               Cash at gate
             </Txt>
             <Txt size={15} weight="bold" color={onVoid.primary}>
-              EGP {BOOKING.deposit}
+              EGP {booking?.deposit ?? BOOKING.deposit}
             </Txt>
           </View>
         </View>
@@ -100,9 +105,15 @@ export default function Confirmation() {
 
       <View style={{ width: '100%', gap: 10 }}>
         {/* VEN-009: navigation deep-links out to an installed maps app. */}
-        <Button label="Navigate to venue" height={50} round={radius.control} size={15} onPress={() => {}} />
         <Button
-          label="Invite your 4 + subs"
+          label="Navigate to venue"
+          height={50}
+          round={radius.control}
+          size={15}
+          onPress={() => openVenueNavigation(venue.name, venue.lat, venue.lng)}
+        />
+        <Button
+          label="Match lobby"
           variant="ghost"
           height={50}
           round={radius.control}

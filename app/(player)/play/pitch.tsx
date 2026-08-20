@@ -8,8 +8,9 @@ import { Star } from '@/components/icons';
 import { SlotGrid } from '@/components/SlotGrid';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOTS_TAKEN, SLOT_TIMES, VENUES } from '@/data/player';
+import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOTS_TAKEN, SLOT_TIMES } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { useVenues } from '@/state/venues';
 
 /**
  * P-04 Pitch detail — build confidence before purchase (§4.2). VEN-005: media,
@@ -19,8 +20,9 @@ import { useBooking } from '@/state/booking';
 export default function PitchDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { slot, selectSlot, slotLabel, beginHold } = useBooking();
-  const venue = VENUES[0];
+  const { slot, selectSlot, slotLabel, beginHold, venueName } = useBooking();
+  const { playerVenues } = useVenues();
+  const venue = playerVenues.find((v) => v.name === venueName) ?? playerVenues[0];
 
   return (
     <View style={{ flex: 1, backgroundColor: void_.bg, paddingTop: insets.top }}>
@@ -33,19 +35,21 @@ export default function PitchDetail() {
               <Txt size={24} weight="bold" em={-0.02} color={onVoid.primary}>
                 {venue.name}
               </Txt>
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: goldAlpha.accent,
-                  borderRadius: radius.badge,
-                  paddingVertical: 2,
-                  paddingHorizontal: 5,
-                }}
-              >
-                <Txt size={10} weight="bold" em={0.08} color={gold.base}>
-                  VERIFIED
-                </Txt>
-              </View>
+              {venue.verified ? (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: goldAlpha.accent,
+                    borderRadius: radius.badge,
+                    paddingVertical: 2,
+                    paddingHorizontal: 5,
+                  }}
+                >
+                  <Txt size={10} weight="bold" em={0.08} color={gold.base}>
+                    VERIFIED
+                  </Txt>
+                </View>
+              ) : null}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <Star size={12} color={gold.base} />
@@ -114,7 +118,7 @@ export default function PitchDetail() {
       >
         <View style={{ gap: 2 }}>
           <Txt size={17} weight="bold" color={onVoid.primary}>
-            EGP {BOOKING.hourly}
+            EGP {venue.hourly}
           </Txt>
           <Txt size={10.5} color={onVoid.dim}>
             per hour
@@ -126,9 +130,9 @@ export default function PitchDetail() {
           height={50}
           round={radius.control}
           size={15}
-          onPress={() => {
-            beginHold();
-            router.push('/play/checkout');
+          onPress={async () => {
+            const ok = await beginHold();
+            if (ok !== false) router.push('/play/checkout');
           }}
         />
       </LinearGradient>

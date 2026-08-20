@@ -8,7 +8,9 @@ import { ChevronRight, TrendUp } from '@/components/icons';
 import { StrokeLine } from '@/components/StrokeLine';
 import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { CARD } from '@/data/player';
+import { PROGRESSION } from '@/data/player';
+import { useProfile } from '@/state/profile';
+import { useMyVenueSubmission } from '@/state/venues';
 
 /**
  * P-08 Profile / P-09 Card detail — the persistent football identity (§4.3).
@@ -18,8 +20,24 @@ import { CARD } from '@/data/player';
  */
 export default function Me() {
   const router = useRouter();
-  const explained = CARD.attributes.find((a) => a.key === CARD.explained)!;
-  const evidencePct = 100 - CARD.selfAssessedPct;
+  const { card } = useProfile();
+  const { mine } = useMyVenueSubmission();
+  const explained = card.attributes.find((a) => a.key === card.explained)!;
+  const evidencePct = 100 - card.selfAssessedPct;
+
+  const ownerDetail =
+    mine?.status === 'approved'
+      ? `${mine.name} · calendar, arrivals and CRM`
+      : mine?.status === 'pending'
+        ? `${mine.name} · awaiting admin approval`
+        : mine?.status === 'rejected'
+          ? 'Listing not approved · submit again'
+          : 'Stadium One demo · or register your venue';
+
+  const openOwner = () => {
+    if (mine?.status === 'pending' || mine?.status === 'rejected') router.push('/owner/pending');
+    else router.push('/owner');
+  };
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20, alignItems: 'center' }}>
@@ -32,12 +50,12 @@ export default function Me() {
         </Txt>
       </View>
 
-      <VoidCard />
+      <VoidCard card={card} />
 
       <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
-        <StatTile label="FORM" value={`${CARD.form}`} gold icon />
-        <StatTile label="VERIFIED" value={`${CARD.verifiedMatches} matches`} />
-        <StatTile label="RATERS" value={`${CARD.raters}`} />
+        <StatTile label="FORM" value={`${3}`} gold icon />
+        <StatTile label="VERIFIED" value={`${card.confidence === 'ESTABLISHED' ? 18 : 0} matches`} />
+        <StatTile label="RATERS" value={`${card.confidence === 'ESTABLISHED' ? 41 : 0}`} />
       </View>
 
       {/* §5.1: every displayed score exposes where it came from. */}
@@ -53,10 +71,10 @@ export default function Me() {
         }}
       >
         <Eyebrow>
-          Where {explained.value} {CARD.explained} comes from
+          Where {explained.value} {card.explained} comes from
         </Eyebrow>
         <EvidenceBar label="Match evidence" pct={evidencePct} color={gold.base} />
-        <EvidenceBar label="Self-assessment" pct={CARD.selfAssessedPct} color="rgba(198,163,75,.45)" />
+        <EvidenceBar label="Self-assessment" pct={card.selfAssessedPct} color="rgba(198,163,75,.45)" />
         <Txt size={11.5} lh={1.55} color={onVoid.dim}>
           Individual raters stay anonymous. No single match can move an attribute more than ±2.
         </Txt>
@@ -67,10 +85,16 @@ export default function Me() {
         <Eyebrow>Workspace</Eyebrow>
         <View style={{ gap: 8 }}>
           <WorkspaceRow
-            title="Owner mode"
-            detail="Stadium One · calendar, arrivals and CRM"
-            onPress={() => router.push('/owner')}
+            title="My bookings"
+            detail="Active holds, confirmations and history"
+            onPress={() => router.push('/bookings')}
           />
+          <WorkspaceRow
+            title="Register your venue"
+            detail="Submit a listing and wait for admin approval"
+            onPress={() => router.push('/owner/register')}
+          />
+          <WorkspaceRow title="Owner mode" detail={ownerDetail} onPress={openOwner} />
           <WorkspaceRow
             title="Admin console"
             detail="Platform operations · audited"
@@ -83,7 +107,7 @@ export default function Me() {
 }
 
 /** The Void card itself — X-to-void geometry behind the numbers. */
-function VoidCard() {
+function VoidCard({ card }: { card: ReturnType<typeof useProfile>['card'] }) {
   return (
     <LinearGradient
       colors={[void_.cardTop, void_.bg]}
@@ -148,10 +172,10 @@ function VoidCard() {
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <View>
           <Txt size={52} weight="extrabold" em={-0.04} lh={0.9} color={gold.base}>
-            {CARD.ovr}
+            {card.ovr}
           </Txt>
           <Txt size={12} weight="bold" em={0.16} color="rgba(243,238,229,.7)" style={{ marginTop: 4 }}>
-            {CARD.position}
+            {card.position}
           </Txt>
         </View>
         <View
@@ -164,7 +188,7 @@ function VoidCard() {
           }}
         >
           <Txt size={9.5} weight="bold" em={0.12} color={gold.base}>
-            {CARD.confidence}
+            {card.confidence}
           </Txt>
         </View>
       </View>
@@ -173,10 +197,10 @@ function VoidCard() {
 
       <View style={{ alignItems: 'center', gap: 3 }}>
         <Txt size={21} weight="bold" em={0.02} color={onVoid.primary}>
-          {CARD.name}
+          {card.name}
         </Txt>
         <Txt size={9.5} weight="semibold" em={0.2} color="rgba(198,163,75,.85)">
-          VOID CARD · LVL {CARD.level}
+          VOID CARD · LVL {PROGRESSION.level}
         </Txt>
       </View>
 
@@ -184,12 +208,12 @@ function VoidCard() {
       <View style={{ marginTop: 18, gap: 9 }}>
         {[0, 2, 4].map((start) => (
           <View key={start} style={{ flexDirection: 'row', gap: 22 }}>
-            {CARD.attributes.slice(start, start + 2).map((attr) => (
+            {card.attributes.slice(start, start + 2).map((attr) => (
               <View key={attr.key} style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Txt size={11} em={0.1} color={onVoid.muted}>
                   {attr.key}
                 </Txt>
-                <Txt size={13} weight="bold" color={attr.key === CARD.explained ? gold.base : onVoid.primary}>
+                <Txt size={13} weight="bold" color={attr.key === card.explained ? gold.base : onVoid.primary}>
                   {attr.value}
                 </Txt>
               </View>

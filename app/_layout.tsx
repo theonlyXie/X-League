@@ -1,3 +1,4 @@
+import { ReactNode, useEffect, useState } from 'react';
 import { Redirect, Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,18 +12,35 @@ import {
 } from '@expo-google-fonts/inter';
 import { View } from 'react-native';
 import { BookingProvider } from '@/state/booking';
-import { OnboardingProvider, useOnboarding } from '@/state/onboarding';
+import { MessagesProvider } from '@/state/messages';
+import { ProfileProvider, useProfile } from '@/state/profile';
+import { SessionProvider, useSession } from '@/state/session';
+import { SettingsProvider } from '@/state/settings';
+import { AdminConsoleProvider } from '@/state/adminConsole';
+import { VenuesProvider } from '@/state/venues';
+import { isLive } from '@/lib/supabase';
+import { loadLiveVenues } from '@/lib/venueConfig';
 import { void_ } from '@/theme/tokens';
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <OnboardingProvider>
-        <BookingProvider>
-          <StatusBar style="light" />
-          <RootGate />
-        </BookingProvider>
-      </OnboardingProvider>
+      <SessionProvider>
+        <SettingsProvider>
+          <ProfileProvider>
+            <VenuesProvider>
+              <AdminConsoleProvider>
+                <MessagesProvider>
+                  <BookingProvider>
+                    <StatusBar style="light" />
+                    <RootGate />
+                  </BookingProvider>
+                </MessagesProvider>
+              </AdminConsoleProvider>
+            </VenuesProvider>
+          </ProfileProvider>
+        </SettingsProvider>
+      </SessionProvider>
     </SafeAreaProvider>
   );
 }
@@ -35,25 +53,39 @@ function RootGate() {
     Inter_700Bold,
     Inter_800ExtraBold,
   });
-  const { ready, complete } = useOnboarding();
+  const { ready, profile } = useProfile();
+  const { signedIn, restoring } = useSession();
   const segments = useSegments();
+  const [venuesReady, setVenuesReady] = useState(!isLive);
 
-  // Hold the Void ground until Inter is ready so type never reflows from a
-  // fallback face into the real one.
-  if (!fontsLoaded || !ready) return <View style={{ flex: 1, backgroundColor: void_.bg }} />;
+  useEffect(() => {
+    if (!isLive) return;
+    loadLiveVenues().finally(() => setVenuesReady(true));
+  }, []);
 
-  const inOnboarding = segments[0] === 'onboarding';
+  if (!fontsLoaded || !ready || (isLive && restoring) || !venuesReady) {
+    return <View style={{ flex: 1, backgroundColor: void_.bg }} />;
+  }
+
+  const root = segments[0];
+  const inOnboarding = root === 'onboarding';
+  const inSignIn = root === 'sign-in';
 
   return (
     <>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
+        <Stack.Screen name="sign-in" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(player)" />
         <Stack.Screen name="owner" />
         <Stack.Screen name="admin" />
       </Stack>
-      {!complete && !inOnboarding ? <Redirect href="/onboarding" /> : null}
-      {complete && inOnboarding ? <Redirect href="/" /> : null}
+      {isLive && !signedIn && !inSignIn ? <Redirect href="/sign-in" /> : null}
+      {!isLive && !profile.onboarded && !inOnboarding ? <Redirect href="/onboarding" /> : null}
+      {!isLive && profile.onboarded && inOnboarding ? <Redirect href="/" /> : null}
+      {isLive && signedIn && !profile.onboarded && !inOnboarding && !inSignIn ? (
+        <Redirect href="/onboarding" />
+      ) : null}
     </>
   );
 }

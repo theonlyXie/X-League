@@ -6,7 +6,9 @@ import { Txt } from '@/components/Txt';
 import { Button } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { THREAD_MESSAGES, THREADS, ChatLine } from '@/data/chat';
+import { THREADS } from '@/data/chat';
+import { useMessages } from '@/state/messages';
+import { useProfile } from '@/state/profile';
 
 /**
  * P-11 / P-12 / P-14 Thread — structured match conversation.
@@ -14,17 +16,16 @@ import { THREAD_MESSAGES, THREADS, ChatLine } from '@/data/chat';
 export default function ChatThread() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { card } = useProfile();
+  const { linesFor, send } = useMessages();
   const thread = THREADS.find((t) => t.id === id) ?? THREADS[0];
-  const [lines, setLines] = useState<ChatLine[]>(THREAD_MESSAGES[thread.id] ?? []);
+  const lines = linesFor(thread.id);
   const [draft, setDraft] = useState('');
 
-  const send = () => {
+  const onSend = () => {
     const text = draft.trim();
     if (!text) return;
-    setLines((prev) => [
-      ...prev,
-      { id: String(prev.length + 1), from: 'you', initials: 'BE', text, at: 'now' },
-    ]);
+    send(thread.id, text, card.initials);
     setDraft('');
   };
 
@@ -111,7 +112,7 @@ export default function ChatThread() {
             fontFamily: 'Inter_400Regular',
           }}
         />
-        <Button label="Send" width={72} onPress={send} />
+        <Button label="Send" width={72} onPress={onSend} />
       </View>
     </Screen>
   );
