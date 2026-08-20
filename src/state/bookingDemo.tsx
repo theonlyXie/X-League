@@ -163,7 +163,24 @@ export function DemoBookingProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const toggleCheckIn = useCallback(() => persist({ ...data, checkedIn: !data.checkedIn }), [data, persist]);
+  const confirmCashCollection = useCallback(async (_bookingId?: string) => {
+    if (data.checkedIn) return;
+    const active = data.activeBooking
+      ? { ...data.activeBooking, status: 'checked_in' as const }
+      : data.activeBooking;
+    await persist({
+      ...data,
+      checkedIn: true,
+      activeBooking: active,
+      history: active
+        ? data.history.map((b) => (b.code === active.code ? active : b))
+        : data.history,
+    });
+  }, [data, persist]);
+
+  const toggleCheckIn = useCallback(() => {
+    void confirmCashCollection();
+  }, [confirmCashCollection]);
 
   const fillRosterSlot = useCallback(
     (name: string) => {
@@ -200,6 +217,7 @@ export function DemoBookingProvider({ children }: { children: ReactNode }) {
       activeBooking: data.activeBooking,
       bookingHistory: data.history,
       checkedIn: data.checkedIn,
+      confirmCashCollection,
       toggleCheckIn,
       roster: data.roster,
       fillRosterSlot,
@@ -208,7 +226,7 @@ export function DemoBookingProvider({ children }: { children: ReactNode }) {
       ready,
       live: false,
     };
-  }, [data, selectSlot, selectVenue, beginHold, releaseHold, confirmBooking, cancelBooking, toggleCheckIn, fillRosterSlot, toggleDiscount, ready]);
+  }, [data, selectSlot, selectVenue, beginHold, releaseHold, confirmBooking, cancelBooking, confirmCashCollection, toggleCheckIn, fillRosterSlot, toggleDiscount, ready]);
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;
 }

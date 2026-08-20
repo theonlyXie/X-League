@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
-import { ActivityIndicator, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from '@/components/Txt';
 import { VoidMark } from '@/components/VoidMark';
@@ -11,6 +11,19 @@ import { AdminSectionBody } from '@/components/adminSections';
 import { isLive } from '@/lib/supabase';
 import { useAdminConsole } from '@/state/adminConsole';
 import { useSession } from '@/state/session';
+import { useI18n } from '@/i18n';
+import type { I18nKey } from '@/i18n';
+
+const ADMIN_NAV_KEYS: Record<string, I18nKey> = {
+  Overview: 'admin.overview',
+  Venues: 'admin.venues',
+  'Users & teams': 'admin.users',
+  Tournaments: 'admin.tournaments',
+  'Match desk': 'admin.matchDesk',
+  Moderation: 'admin.moderation',
+  'Points & seasons': 'admin.points',
+  Reports: 'admin.reports',
+};
 
 /**
  * A-01 Overview — monitor the platform (§4.6).
@@ -90,13 +103,14 @@ export default function AdminConsole() {
 
 function AdminDenied() {
   const router = useRouter();
+  const { t } = useI18n();
   return (
     <View style={{ flex: 1, backgroundColor: operative.bg, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 }}>
       <Txt size={22} weight="bold" color={ink}>
-        Admin access required
+        {t('admin.accessRequired')}
       </Txt>
       <Txt size={14} color={onOperative.muted} style={{ textAlign: 'center', maxWidth: 360 }}>
-        This console is restricted to platform operators. Sign in with an admin account or continue in player mode.
+        {t('admin.accessBody')}
       </Txt>
       <Pressable
         accessibilityRole="button"
@@ -111,7 +125,7 @@ function AdminDenied() {
         })}
       >
         <Txt size={13} weight="semibold" color={operative.bg}>
-          Back to app
+          {t('admin.backApp')}
         </Txt>
       </Pressable>
     </View>
@@ -130,6 +144,8 @@ function Rail({
   user: { role: string; scope: string };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const labelOf = (label: string) => (ADMIN_NAV_KEYS[label] ? t(ADMIN_NAV_KEYS[label]!) : label);
 
   return (
     <View
@@ -143,17 +159,17 @@ function Rail({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="X League admin. Leave the console"
+        accessibilityLabel={t('admin.backApp')}
         onPress={() => router.replace('/')}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8 }}
       >
         <VoidMark size={22} rings={1} />
         <View style={{ gap: 1 }}>
           <Txt size={12.5} weight="bold" em={0.02} color={operative.bg}>
-            X LEAGUE
+            {t('admin.brand')}
           </Txt>
           <Txt size={9} weight="semibold" em={0.18} color={gold.base}>
-            ADMIN
+            {t('admin.admin')}
           </Txt>
         </View>
       </Pressable>
@@ -161,12 +177,13 @@ function Rail({
       <View style={{ gap: 2 }}>
         {nav.map((item) => {
           const on = item.label === section;
+          const shown = labelOf(item.label);
           return (
             <Pressable
               key={item.label}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
-              accessibilityLabel={item.badge ? `${item.label}, ${item.badge} items` : item.label}
+              accessibilityLabel={item.badge ? `${shown}, ${item.badge}` : shown}
               onPress={() => onSection(item.label)}
               style={{
                 paddingVertical: 9,
@@ -179,7 +196,7 @@ function Rail({
               }}
             >
               <Txt size={12.5} weight={on ? 'semibold' : 'medium'} color={on ? gold.base : 'rgba(243,238,229,.62)'}>
-                {item.label}
+                {shown}
               </Txt>
               {item.badge ? (
                 <Txt size={10} color={gold.base}>
@@ -203,7 +220,7 @@ function Rail({
         }}
       >
         <Txt size={10} weight="semibold" em={0.14} color={onVoid.dim}>
-          SIGNED IN
+          {t('admin.signedIn')}
         </Txt>
         <Txt size={12} weight="semibold" color={operative.bg}>
           {user.role}
@@ -213,7 +230,7 @@ function Rail({
         </Txt>
         {isLive ? (
           <Txt size={9.5} color={gold.base} style={{ marginTop: 4 }}>
-            Live · Supabase
+            {t('admin.liveSupabase')}
           </Txt>
         ) : null}
       </View>
@@ -222,6 +239,10 @@ function Rail({
 }
 
 function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; onRefresh: () => void }) {
+  const { t, language, setLanguage } = useI18n();
+  const nextLang = language === 'ar' ? 'en' : 'ar';
+  const langLabel = language === 'ar' ? 'EN' : 'ع';
+
   return (
     <View
       style={{
@@ -236,30 +257,35 @@ function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; o
       }}
     >
       <Txt size={15} weight="bold" em={-0.01} color={ink}>
-        {section}
+        {ADMIN_NAV_KEYS[section] ? t(ADMIN_NAV_KEYS[section]!) : section}
       </Txt>
       <Txt size={11} color={onOperative.faint}>
         {asOf}
       </Txt>
       <View style={{ flex: 1 }} />
-      <View
-        style={{
-          height: 32,
-          width: Platform.OS === 'web' ? 260 : 180,
-          borderRadius: radius.denseChip,
-          borderWidth: 1,
-          borderColor: 'rgba(20,18,16,.16)',
-          justifyContent: 'center',
-          paddingHorizontal: 12,
-        }}
-      >
-        <Txt size={11.5} color={onOperative.dim}>
-          Search booking, venue, user or code…
-        </Txt>
-      </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Refresh admin data"
+        accessibilityLabel={nextLang === 'ar' ? t('language.switchToArabic') : t('language.switchToEnglish')}
+        onPress={() => void setLanguage(nextLang)}
+        style={({ pressed }) => ({
+          height: 32,
+          minWidth: 36,
+          paddingHorizontal: 10,
+          borderRadius: radius.denseChip,
+          borderWidth: 1,
+          borderColor: onOperative.hairline,
+          justifyContent: 'center',
+          alignItems: 'center',
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Txt size={12} weight="bold" color={gold.ink}>
+          {langLabel}
+        </Txt>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('common.refresh')}
         onPress={onRefresh}
         style={({ pressed }) => ({
           height: 32,
@@ -272,12 +298,12 @@ function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; o
         })}
       >
         <Txt size={11.5} weight="semibold" color={ink}>
-          Refresh
+          {t('common.refresh')}
         </Txt>
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Export"
+        accessibilityLabel={t('common.export')}
         style={({ pressed }) => ({
           height: 32,
           paddingHorizontal: 12,
@@ -288,7 +314,7 @@ function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; o
         })}
       >
         <Txt size={11.5} weight="semibold" color={operative.bg}>
-          Export
+          {t('common.export')}
         </Txt>
       </Pressable>
     </View>
@@ -459,11 +485,15 @@ function LedgerRowView({ row }: { row: LedgerRow }) {
     row.kind === 'new' ? 'rgba(198,163,75,.1)' : row.kind === 'fail' ? 'rgba(101,21,37,.06)' : 'transparent';
   const codeFg = row.kind === 'new' ? gold.ink : row.kind === 'fail' ? burgundy.ink : 'rgba(20,18,16,.75)';
   const depositFg =
-    row.deposit === 'Unpaid' ? burgundy.ink : row.deposit === 'Cash · due' ? gold.ink : 'rgba(20,18,16,.6)';
+    row.deposit.includes('unpaid')
+      ? burgundy.ink
+      : row.deposit.includes('due')
+        ? gold.ink
+        : 'rgba(20,18,16,.6)';
   const statusFg =
     row.status.includes('FAIL') || row.status.includes('CANCEL')
       ? burgundy.ink
-      : row.status.includes('CONFIRM')
+      : row.status.includes('CONFIRM') || row.status.includes('CHECKED')
         ? status.positive
         : onOperative.muted;
 

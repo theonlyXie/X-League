@@ -22,9 +22,9 @@ export type KpiTone = 'neutral' | 'gold' | 'alert';
 export const ADMIN_KPIS: { label: string; value: string; sub: string; tone: KpiTone }[] = [
   { label: 'BOOKINGS TODAY', value: '1,284', sub: '+11% vs last Tue', tone: 'neutral' },
   { label: 'CONFLICT RATE', value: '0.2%', sub: '3 venues drifting', tone: 'neutral' },
-  { label: 'CASH AT GATE', value: '128k', sub: 'EGP due tonight', tone: 'gold' },
+  { label: 'CASH AT GATE', value: '128k', sub: 'EGP due tonight · collect on check-in', tone: 'gold' },
   { label: 'DISPUTES OPEN', value: '2', sub: 'oldest 4h', tone: 'alert' },
-  { label: 'VERIFIED PLAY', value: '73%', sub: 'checked-in matches', tone: 'neutral' },
+  { label: 'VERIFIED PLAY', value: '73%', sub: 'cash-checked-in matches', tone: 'neutral' },
 ];
 
 export type LedgerKind = 'new' | 'fail' | 'normal';
@@ -42,11 +42,11 @@ export type LedgerRow = {
 export const LEDGER: LedgerRow[] = [
   { code: 'XL-7K42', venue: 'Stadium One · Pitch A', captain: 'Basel Elsayed', source: 'App', deposit: 'Cash · due', status: 'CONFIRMED', kind: 'new' },
   { code: 'XL-7K51', venue: 'Stadium One · Pitch C', captain: 'Nour Kamal', source: 'App', deposit: 'Cash · due', status: 'CONFIRMED', kind: 'normal' },
-  { code: 'XL-7K38', venue: 'The Box · Indoor 1', captain: 'Hesham Fouad', source: 'Phone', deposit: 'Unpaid', status: 'HELD', kind: 'normal' },
-  { code: 'XL-7K33', venue: 'Nasr Sports · Pitch 2', captain: 'Karim Tarek', source: 'App', deposit: 'Paid', status: 'CHECKED IN', kind: 'normal' },
-  { code: 'XL-7K29', venue: 'The Box · Indoor 2', captain: '—', source: 'Walk-in', deposit: 'Paid', status: 'COMPLETED', kind: 'normal' },
-  { code: 'XL-7K21', venue: 'Stadium One · Pitch B', captain: 'Amr Sabry', source: 'App', deposit: 'Refunded', status: 'FAILED', kind: 'fail' },
-  { code: 'XL-7K18', venue: 'Zamalek 5s · Pitch A', captain: 'Ziad Magdy', source: 'Phone', deposit: 'Paid', status: 'COMPLETED', kind: 'normal' },
+  { code: 'XL-7K38', venue: 'The Box · Indoor 1', captain: 'Hesham Fouad', source: 'Phone', deposit: 'Cash · unpaid', status: 'HELD', kind: 'normal' },
+  { code: 'XL-7K33', venue: 'Nasr Sports · Pitch 2', captain: 'Karim Tarek', source: 'App', deposit: 'Cash · collected', status: 'CHECKED IN', kind: 'normal' },
+  { code: 'XL-7K29', venue: 'The Box · Indoor 2', captain: '—', source: 'Walk-in', deposit: 'Cash · collected', status: 'COMPLETED', kind: 'normal' },
+  { code: 'XL-7K21', venue: 'Stadium One · Pitch B', captain: 'Amr Sabry', source: 'App', deposit: 'Cash · refunded', status: 'FAILED', kind: 'fail' },
+  { code: 'XL-7K18', venue: 'Zamalek 5s · Pitch A', captain: 'Ziad Magdy', source: 'Phone', deposit: 'Cash · collected', status: 'COMPLETED', kind: 'normal' },
 ];
 
 export const LEDGER_FOOTER =
@@ -71,7 +71,7 @@ export const ATTENTION: { title: string; detail: string; severe: boolean }[] = [
 ];
 
 export const AUDIT: { at: string; event: string; actor: string }[] = [
-  { at: '21:38', event: 'Booking confirmed · cash deposit selected', actor: 'player:basel.e · app v1.4' },
+  { at: '21:38', event: 'Booking confirmed · cash at gate', actor: 'player:basel.e · app v1.4' },
   { at: '21:37', event: 'Slot held for 5 minutes', actor: 'system · inventory lock' },
   { at: '21:37', event: 'Availability served from venue calendar', actor: 'venue:stadium-one' },
   { at: '21:12', event: 'Price updated · 9 PM daypart EGP 300', actor: 'owner:stadium-one · staff M.A.' },

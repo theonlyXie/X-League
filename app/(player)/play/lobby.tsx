@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
@@ -7,30 +8,46 @@ import { Button, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { BOOKING, LOBBY_CHAT, RosterEntry } from '@/data/player';
+import { useI18n } from '@/i18n';
 import { useBooking } from '@/state/booking';
+import { useMessages } from '@/state/messages';
 
 /** The booking's life so far, as the lobby header shows it (§7.2). */
-const STAGES = [
-  { label: 'Held', done: true },
-  { label: 'Confirmed', done: true },
-  { label: 'Check-in', done: false },
-  { label: 'Result', done: false },
-];
-
 /**
  * P-13 Match lobby — coordinate confirmed participants (§4.3).
  * TEAM-008: roster, open needs, venue, time, check-in state and conversation.
+ * Cash check-in is confirmed by the venue owner — no in-app payment.
  */
 export default function Lobby() {
   const router = useRouter();
-  const { roster, cancelBooking, fillRosterSlot, activeBooking } = useBooking();
+  const { t } = useI18n();
+  const { roster, cancelBooking, fillRosterSlot, activeBooking, checkedIn } = useBooking();
+  const { ensureMatchThread } = useMessages();
   const filled = roster.filter((p) => p.filled).length;
 
+  const threadId = activeBooking?.code?.toLowerCase() ?? 'xl-7k42';
+
+  useEffect(() => {
+    if (!activeBooking) return;
+    ensureMatchThread({
+      id: threadId,
+      title: `${activeBooking.venue} · ${activeBooking.slot} PM`,
+      preview: 'Match lobby open · cash at the gate',
+    });
+  }, [activeBooking, ensureMatchThread, threadId]);
+
+  const stages = [
+    { label: t('lobby.held'), done: true },
+    { label: t('lobby.confirmed'), done: true },
+    { label: t('lobby.cashCheckIn'), done: checkedIn || activeBooking?.status === 'checked_in' },
+    { label: t('lobby.result'), done: false },
+  ];
+
   const onCancel = () => {
-    Alert.alert('Cancel booking', BOOKING.cancellation, [
-      { text: 'Keep', style: 'cancel' },
+    Alert.alert(t('lobby.cancelTitle'), BOOKING.cancellation, [
+      { text: t('common.keep'), style: 'cancel' },
       {
-        text: 'Cancel',
+        text: t('common.cancel'),
         style: 'destructive',
         onPress: () => {
           cancelBooking();
@@ -70,7 +87,7 @@ export default function Lobby() {
         </View>
       </View>
 
-      <StageRail />
+      <StageRail stages={stages} />
 
       <View style={{ gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -126,23 +143,23 @@ export default function Lobby() {
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Button
-          label="Message squad"
+          label={t('lobby.messageSquad')}
           variant="ghost"
           flex={1}
           size={13.5}
           style={{ borderColor: onVoid.line }}
-          onPress={() => router.push('/chat/xl-7k42')}
+          onPress={() => router.push(`/chat/${threadId}`)}
         />
-        <Button label="Cancel booking" variant="danger" flex={1} size={13.5} onPress={onCancel} />
+        <Button label={t('lobby.cancelBooking')} variant="danger" flex={1} size={13.5} onPress={onCancel} />
       </View>
     </Screen>
   );
 }
 
-function StageRail() {
+function StageRail({ stages }: { stages: { label: string; done: boolean }[] }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      {STAGES.map((stage, i) => (
+      {stages.map((stage, i) => (
         <View key={stage.label} style={{ flexDirection: 'row', alignItems: 'center', flex: i === 0 ? 1 : 2 }}>
           {i > 0 ? (
             <View

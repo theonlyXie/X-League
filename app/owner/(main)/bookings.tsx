@@ -19,7 +19,7 @@ export default function OwnerBookings() {
 
   const rows = useMemo(() => {
     const live: DeskBooking[] =
-      activeBooking && activeBooking.status === 'confirmed'
+      activeBooking && activeBooking.status !== 'cancelled'
         ? [
             {
               code: activeBooking.code,
@@ -27,8 +27,8 @@ export default function OwnerBookings() {
               who: card.name,
               pitch: activeBooking.pitch.replace('Pitch ', ''),
               source: 'app',
-              deposit: 'due',
-              status: 'Confirmed',
+              deposit: activeBooking.status === 'checked_in' ? 'paid' : 'due',
+              status: activeBooking.status === 'checked_in' ? 'Checked in' : 'Confirmed',
             },
           ]
         : [];
@@ -111,7 +111,7 @@ function BookingRow({ row }: { row: DeskBooking }) {
           {row.when} · {row.status}
         </Txt>
         <Txt size={12} weight="semibold" color={depositColor}>
-          {row.deposit === 'due' ? 'Cash due' : row.deposit === 'unpaid' ? 'Unpaid' : 'Paid'}
+          {row.deposit === 'due' ? 'Cash · due' : row.deposit === 'unpaid' ? 'Cash · unpaid' : 'Cash · collected'}
         </Txt>
       </View>
     </View>

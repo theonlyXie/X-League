@@ -9,8 +9,10 @@ export type SavedBooking = {
   area: string;
   slot: SlotTime;
   deposit: number;
-  status: 'confirmed' | 'cancelled';
+  status: 'confirmed' | 'cancelled' | 'checked_in';
   confirmedAt: number;
+  /** Server booking id — required for live check-in / cash collection. */
+  bookingId?: string;
 };
 
 export type BookingContextValue = {
@@ -35,6 +37,12 @@ export type BookingContextValue = {
   cancelBooking: () => void;
 
   checkedIn: boolean;
+  /**
+   * Owner confirms cash deposit collected at the gate (BKG-009).
+   * One-way — cash confirmation cannot be undone from the client.
+   */
+  confirmCashCollection: (bookingId?: string) => void | Promise<void>;
+  /** @deprecated use confirmCashCollection */
   toggleCheckIn: () => void;
 
   roster: RosterEntry[];

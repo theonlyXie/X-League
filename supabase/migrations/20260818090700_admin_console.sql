@@ -340,10 +340,10 @@ begin
     coalesce(b.captain_name, '—'),
     initcap(replace(b.source::text, '_', ' ')),
     case
-      when b.state in ('checked_in', 'completed') then 'Paid'
+      when b.state in ('checked_in', 'completed') then 'Cash · collected'
       when b.state = 'confirmed' and b.deposit_egp > 0 then 'Cash · due'
-      when b.state = 'held' then 'Unpaid'
-      when b.state in ('cancelled', 'expired') then 'Refunded'
+      when b.state = 'held' then 'Cash · unpaid'
+      when b.state in ('cancelled', 'expired') then 'Cash · refunded'
       else '—'
     end,
     upper(replace(b.state::text, '_', ' ')),

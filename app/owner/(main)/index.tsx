@@ -1,25 +1,126 @@
-import { Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Txt } from '@/components/Txt';
 import { hitSlopTo44 } from '@/components/ui';
-import { Check, MoreHorizontal } from '@/components/icons';
+import { Check } from '@/components/icons';
 import { burgundy, gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
+import * as api from '@/data/api';
 import { Arrival, ARRIVALS, OPEN_TONIGHT, OWNER_KPIS } from '@/data/owner';
+import { BOOKING_DATE } from '@/data/venue';
+import { cairoDate } from '@/lib/dates';
 import { arrivalsWithLiveBooking } from '@/lib/ownerLive';
+import { isLive } from '@/lib/supabase';
+import { getDefaultVenueId } from '@/lib/venueConfig';
+import { useI18n } from '@/i18n';
 import { useBooking } from '@/state/booking';
 import { useProfile } from '@/state/profile';
+import { useSession } from '@/state/session';
 
 /**
  * O-01 Today — run the current shift (§4.5).
  *
- * The app booking that just landed is the one highlighted item: OWN-003 puts
- * every channel in the same calendar, so the operator's job is knowing which
- * arrival needs what, not reconciling three sources.
+ * Cash only: the owner confirms the deposit was collected at the gate.
+ * No in-app payments — check-in is the payment confirmation.
  */
 export default function OwnerToday() {
-  const { discountActive, toggleDiscount, activeBooking, checkedIn, toggleCheckIn } = useBooking();
+  const { t } = useI18n();
+  const { discountActive, toggleDiscount, activeBooking, checkedIn, confirmCashCollection } = useBooking();
   const { card } = useProfile();
-  const arrivals = arrivalsWithLiveBooking(activeBooking, card.name, ARRIVALS);
+  const { venues } = useSession();
+  const [liveArrivals, setLiveArrivals] = useState<Arrival[] | null>(null);
+  const [kpis, setKpis] = useState<{ label: string; value: string; sub: string; accent: boolean }[]>([
+    ...OWNER_KPIS,
+  ]);
+  const [openTonight, setOpenTonight] = useState(OPEN_TONIGHT);
+  const [loading, setLoading] = useState(isLive);
+  const [collectingId, setCollectingId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+
+  const venueId = venues[0]?.venueId ?? getDefaultVenueId();
+
+  const loadLive = useCallback(async () => {
+    if (!isLive || !venueId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const date = cairoDate();
+      let arrivals = await api.ownerArrivals(venueId, date);
+      let summary = await api.ownerSummary(venueId, date);
+      if (!arrivals.length) {
+        arrivals = await api.ownerArrivals(venueId, BOOKING_DATE);
+        summary = await api.ownerSummary(venueId, BOOKING_DATE);
+      }
+      setLiveArrivals(arrivals.map(mapApiArrival));
+      setKpis([
+        {
+          label: 'OCCUPANCY',
+          value: `${summary.occupancyPct}%`,
+          sub: `${summary.openSlots} slots open`,
+          accent: false,
+        },
+        {
+          label: 'CASH DUE',
+          value: String(summary.cashDueEgp),
+          sub: `EGP · ${summary.cashGates} gates`,
+          accent: true,
+        },
+        {
+          label: 'CONFLICTS',
+          value: String(summary.conflicts),
+          sub: 'one calendar',
+          accent: false,
+        },
+      ]);
+      setOpenTonight({
+        count: summary.openSlots,
+        detail: summary.openSlots ? 'Open hours still saleable tonight' : 'Fully booked tonight',
+      });
+      setCheckedIds(new Set(arrivals.filter((a) => a.checkedIn).map((a) => a.bookingId)));
+    } catch {
+      setLiveArrivals(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [venueId]);
+
+  useEffect(() => {
+    void loadLive();
+  }, [loadLive]);
+
+  const arrivals = useMemo(() => {
+    if (liveArrivals) {
+      if (!activeBooking || activeBooking.status === 'cancelled') return liveArrivals;
+      const has = liveArrivals.some((a) => a.justBooked?.code === activeBooking.code);
+      if (has) return liveArrivals;
+      return [arrivalsWithLiveBooking(activeBooking, card.name, [])[0]!, ...liveArrivals];
+    }
+    return arrivalsWithLiveBooking(activeBooking, card.name, ARRIVALS);
+  }, [liveArrivals, activeBooking, card.name]);
+
+  const onCollect = async (arrival: Arrival) => {
+    const id = arrival.bookingId;
+    if (id && checkedIds.has(id)) return;
+    if (!id && checkedIn && arrival.justBooked?.code === activeBooking?.code) return;
+
+    setCollectingId(id ?? arrival.justBooked?.code ?? 'local');
+    try {
+      await confirmCashCollection(id);
+      if (id) setCheckedIds((prev) => new Set(prev).add(id));
+      if (isLive) await loadLive();
+    } finally {
+      setCollectingId(null);
+    }
+  };
+
+  const isCollected = (arrival: Arrival) => {
+    if (arrival.bookingId && checkedIds.has(arrival.bookingId)) return true;
+    if (arrival.justBooked?.code === activeBooking?.code && checkedIn) return true;
+    if (arrival.checkedIn) return true;
+    return false;
+  };
 
   return (
     <ScrollView
@@ -27,8 +128,26 @@ export default function OwnerToday() {
       contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 18, paddingBottom: 24, gap: 18 }}
       showsVerticalScrollIndicator={false}
     >
+      <View
+        style={{
+          padding: 12,
+          borderRadius: radius.panel,
+          backgroundColor: 'rgba(198,163,75,.1)',
+          borderWidth: 1,
+          borderColor: 'rgba(198,163,75,.35)',
+          gap: 4,
+        }}
+      >
+        <Txt size={12} weight="bold" color={gold.ink}>
+          {t('owner.cashBannerTitle')}
+        </Txt>
+        <Txt size={11.5} color={onOperative.muted}>
+          {t('owner.cashBannerBody')}
+        </Txt>
+      </View>
+
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        {OWNER_KPIS.map((kpi) => (
+        {kpis.map((kpi) => (
           <View
             key={kpi.label}
             style={{
@@ -57,21 +176,35 @@ export default function OwnerToday() {
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <Txt size={10} weight="semibold" em={0.16} upper color={onOperative.faint}>
-            Next arrivals
+            {t('owner.nextArrivals')}
           </Txt>
           <Txt size={11} color={onOperative.dim}>
-            live
+            {isLive ? t('owner.liveCash') : t('owner.demoCash')}
           </Txt>
         </View>
 
-        {arrivals.map((arrival, i) => (
-          <ArrivalCard
-            key={`${arrival.time}-${arrival.justBooked?.code ?? i}`}
-            arrival={arrival}
-            checkedIn={checkedIn}
-            onCheckIn={toggleCheckIn}
-          />
-        ))}
+        {loading ? (
+          <View style={{ padding: 24, alignItems: 'center' }}>
+            <ActivityIndicator color={gold.base} />
+          </View>
+        ) : (
+          arrivals.map((arrival, i) => (
+            <ArrivalCard
+              key={`${arrival.time}-${arrival.justBooked?.code ?? arrival.bookingId ?? i}`}
+              arrival={arrival}
+              collected={isCollected(arrival)}
+              busy={collectingId === (arrival.bookingId ?? arrival.justBooked?.code ?? 'local')}
+              onCollect={() => void onCollect(arrival)}
+              labels={{
+                appCash: t('owner.appBookingCash'),
+                checkIn: (amount) => t('owner.checkInCollect', { amount }),
+                confirming: t('owner.confirming'),
+                collected: t('owner.cashCollected'),
+                collectedLine: (amount) => t('owner.cashCollectedLine', { amount }),
+              }}
+            />
+          ))
+        )}
       </View>
 
       <View
@@ -88,16 +221,15 @@ export default function OwnerToday() {
       >
         <View style={{ flex: 1, gap: 3 }}>
           <Txt size={13} weight="semibold" color={ink}>
-            {OPEN_TONIGHT.count} slots open tonight
+            {t('owner.openTonight', { count: openTonight.count })}
           </Txt>
           <Txt size={11.5} color={onOperative.muted}>
-            {OPEN_TONIGHT.detail}
+            {openTonight.detail}
           </Txt>
         </View>
-        {/* OWN-007: a price lever the owner can pull without phoning captains. */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Discount the open slots"
+          accessibilityLabel={t('owner.discount')}
           onPress={toggleDiscount}
           hitSlop={hitSlopTo44(34)}
           style={({ pressed }) => ({
@@ -111,29 +243,67 @@ export default function OwnerToday() {
           })}
         >
           <Txt size={12} weight="semibold" color={discountActive ? ink : operative.bg}>
-            {discountActive ? '10% off live' : 'Discount'}
+            {discountActive ? t('owner.discountLive') : t('owner.discount')}
           </Txt>
         </Pressable>
-        {discountActive ? (
-          <Txt size={11} color={gold.ink}>
-            Open slots discounted for the next hour — phone list updated
-          </Txt>
-        ) : null}
       </View>
     </ScrollView>
   );
 }
 
+function mapApiArrival(a: api.Arrival): Arrival {
+  const starts = new Date(a.startsAt);
+  const hour = a.hour > 12 ? a.hour - 12 : a.hour;
+  const source =
+    a.source === 'app'
+      ? 'app'
+      : a.source === 'phone' || a.source === 'whatsapp'
+        ? 'phone'
+        : a.source === 'block'
+          ? 'block'
+          : 'walk';
+  return {
+    time: `${hour}:00`,
+    meridiem: a.hour >= 12 ? 'PM' : 'AM',
+    title: `${a.captainName ?? 'Guest'} · ${a.pitchLabel}`,
+    source,
+    badge: source === 'app' ? undefined : source === 'phone' ? 'PHONE' : source === 'walk' ? 'DESK' : 'BLOCK',
+    detail: '5-a-side · 60 min',
+    money:
+      a.checkedIn || a.state === 'checked_in' || a.state === 'completed'
+        ? { text: `EGP ${a.depositEgp} cash collected`, tone: 'due' }
+        : a.depositEgp > 0
+          ? { text: `EGP ${a.depositEgp} cash to collect at gate`, tone: 'due' }
+          : undefined,
+    justBooked: a.source === 'app' && a.code ? { code: a.code } : undefined,
+    bookingId: a.bookingId,
+    checkedIn: a.checkedIn,
+    depositEgp: a.depositEgp,
+  };
+}
+
 function ArrivalCard({
   arrival,
-  checkedIn,
-  onCheckIn,
+  collected,
+  busy,
+  onCollect,
+  labels,
 }: {
   arrival: Arrival;
-  checkedIn: boolean;
-  onCheckIn: () => void;
+  collected: boolean;
+  busy: boolean;
+  onCollect: () => void;
+  labels: {
+    appCash: string;
+    checkIn: (amount: number) => string;
+    confirming: string;
+    collected: string;
+    collectedLine: (amount: number) => string;
+  };
 }) {
   const highlighted = !!arrival.justBooked;
+  const needsCash = !!arrival.money || highlighted || !!arrival.bookingId;
+  const deposit = arrival.depositEgp ?? (arrival.money?.text.match(/\d+/)?.[0] ? Number(arrival.money.text.match(/\d+/)![0]) : 100);
 
   return (
     <View
@@ -143,15 +313,6 @@ function ArrivalCard({
         borderWidth: 1,
         borderColor: highlighted ? 'rgba(198,163,75,.6)' : onOperative.hairline,
         overflow: 'hidden',
-        ...(highlighted
-          ? {
-              shadowColor: '#C6A34B',
-              shadowOpacity: 0.14,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2,
-            }
-          : null),
       }}
     >
       {arrival.justBooked ? (
@@ -169,7 +330,7 @@ function ArrivalCard({
         >
           <View style={{ width: 6, height: 6, borderRadius: radius.pill, backgroundColor: gold.base }} />
           <Txt size={10} weight="bold" em={0.14} color={gold.ink}>
-            JUST BOOKED IN THE APP
+            {labels.appCash}
           </Txt>
           <View style={{ flex: 1 }} />
           <Txt size={10.5} color={gold.ink} style={{ fontFamily: mono }}>
@@ -194,7 +355,6 @@ function ArrivalCard({
               <Txt size={14} weight="bold" color={ink}>
                 {arrival.title}
               </Txt>
-              {/* OWN-006: every occupancy item names its source. */}
               {arrival.badge ? (
                 <View
                   style={{
@@ -218,73 +378,40 @@ function ArrivalCard({
               <Txt
                 size={11.5}
                 weight="semibold"
-                color={arrival.money.tone === 'due' ? gold.ink : burgundy.ink}
+                color={collected ? onOperative.muted : arrival.money.tone === 'due' ? gold.ink : burgundy.ink}
               >
-                {arrival.money.text}
+                {collected ? labels.collectedLine(deposit) : arrival.money.text}
               </Txt>
             ) : null}
           </View>
         </View>
 
-        {highlighted ? (
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {/* BKG-009: the venue-authorised user checks in and takes the cash. */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ checked: checkedIn }}
-              accessibilityLabel={checkedIn ? 'Checked in' : 'Check in and collect EGP 100'}
-              onPress={onCheckIn}
-              hitSlop={hitSlopTo44(38)}
-              style={({ pressed }) => ({
-                flex: 1,
-                height: 38,
-                borderRadius: radius.dense,
-                backgroundColor: checkedIn ? '#241f14' : void_.bg,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                opacity: pressed ? 0.85 : 1,
-              })}
-            >
-              <Txt size={12.5} weight="semibold" color={operative.bg}>
-                {checkedIn ? 'Checked in' : 'Check in · collect 100'}
-              </Txt>
-              {checkedIn ? <Check size={13} color={gold.base} /> : null}
-            </Pressable>
-            <OwnerGhostButton label="Move" width={80} />
-            <OwnerGhostButton label="More actions" width={44} icon />
-          </View>
+        {needsCash && arrival.source !== 'block' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ checked: collected, disabled: collected || busy }}
+            accessibilityLabel={collected ? labels.collected : labels.checkIn(deposit)}
+            disabled={collected || busy}
+            onPress={onCollect}
+            hitSlop={hitSlopTo44(38)}
+            style={({ pressed }) => ({
+              height: 40,
+              borderRadius: radius.dense,
+              backgroundColor: collected ? '#241f14' : void_.bg,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              opacity: pressed || busy ? 0.85 : 1,
+            })}
+          >
+            <Txt size={12.5} weight="semibold" color={operative.bg}>
+              {collected ? labels.collected : busy ? labels.confirming : labels.checkIn(deposit)}
+            </Txt>
+            {collected ? <Check size={13} color={gold.base} /> : null}
+          </Pressable>
         ) : null}
       </View>
     </View>
-  );
-}
-
-function OwnerGhostButton({ label, width, icon }: { label: string; width: number; icon?: boolean }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={hitSlopTo44(38)}
-      style={({ pressed }) => ({
-        width,
-        height: 38,
-        borderRadius: radius.dense,
-        borderWidth: 1,
-        borderColor: onOperative.line,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: pressed ? 0.7 : 1,
-      })}
-    >
-      {icon ? (
-        <MoreHorizontal size={16} color={onOperative.muted} />
-      ) : (
-        <Txt size={12.5} weight="semibold" color={ink}>
-          {label}
-        </Txt>
-      )}
-    </Pressable>
   );
 }

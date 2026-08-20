@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
+import { useI18n } from '@/i18n';
 import { ink, onOperative, operative, radius } from '@/theme/tokens';
 import { useProfile } from '@/state/profile';
 import { useMyVenueSubmission } from '@/state/venues';
@@ -13,6 +14,7 @@ import { useMyVenueSubmission } from '@/state/venues';
  */
 export default function OwnerRegister() {
   const router = useRouter();
+  const { t } = useI18n();
   const { profile } = useProfile();
   const { submitVenue, mine } = useMyVenueSubmission();
   const [name, setName] = useState('');
@@ -27,12 +29,12 @@ export default function OwnerRegister() {
     return (
       <Screen surface="operative" contentStyle={{ padding: 22, gap: 16 }}>
         <Txt size={22} weight="bold" color={ink}>
-          Already submitted
+          {t('ownerRegister.alreadyTitle')}
         </Txt>
         <Txt size={14} color={onOperative.secondary}>
-          {mine.name} is waiting for admin approval. You will get owner access once it is live.
+          {t('ownerRegister.alreadyBody', { name: mine.name })}
         </Txt>
-        <Button label="View status" variant="operative" onPress={() => router.replace('/owner/pending')} />
+        <Button label={t('ownerRegister.viewStatus')} variant="operative" onPress={() => router.replace('/owner/pending')} />
       </Screen>
     );
   }
@@ -50,17 +52,17 @@ export default function OwnerRegister() {
   return (
     <Screen surface="operative" contentStyle={{ paddingTop: 18, paddingHorizontal: 22, paddingBottom: 32, gap: 20 }}>
       <View style={{ gap: 6 }}>
-        <Eyebrow color={onOperative.faint}>Owner signup</Eyebrow>
+        <Eyebrow color={onOperative.faint}>{t('ownerRegister.kicker')}</Eyebrow>
         <Txt size={26} weight="bold" em={-0.02} color={ink}>
-          Register your venue
+          {t('ownerRegister.title')}
         </Txt>
         <Txt size={14} lh={1.5} color={onOperative.secondary}>
-          Add your venue name and wait for X League ops to approve the listing. Until then, it will not appear in player search.
+          {t('ownerRegister.body')}
         </Txt>
       </View>
 
-      <Field label="Venue name" value={name} onChange={setName} placeholder="e.g. Stadium One" />
-      <Field label="Area" value={area} onChange={setArea} placeholder="e.g. Nasr City" />
+      <Field label={t('ownerRegister.venueName')} value={name} onChange={setName} placeholder="e.g. Stadium One" />
+      <Field label={t('ownerRegister.area')} value={area} onChange={setArea} placeholder="e.g. Nasr City" />
 
       <View
         style={{
@@ -73,15 +75,19 @@ export default function OwnerRegister() {
         }}
       >
         <Txt size={12} weight="semibold" color={ink}>
-          What happens next
+          {t('ownerRegister.nextTitle')}
         </Txt>
         <Txt size={12} color={onOperative.muted} lh={1.45}>
-          1. Admin reviews your submission{'\n'}2. On approval, your venue goes live in Play search{'\n'}3. You get the owner calendar and bookings desk
+          {t('ownerRegister.nextBody')}
         </Txt>
       </View>
 
-      <Button label={busy ? 'Submitting…' : 'Submit for approval'} disabled={busy || !name.trim()} onPress={onSubmit} />
-      <Button label="Back to player mode" variant="ghost" onPress={() => router.replace('/')} />
+      <Button
+        label={busy ? t('ownerRegister.submitting') : t('ownerRegister.submit')}
+        disabled={busy || !name.trim()}
+        onPress={onSubmit}
+      />
+      <Button label={t('ownerRegister.backPlayer')} variant="ghost" onPress={() => router.replace('/')} />
     </Screen>
   );
 }
