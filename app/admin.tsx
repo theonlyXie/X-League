@@ -11,6 +11,19 @@ import { AdminSectionBody } from '@/components/adminSections';
 import { isLive } from '@/lib/supabase';
 import { useAdminConsole } from '@/state/adminConsole';
 import { useSession } from '@/state/session';
+import { useI18n } from '@/i18n';
+import type { I18nKey } from '@/i18n';
+
+const ADMIN_NAV_KEYS: Record<string, I18nKey> = {
+  Overview: 'admin.overview',
+  Venues: 'admin.venues',
+  'Users & teams': 'admin.users',
+  Tournaments: 'admin.tournaments',
+  'Match desk': 'admin.matchDesk',
+  Moderation: 'admin.moderation',
+  'Points & seasons': 'admin.points',
+  Reports: 'admin.reports',
+};
 
 /**
  * A-01 Overview — monitor the platform (§4.6).
@@ -90,13 +103,14 @@ export default function AdminConsole() {
 
 function AdminDenied() {
   const router = useRouter();
+  const { t } = useI18n();
   return (
     <View style={{ flex: 1, backgroundColor: operative.bg, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 }}>
       <Txt size={22} weight="bold" color={ink}>
-        Admin access required
+        {t('admin.accessRequired')}
       </Txt>
       <Txt size={14} color={onOperative.muted} style={{ textAlign: 'center', maxWidth: 360 }}>
-        This console is restricted to platform operators. Sign in with an admin account or continue in player mode.
+        {t('admin.accessBody')}
       </Txt>
       <Pressable
         accessibilityRole="button"
@@ -111,7 +125,7 @@ function AdminDenied() {
         })}
       >
         <Txt size={13} weight="semibold" color={operative.bg}>
-          Back to app
+          {t('admin.backApp')}
         </Txt>
       </Pressable>
     </View>
@@ -130,6 +144,8 @@ function Rail({
   user: { role: string; scope: string };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const labelOf = (label: string) => (ADMIN_NAV_KEYS[label] ? t(ADMIN_NAV_KEYS[label]!) : label);
 
   return (
     <View
@@ -143,17 +159,17 @@ function Rail({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="X League admin. Leave the console"
+        accessibilityLabel={t('admin.backApp')}
         onPress={() => router.replace('/')}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8 }}
       >
         <VoidMark size={22} rings={1} />
         <View style={{ gap: 1 }}>
           <Txt size={12.5} weight="bold" em={0.02} color={operative.bg}>
-            X LEAGUE
+            {t('admin.brand')}
           </Txt>
           <Txt size={9} weight="semibold" em={0.18} color={gold.base}>
-            ADMIN
+            {t('admin.admin')}
           </Txt>
         </View>
       </Pressable>
@@ -161,12 +177,13 @@ function Rail({
       <View style={{ gap: 2 }}>
         {nav.map((item) => {
           const on = item.label === section;
+          const shown = labelOf(item.label);
           return (
             <Pressable
               key={item.label}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
-              accessibilityLabel={item.badge ? `${item.label}, ${item.badge} items` : item.label}
+              accessibilityLabel={item.badge ? `${shown}, ${item.badge}` : shown}
               onPress={() => onSection(item.label)}
               style={{
                 paddingVertical: 9,
@@ -179,7 +196,7 @@ function Rail({
               }}
             >
               <Txt size={12.5} weight={on ? 'semibold' : 'medium'} color={on ? gold.base : 'rgba(243,238,229,.62)'}>
-                {item.label}
+                {shown}
               </Txt>
               {item.badge ? (
                 <Txt size={10} color={gold.base}>
@@ -203,7 +220,7 @@ function Rail({
         }}
       >
         <Txt size={10} weight="semibold" em={0.14} color={onVoid.dim}>
-          SIGNED IN
+          {t('admin.signedIn')}
         </Txt>
         <Txt size={12} weight="semibold" color={operative.bg}>
           {user.role}
@@ -213,7 +230,7 @@ function Rail({
         </Txt>
         {isLive ? (
           <Txt size={9.5} color={gold.base} style={{ marginTop: 4 }}>
-            Live · Supabase
+            {t('admin.liveSupabase')}
           </Txt>
         ) : null}
       </View>

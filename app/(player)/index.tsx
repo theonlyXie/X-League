@@ -9,12 +9,14 @@ import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { BOOKING, INVITATION, PLAYER, PROGRESSION } from '@/data/player';
 import { openVenueNavigation } from '@/lib/maps';
 import { useBooking } from '@/state/booking';
+import { useI18n } from '@/i18n';
 import { useProfile } from '@/state/profile';
 import { useVenues } from '@/state/venues';
 
 /** P-02 Home — show immediate reasons to return (§4.2). */
 export default function Home() {
   const router = useRouter();
+  const { t } = useI18n();
   const { profile, card } = useProfile();
   const { activeBooking, selectVenue } = useBooking();
   const { playerVenues } = useVenues();
@@ -30,13 +32,13 @@ export default function Home() {
         <View style={{ gap: 3 }}>
           <Eyebrow>{PLAYER.today}</Eyebrow>
           <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-            {PLAYER.greeting}, {profile.firstName}
+            {t('home.greeting')}, {profile.firstName}
           </Txt>
         </View>
         <Link href="/me" asChild>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Your card, level ${PROGRESSION.level}`}
+            accessibilityLabel={t('home.yourCard')}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -64,7 +66,7 @@ export default function Home() {
               </Txt>
             </View>
             <Txt size={10} weight="bold" em={0.1} color={gold.base}>
-              LVL {PROGRESSION.level}
+              {t('home.level', { level: PROGRESSION.level })}
             </Txt>
           </Pressable>
         </Link>

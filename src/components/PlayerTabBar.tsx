@@ -1,25 +1,19 @@
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
-import { gold, onVoid, radius, void_ } from '@/theme/tokens';
+import { useI18n } from '@/i18n';
+import { gold, onVoid, void_ } from '@/theme/tokens';
 import type { TabBarProps } from './tabBarTypes';
 
 /**
- * The five-tab bar from option 1h, model one — labelled tabs with a gold tick
- * on the active one, matching the spec's player IA (§3.1) one-to-one.
- *
- * Cups and Chat open their own tabs (P-15–P-20, P-10–P-14).
+ * The five-tab bar from option 1h — labelled tabs with a gold tick on the active one.
  */
-const ITEMS: { label: string; route?: string }[] = [
-  { label: 'Home', route: 'index' },
-  { label: 'Play', route: 'play' },
-  { label: 'Cups', route: 'cups' },
-  { label: 'Chat', route: 'chat' },
-  { label: 'Me', route: 'me' },
-];
+const ROUTES = ['index', 'play', 'cups', 'chat', 'me'] as const;
+const LABELS = ['tabs.home', 'tabs.play', 'tabs.cups', 'tabs.chat', 'tabs.me'] as const;
 
 export function PlayerTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const activeRoute = state.routes[state.index]?.name;
 
   return (
@@ -35,21 +29,20 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
         paddingHorizontal: 6,
       }}
     >
-      {ITEMS.map((item) => {
-        const active = !!item.route && item.route === activeRoute;
+      {ROUTES.map((route, i) => {
+        const label = t(LABELS[i]!);
+        const active = route === activeRoute;
         const color = active ? gold.base : onVoid.dim;
-        const enabled = !!item.route;
 
         return (
           <Pressable
-            key={item.label}
+            key={route}
             accessibilityRole="tab"
-            accessibilityLabel={item.label}
-            accessibilityState={{ selected: active, disabled: !enabled }}
-            disabled={!enabled}
+            accessibilityLabel={label}
+            accessibilityState={{ selected: active }}
             onPress={() => {
-              if (!item.route || active) return;
-              navigation.navigate(item.route as never);
+              if (active) return;
+              navigation.navigate(route as never);
             }}
             style={{ flex: 1, alignItems: 'center', paddingTop: 11, gap: 7 }}
           >
@@ -62,7 +55,7 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
               }}
             />
             <Txt size={10.5} weight="semibold" color={color}>
-              {item.label}
+              {label}
             </Txt>
           </Pressable>
         );

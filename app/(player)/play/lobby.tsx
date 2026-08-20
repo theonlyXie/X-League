@@ -7,6 +7,7 @@ import { Button, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { BOOKING, LOBBY_CHAT, RosterEntry } from '@/data/player';
+import { useI18n } from '@/i18n';
 import { useBooking } from '@/state/booking';
 
 /** The booking's life so far, as the lobby header shows it (§7.2). */
@@ -17,21 +18,22 @@ import { useBooking } from '@/state/booking';
  */
 export default function Lobby() {
   const router = useRouter();
+  const { t } = useI18n();
   const { roster, cancelBooking, fillRosterSlot, activeBooking, checkedIn } = useBooking();
   const filled = roster.filter((p) => p.filled).length;
 
   const stages = [
-    { label: 'Held', done: true },
-    { label: 'Confirmed', done: true },
-    { label: 'Cash check-in', done: checkedIn || activeBooking?.status === 'checked_in' },
-    { label: 'Result', done: false },
+    { label: t('lobby.held'), done: true },
+    { label: t('lobby.confirmed'), done: true },
+    { label: t('lobby.cashCheckIn'), done: checkedIn || activeBooking?.status === 'checked_in' },
+    { label: t('lobby.result'), done: false },
   ];
 
   const onCancel = () => {
-    Alert.alert('Cancel booking', BOOKING.cancellation, [
-      { text: 'Keep', style: 'cancel' },
+    Alert.alert(t('lobby.cancelTitle'), BOOKING.cancellation, [
+      { text: t('common.keep'), style: 'cancel' },
       {
-        text: 'Cancel',
+        text: t('common.cancel'),
         style: 'destructive',
         onPress: () => {
           cancelBooking();
@@ -127,14 +129,14 @@ export default function Lobby() {
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Button
-          label="Message squad"
+          label={t('lobby.messageSquad')}
           variant="ghost"
           flex={1}
           size={13.5}
           style={{ borderColor: onVoid.line }}
           onPress={() => router.push('/chat/xl-7k42')}
         />
-        <Button label="Cancel booking" variant="danger" flex={1} size={13.5} onPress={onCancel} />
+        <Button label={t('lobby.cancelBooking')} variant="danger" flex={1} size={13.5} onPress={onCancel} />
       </View>
     </Screen>
   );

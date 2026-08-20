@@ -9,6 +9,8 @@ import { StrokeLine } from '@/components/StrokeLine';
 import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { PROGRESSION } from '@/data/player';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
+import { useI18n } from '@/i18n';
 import { useProfile } from '@/state/profile';
 import { useMyVenueSubmission } from '@/state/venues';
 
@@ -20,6 +22,7 @@ import { useMyVenueSubmission } from '@/state/venues';
  */
 export default function Me() {
   const router = useRouter();
+  const { t } = useI18n();
   const { card, profile } = useProfile();
   const { mine } = useMyVenueSubmission();
   const explained = card.attributes.find((a) => a.key === card.explained)!;
@@ -27,12 +30,12 @@ export default function Me() {
 
   const ownerDetail =
     mine?.status === 'approved'
-      ? `${mine.name} · calendar, arrivals and CRM`
+      ? t('me.ownerApproved', { name: mine.name })
       : mine?.status === 'pending'
-        ? `${mine.name} · awaiting admin approval`
+        ? t('me.ownerPending', { name: mine.name })
         : mine?.status === 'rejected'
-          ? 'Listing not approved · submit again'
-          : 'Stadium One demo · or register your venue';
+          ? t('me.ownerRejected')
+          : t('me.ownerDemo');
 
   const openOwner = () => {
     if (mine?.status === 'pending' || mine?.status === 'rejected') router.push('/owner/pending');
@@ -43,22 +46,29 @@ export default function Me() {
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20, alignItems: 'center' }}>
       <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
-          Your card
+          {t('me.yourCard')}
         </Txt>
         <Txt size={11.5} color={onVoid.dim}>
-          Season 1
+          {t('me.season')}
         </Txt>
       </View>
 
       <VoidCard card={card} />
 
       <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
-          <StatTile label="FORM" value={`${Math.min(5, Math.max(1, Math.floor(profile.verifiedMatches / 4) || 1))}`} gold icon />
-          <StatTile label="VERIFIED" value={`${profile.verifiedMatches} matches`} />
-          <StatTile label="RATERS" value={`${profile.verifiedMatches > 0 ? profile.verifiedMatches * 2 : 0}`} />
+        <StatTile
+          label={t('me.form')}
+          value={`${Math.min(5, Math.max(1, Math.floor(profile.verifiedMatches / 4) || 1))}`}
+          gold
+          icon
+        />
+        <StatTile label={t('me.verified')} value={t('me.matches', { count: profile.verifiedMatches })} />
+        <StatTile
+          label={t('me.raters')}
+          value={`${profile.verifiedMatches > 0 ? profile.verifiedMatches * 2 : 0}`}
+        />
       </View>
 
-      {/* §5.1: every displayed score exposes where it came from. */}
       <View
         style={{
           width: '100%',
@@ -71,33 +81,36 @@ export default function Me() {
         }}
       >
         <Eyebrow>
-          Where {explained.value} {card.explained} comes from
+          {t('me.evidenceTitle', { value: explained.value, attr: card.explained })}
         </Eyebrow>
-        <EvidenceBar label="Match evidence" pct={evidencePct} color={gold.base} />
-        <EvidenceBar label="Self-assessment" pct={card.selfAssessedPct} color="rgba(198,163,75,.45)" />
+        <EvidenceBar label={t('me.matchEvidence')} pct={evidencePct} color={gold.base} />
+        <EvidenceBar label={t('me.selfAssessment')} pct={card.selfAssessedPct} color="rgba(198,163,75,.45)" />
         <Txt size={11.5} lh={1.55} color={onVoid.dim}>
-          Individual raters stay anonymous. No single match can move an attribute more than ±2.
+          {t('me.evidenceNote')}
         </Txt>
       </View>
 
-      {/* RBAC-005 / §3.1: hold more than one role, switch without signing out. */}
       <View style={{ width: '100%', gap: 12 }}>
-        <Eyebrow>Workspace</Eyebrow>
+        <LanguageSwitch />
+      </View>
+
+      <View style={{ width: '100%', gap: 12 }}>
+        <Eyebrow>{t('me.workspace')}</Eyebrow>
         <View style={{ gap: 8 }}>
           <WorkspaceRow
-            title="My bookings"
-            detail="Active holds, confirmations and history"
+            title={t('me.myBookings')}
+            detail={t('me.myBookingsDetail')}
             onPress={() => router.push('/bookings')}
           />
           <WorkspaceRow
-            title="Register your venue"
-            detail="Submit a listing and wait for admin approval"
+            title={t('me.registerVenue')}
+            detail={t('me.registerDetail')}
             onPress={() => router.push('/owner/register')}
           />
-          <WorkspaceRow title="Owner mode" detail={ownerDetail} onPress={openOwner} />
+          <WorkspaceRow title={t('me.ownerMode')} detail={ownerDetail} onPress={openOwner} />
           <WorkspaceRow
-            title="Admin console"
-            detail="Platform operations · audited"
+            title={t('me.adminConsole')}
+            detail={t('me.adminDetail')}
             onPress={() => router.push('/admin')}
           />
         </View>

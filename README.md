@@ -129,8 +129,12 @@ arm64-v8a, debug-signed for sideloading. Or: `npx eas-cli build --platform andro
 
 ## Not yet built
 
-- Arabic copy (RTL toggle persists; translation ships later)
 - Chat / cups backend sync (local fixtures + AsyncStorage work offline)
+
+## Language
+
+English and Arabic. Switch on **Me** or **Owner → More**. Arabic turns on RTL layout.
+Native apps may need a reload after switching for full RTL chrome.
 
 ## Payments
 

@@ -1,19 +1,20 @@
 import { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { Txt } from '@/components/Txt';
+import { useI18n } from '@/i18n';
 import { ink, onOperative, operative, radius } from '@/theme/tokens';
 import { OWNER_REPORTS, PITCHES, STAFF } from '@/data/ownerOps';
 import { useProfile } from '@/state/profile';
-import { useSettings } from '@/state/settings';
 
 /**
  * O-05–O-08 Staff, pitches, reports and settings on one More surface.
  */
 export default function OwnerMore() {
   const router = useRouter();
+  const { t } = useI18n();
   const { replayOnboarding } = useProfile();
-  const { rtl, setRtl } = useSettings();
 
   return (
     <ScrollView
@@ -21,44 +22,35 @@ export default function OwnerMore() {
       contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28, gap: 22 }}
       showsVerticalScrollIndicator={false}
     >
-      <Section title="Staff · O-05">
+      <Section title={t('owner.staff')}>
         {STAFF.map((s) => (
           <Row key={s.name} title={s.name} detail={`${s.role} · ${s.pin}`} />
         ))}
       </Section>
 
-      <Section title="Pitches · O-06">
+      <Section title={t('owner.pitches')}>
         {PITCHES.map((p) => (
-          <Row key={p.name} title={`${p.name} · EGP ${p.hourly}/hr`} detail={`${p.surface} · ${p.note}`} />
+          <Row
+            key={p.name}
+            title={`${p.name} · ${t('common.egp')} ${p.hourly}/hr`}
+            detail={`${p.surface} · ${p.note}`}
+          />
         ))}
       </Section>
 
-      <Section title="Reports · O-07">
+      <Section title={t('owner.reports')}>
         {OWNER_REPORTS.map((r) => (
           <Row key={r.label} title={`${r.label} · ${r.value}`} detail={r.detail} />
         ))}
       </Section>
 
-      <Section title="Settings · O-08">
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityState={{ checked: rtl }}
-          accessibilityLabel="Arabic layout"
-          onPress={() => setRtl(!rtl)}
-          style={moreRow}
-        >
-          <View style={{ flex: 1, gap: 3 }}>
-            <Txt size={14} weight="semibold" color={ink}>
-              Arabic RTL
-            </Txt>
-            <Txt size={12} color={onOperative.muted}>
-              {rtl ? 'On for this session — full translation ships with the API layer' : 'Off · English LTR'}
-            </Txt>
-          </View>
-        </Pressable>
+      <Section title={t('owner.settings')}>
+        <View style={moreRow}>
+          <LanguageSwitch surface="operative" />
+        </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Replay player onboarding"
+          accessibilityLabel={t('owner.replayOnboarding')}
           onPress={async () => {
             await replayOnboarding();
             router.replace('/onboarding');
@@ -67,25 +59,25 @@ export default function OwnerMore() {
         >
           <View style={{ flex: 1, gap: 3 }}>
             <Txt size={14} weight="semibold" color={ink}>
-              Replay player onboarding
+              {t('owner.replayOnboarding')}
             </Txt>
             <Txt size={12} color={onOperative.muted}>
-              P-01 self-assessment
+              {t('owner.replayDetail')}
             </Txt>
           </View>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open admin console"
+          accessibilityLabel={t('owner.openAdmin')}
           onPress={() => router.push('/admin')}
           style={moreRow}
         >
           <View style={{ flex: 1, gap: 3 }}>
             <Txt size={14} weight="semibold" color={ink}>
-              Admin console
+              {t('owner.openAdmin')}
             </Txt>
             <Txt size={12} color={onOperative.muted}>
-              Platform operations · audited
+              {t('me.adminDetail')}
             </Txt>
           </View>
         </Pressable>

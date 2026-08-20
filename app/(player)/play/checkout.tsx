@@ -10,6 +10,7 @@ import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
 import { quoteFromHourly } from '@/lib/venueQuote';
+import { useI18n } from '@/i18n';
 import { useBooking } from '@/state/booking';
 
 /**
@@ -21,6 +22,7 @@ import { useBooking } from '@/state/booking';
  */
 export default function Checkout() {
   const router = useRouter();
+  const { t } = useI18n();
   const { slotLabel, slotEndLabel, holdText, hold, releaseHold, confirmBooking, venueName, venueHourly } = useBooking();
   const quote = quoteFromHourly(venueHourly);
   const expired = hold === 'expired';
@@ -33,7 +35,7 @@ export default function Checkout() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back to pitch"
+          accessibilityLabel={t('common.back')}
           onPress={() => router.back()}
           hitSlop={8}
           style={{
@@ -49,17 +51,13 @@ export default function Checkout() {
           <ArrowLeft size={16} color={onVoid.secondary} />
         </Pressable>
         <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
-          Confirm your slot
+          {t('checkout.title')}
         </Txt>
       </View>
 
       <View
         accessibilityRole="alert"
-        accessibilityLabel={
-          expired
-            ? 'Your hold expired. The slot is back on sale'
-            : `Slot held for you, ${holdText} remaining`
-        }
+        accessibilityLabel={expired ? t('checkout.expired') : `${t('checkout.held')}, ${holdText}`}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -78,7 +76,7 @@ export default function Checkout() {
           <PulseDot color={gold.base} />
         )}
         <Txt size={12.5} color="rgba(243,238,229,.72)" style={{ flex: 1 }}>
-          {expired ? 'Your hold expired — the slot is back on sale' : 'Slot held for you'}
+          {expired ? t('checkout.expired') : t('checkout.held')}
         </Txt>
         <Txt
           size={14}
@@ -100,15 +98,14 @@ export default function Checkout() {
           gap: 14,
         }}
       >
-        <DetailRow label="Venue" value={`${venueName} · ${BOOKING.pitch}`} />
-        <DetailRow label="Date" value={BOOKING.date} />
-        <DetailRow label="Time" value={`${slotLabel} – ${slotEndLabel}`} />
-        <DetailRow label="Format" value={BOOKING.format} />
+        <DetailRow label={t('checkout.venue')} value={`${venueName} · ${BOOKING.pitch}`} />
+        <DetailRow label={t('checkout.date')} value={BOOKING.date} />
+        <DetailRow label={t('checkout.time')} value={`${slotLabel} – ${slotEndLabel}`} />
+        <DetailRow label={t('checkout.format')} value={BOOKING.format} />
       </View>
 
       <View style={{ gap: 10 }}>
-        <Eyebrow>How you pay</Eyebrow>
-        {/* Cash at the gate only — no in-app payments. Owner confirms collection on check-in. */}
+        <Eyebrow>{t('checkout.howYouPay')}</Eyebrow>
         <View
           accessibilityRole="text"
           style={{
@@ -121,11 +118,10 @@ export default function Checkout() {
           }}
         >
           <Txt size={14} weight="semibold" color={onVoid.primary}>
-            Cash at the gate
+            {t('checkout.cashAtGate')}
           </Txt>
           <Txt size={12} lh={1.55} color={onVoid.muted}>
-            No card or in-app payment. Bring EGP {quote.deposit} to the venue — staff collect it when you
-            check in. The remaining EGP {quote.balance} is settled at the venue after the match.
+            {t('checkout.cashBody', { deposit: quote.deposit, balance: quote.balance })}
           </Txt>
         </View>
       </View>
@@ -140,27 +136,27 @@ export default function Checkout() {
           borderColor: onVoid.edge,
         }}
       >
-        <PriceRow label="Pitch hour" value={`EGP ${quote.hourly}`} />
-        <PriceRow label="Booking fee" value={`EGP ${quote.bookingFee}`} />
+        <PriceRow label={t('checkout.pitchHour')} value={`${t('common.egp')} ${quote.hourly}`} />
+        <PriceRow label={t('checkout.bookingFee')} value={`${t('common.egp')} ${quote.bookingFee}`} />
         <Divider />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <Txt size={13} weight="semibold" color={gold.base}>
-            Cash at gate
+            {t('checkout.cashAtGateLabel')}
           </Txt>
           <Txt size={16} weight="bold" color={gold.base}>
-            EGP {quote.deposit}
+            {t('common.egp')} {quote.deposit}
           </Txt>
         </View>
-        <PriceRow label="Balance after match" value={`EGP ${quote.balance}`} />
+        <PriceRow label={t('checkout.balanceAfter')} value={`${t('common.egp')} ${quote.balance}`} />
       </View>
 
       <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-        {BOOKING.cancellation} Two unexcused no-shows in a season restrict cash-deposit bookings.
+        {BOOKING.cancellation} {t('checkout.noShowNote')}
       </Txt>
 
       {expired ? (
         <Button
-          label="Find another slot"
+          label={t('checkout.findAnother')}
           height={52}
           round={radius.control}
           size={15}
@@ -168,7 +164,7 @@ export default function Checkout() {
         />
       ) : (
         <Button
-          label="Confirm booking"
+          label={t('checkout.confirmBooking')}
           height={52}
           round={radius.control}
           size={15}

@@ -2,26 +2,24 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
+import { useI18n } from '@/i18n';
 import { gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { VENUE } from '@/data/owner';
 import { useMyVenueSubmission } from '@/state/venues';
 import type { TabBarProps } from './tabBarTypes';
 
-/**
- * Owner mode runs in Operative: bone surfaces, denser type, 8–12 px corners.
- * It is shift software, so the active tab is ink rather than gold — gold stays
- * reserved for money and for the app-sourced booking.
- */
-const ITEMS: { label: string; route?: string }[] = [
-  { label: 'Today', route: 'index' },
-  { label: 'Calendar', route: 'calendar' },
-  { label: 'Bookings', route: 'bookings' },
-  { label: 'Customers', route: 'customers' },
-  { label: 'More', route: 'more' },
-];
+const ROUTES = ['index', 'calendar', 'bookings', 'customers', 'more'] as const;
+const LABELS = [
+  'ownerTabs.today',
+  'ownerTabs.calendar',
+  'ownerTabs.bookings',
+  'ownerTabs.customers',
+  'ownerTabs.more',
+] as const;
 
 export function OwnerTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const activeRoute = state.routes[state.index]?.name;
 
   return (
@@ -37,19 +35,19 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
         paddingHorizontal: 6,
       }}
     >
-      {ITEMS.map((item) => {
-        const active = !!item.route && item.route === activeRoute;
+      {ROUTES.map((route, i) => {
+        const label = t(LABELS[i]!);
+        const active = route === activeRoute;
         const color = active ? ink : onOperative.dim;
         return (
           <Pressable
-            key={item.label}
+            key={route}
             accessibilityRole="tab"
-            accessibilityLabel={item.label}
-            accessibilityState={{ selected: active, disabled: !item.route }}
-            disabled={!item.route}
+            accessibilityLabel={label}
+            accessibilityState={{ selected: active }}
             onPress={() => {
-              if (!item.route || active) return;
-              navigation.navigate(item.route as never);
+              if (active) return;
+              navigation.navigate(route as never);
             }}
             style={{ flex: 1, alignItems: 'center', paddingTop: 11, gap: 7 }}
           >
@@ -57,7 +55,7 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
               style={{ width: 16, height: 2, borderRadius: 2, backgroundColor: active ? ink : 'transparent' }}
             />
             <Txt size={10.5} weight="semibold" color={color}>
-              {item.label}
+              {label}
             </Txt>
           </Pressable>
         );
@@ -66,16 +64,14 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
   );
 }
 
-/**
- * The venue header. Its OWNER chip is the workspace switch back to Player Mode
- * — RBAC-005: more than one role under one identity, no sign-out.
- */
 export function OwnerHeader() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useI18n();
   const { mine } = useMyVenueSubmission();
   const venueName = mine?.status === 'approved' ? mine.name : VENUE.name;
-  const shift = mine?.status === 'approved' ? `${mine.area} · owner shift` : VENUE.shift;
+  const shift =
+    mine?.status === 'approved' ? t('owner.shiftOwner', { area: mine.area }) : VENUE.shift;
 
   return (
     <View style={{ backgroundColor: operative.bg, paddingTop: insets.top }}>
@@ -91,7 +87,7 @@ export function OwnerHeader() {
           borderBottomColor: onOperative.edge,
         }}
       >
-        <View style={{ gap: 2 }}>
+        <View style={{ gap: 2, flex: 1 }}>
           <Txt size={18} weight="bold" em={-0.02} color={ink}>
             {venueName}
           </Txt>
@@ -101,7 +97,7 @@ export function OwnerHeader() {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Owner workspace. Switch back to player mode"
+          accessibilityLabel={t('owner.leaveOwner')}
           hitSlop={12}
           onPress={() => router.replace('/')}
           style={{
@@ -125,7 +121,7 @@ export function OwnerHeader() {
             }}
           />
           <Txt size={10} weight="bold" em={0.12} color={gold.base}>
-            OWNER
+            {t('owner.switchPlayer')}
           </Txt>
         </Pressable>
       </View>
