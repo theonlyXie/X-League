@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
@@ -9,6 +10,7 @@ import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { BOOKING, LOBBY_CHAT, RosterEntry } from '@/data/player';
 import { useI18n } from '@/i18n';
 import { useBooking } from '@/state/booking';
+import { useMessages } from '@/state/messages';
 
 /** The booking's life so far, as the lobby header shows it (§7.2). */
 /**
@@ -20,7 +22,19 @@ export default function Lobby() {
   const router = useRouter();
   const { t } = useI18n();
   const { roster, cancelBooking, fillRosterSlot, activeBooking, checkedIn } = useBooking();
+  const { ensureMatchThread } = useMessages();
   const filled = roster.filter((p) => p.filled).length;
+
+  const threadId = activeBooking?.code?.toLowerCase() ?? 'xl-7k42';
+
+  useEffect(() => {
+    if (!activeBooking) return;
+    ensureMatchThread({
+      id: threadId,
+      title: `${activeBooking.venue} · ${activeBooking.slot} PM`,
+      preview: 'Match lobby open · cash at the gate',
+    });
+  }, [activeBooking, ensureMatchThread, threadId]);
 
   const stages = [
     { label: t('lobby.held'), done: true },
@@ -134,7 +148,7 @@ export default function Lobby() {
           flex={1}
           size={13.5}
           style={{ borderColor: onVoid.line }}
-          onPress={() => router.push('/chat/xl-7k42')}
+          onPress={() => router.push(`/chat/${threadId}`)}
         />
         <Button label={t('lobby.cancelBooking')} variant="danger" flex={1} size={13.5} onPress={onCancel} />
       </View>

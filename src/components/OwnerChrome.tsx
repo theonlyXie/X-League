@@ -67,11 +67,13 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
 export function OwnerHeader() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, language, setLanguage } = useI18n();
   const { mine } = useMyVenueSubmission();
   const venueName = mine?.status === 'approved' ? mine.name : VENUE.name;
   const shift =
     mine?.status === 'approved' ? t('owner.shiftOwner', { area: mine.area }) : VENUE.shift;
+  const nextLang = language === 'ar' ? 'en' : 'ar';
+  const langLabel = language === 'ar' ? 'EN' : 'ع';
 
   return (
     <View style={{ backgroundColor: operative.bg, paddingTop: insets.top }}>
@@ -85,6 +87,7 @@ export function OwnerHeader() {
           justifyContent: 'space-between',
           borderBottomWidth: 1,
           borderBottomColor: onOperative.edge,
+          gap: 10,
         }}
       >
         <View style={{ gap: 2, flex: 1 }}>
@@ -95,6 +98,27 @@ export function OwnerHeader() {
             {shift}
           </Txt>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={nextLang === 'ar' ? t('language.switchToArabic') : t('language.switchToEnglish')}
+          hitSlop={8}
+          onPress={() => void setLanguage(nextLang)}
+          style={({ pressed }) => ({
+            minWidth: 36,
+            height: 30,
+            paddingHorizontal: 10,
+            borderRadius: radius.denseChip,
+            borderWidth: 1,
+            borderColor: 'rgba(20,18,16,.18)',
+            backgroundColor: pressed ? 'rgba(198,163,75,.2)' : 'rgba(255,255,255,.7)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          })}
+        >
+          <Txt size={12} weight="bold" color={gold.ink}>
+            {langLabel}
+          </Txt>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('owner.leaveOwner')}

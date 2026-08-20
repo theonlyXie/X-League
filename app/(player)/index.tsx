@@ -28,7 +28,7 @@ export default function Home() {
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 22 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 48 }}>
         <View style={{ gap: 3 }}>
           <Eyebrow>{PLAYER.today}</Eyebrow>
           <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>

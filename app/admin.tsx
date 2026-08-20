@@ -239,6 +239,10 @@ function Rail({
 }
 
 function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; onRefresh: () => void }) {
+  const { t, language, setLanguage } = useI18n();
+  const nextLang = language === 'ar' ? 'en' : 'ar';
+  const langLabel = language === 'ar' ? 'EN' : 'ع';
+
   return (
     <View
       style={{
@@ -253,30 +257,35 @@ function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; o
       }}
     >
       <Txt size={15} weight="bold" em={-0.01} color={ink}>
-        {section}
+        {ADMIN_NAV_KEYS[section] ? t(ADMIN_NAV_KEYS[section]!) : section}
       </Txt>
       <Txt size={11} color={onOperative.faint}>
         {asOf}
       </Txt>
       <View style={{ flex: 1 }} />
-      <View
-        style={{
-          height: 32,
-          width: Platform.OS === 'web' ? 260 : 180,
-          borderRadius: radius.denseChip,
-          borderWidth: 1,
-          borderColor: 'rgba(20,18,16,.16)',
-          justifyContent: 'center',
-          paddingHorizontal: 12,
-        }}
-      >
-        <Txt size={11.5} color={onOperative.dim}>
-          Search booking, venue, user or code…
-        </Txt>
-      </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Refresh admin data"
+        accessibilityLabel={nextLang === 'ar' ? t('language.switchToArabic') : t('language.switchToEnglish')}
+        onPress={() => void setLanguage(nextLang)}
+        style={({ pressed }) => ({
+          height: 32,
+          minWidth: 36,
+          paddingHorizontal: 10,
+          borderRadius: radius.denseChip,
+          borderWidth: 1,
+          borderColor: onOperative.hairline,
+          justifyContent: 'center',
+          alignItems: 'center',
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Txt size={12} weight="bold" color={gold.ink}>
+          {langLabel}
+        </Txt>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('common.refresh')}
         onPress={onRefresh}
         style={({ pressed }) => ({
           height: 32,
@@ -289,12 +298,12 @@ function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; o
         })}
       >
         <Txt size={11.5} weight="semibold" color={ink}>
-          Refresh
+          {t('common.refresh')}
         </Txt>
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Export"
+        accessibilityLabel={t('common.export')}
         style={({ pressed }) => ({
           height: 32,
           paddingHorizontal: 12,
@@ -305,7 +314,7 @@ function TopBar({ section, asOf, onRefresh }: { section: string; asOf: string; o
         })}
       >
         <Txt size={11.5} weight="semibold" color={operative.bg}>
-          Export
+          {t('common.export')}
         </Txt>
       </Pressable>
     </View>

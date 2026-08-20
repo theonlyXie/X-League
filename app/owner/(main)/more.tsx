@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { Txt } from '@/components/Txt';
 import { useI18n } from '@/i18n';
 import { ink, onOperative, operative, radius } from '@/theme/tokens';
@@ -45,9 +44,6 @@ export default function OwnerMore() {
       </Section>
 
       <Section title={t('owner.settings')}>
-        <View style={moreRow}>
-          <LanguageSwitch surface="operative" />
-        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('owner.replayOnboarding')}

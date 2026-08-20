@@ -133,8 +133,8 @@ arm64-v8a, debug-signed for sideloading. Or: `npx eas-cli build --platform andro
 
 ## Language
 
-English and Arabic. Switch on **Me** or **Owner → More**. Arabic turns on RTL layout.
-Native apps may need a reload after switching for full RTL chrome.
+Tap **ع** / **EN** in the **top-right corner** (player screens) or next to the owner chip
+to switch Arabic ↔ English. Arabic enables RTL. Choice persists.
 
 ## Payments
 

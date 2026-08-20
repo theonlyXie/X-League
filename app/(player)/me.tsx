@@ -9,7 +9,6 @@ import { StrokeLine } from '@/components/StrokeLine';
 import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { PROGRESSION } from '@/data/player';
-import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useI18n } from '@/i18n';
 import { useProfile } from '@/state/profile';
 import { useMyVenueSubmission } from '@/state/venues';
@@ -44,7 +43,7 @@ export default function Me() {
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20, alignItems: 'center' }}>
-      <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 48 }}>
         <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
           {t('me.yourCard')}
         </Txt>
@@ -88,10 +87,6 @@ export default function Me() {
         <Txt size={11.5} lh={1.55} color={onVoid.dim}>
           {t('me.evidenceNote')}
         </Txt>
-      </View>
-
-      <View style={{ width: '100%', gap: 12 }}>
-        <LanguageSwitch />
       </View>
 
       <View style={{ width: '100%', gap: 12 }}>

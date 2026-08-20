@@ -5,7 +5,6 @@ import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
 import { VoidMark } from '@/components/VoidMark';
-import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useI18n } from '@/i18n';
 import type { I18nKey } from '@/i18n';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
@@ -39,12 +38,7 @@ export default function Onboarding() {
         </Txt>
       </View>
 
-      {step === 0 ? (
-        <>
-          <Welcome />
-          <LanguageSwitch />
-        </>
-      ) : null}
+      {step === 0 ? <Welcome /> : null}
       {step === 1 ? <PositionStep position={profile.position} onPick={setPosition} /> : null}
       {step === 2 ? <AssessStep scores={profile.scores} onChange={setScore} /> : null}
       {step === 3 ? <DoneStep position={profile.position} /> : null}

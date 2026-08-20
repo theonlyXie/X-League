@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { ScrollView, StyleProp, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LanguageCorner } from '@/components/LanguageCorner';
 import { operative, void_ } from '@/theme/tokens';
 
 /**
@@ -15,11 +16,14 @@ export function Screen({
   surface = 'void',
   contentStyle,
   scroll = true,
+  /** Compact EN / ع control in the top-right corner. */
+  langCorner = true,
 }: {
   children: ReactNode;
   surface?: 'void' | 'operative';
   contentStyle?: StyleProp<ViewStyle>;
   scroll?: boolean;
+  langCorner?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const backgroundColor = surface === 'void' ? void_.bg : operative.bg;
@@ -28,6 +32,7 @@ export function Screen({
     return (
       <View style={{ flex: 1, backgroundColor, paddingTop: insets.top }}>
         <View style={[{ flex: 1 }, contentStyle]}>{children}</View>
+        {langCorner ? <LanguageCorner surface={surface} /> : null}
       </View>
     );
   }
@@ -42,6 +47,7 @@ export function Screen({
       >
         {children}
       </ScrollView>
+      {langCorner ? <LanguageCorner surface={surface} /> : null}
     </View>
   );
 }
