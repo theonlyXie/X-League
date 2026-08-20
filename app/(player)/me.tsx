@@ -20,7 +20,7 @@ import { useMyVenueSubmission } from '@/state/venues';
  */
 export default function Me() {
   const router = useRouter();
-  const { card } = useProfile();
+  const { card, profile } = useProfile();
   const { mine } = useMyVenueSubmission();
   const explained = card.attributes.find((a) => a.key === card.explained)!;
   const evidencePct = 100 - card.selfAssessedPct;
@@ -53,9 +53,9 @@ export default function Me() {
       <VoidCard card={card} />
 
       <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
-        <StatTile label="FORM" value={`${3}`} gold icon />
-        <StatTile label="VERIFIED" value={`${card.confidence === 'ESTABLISHED' ? 18 : 0} matches`} />
-        <StatTile label="RATERS" value={`${card.confidence === 'ESTABLISHED' ? 41 : 0}`} />
+          <StatTile label="FORM" value={`${Math.min(5, Math.max(1, Math.floor(profile.verifiedMatches / 4) || 1))}`} gold icon />
+          <StatTile label="VERIFIED" value={`${profile.verifiedMatches} matches`} />
+          <StatTile label="RATERS" value={`${profile.verifiedMatches > 0 ? profile.verifiedMatches * 2 : 0}`} />
       </View>
 
       {/* §5.1: every displayed score exposes where it came from. */}

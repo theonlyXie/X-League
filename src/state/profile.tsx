@@ -1,6 +1,8 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ATTRIBUTES, POSITIONS, Position } from '@/data/onboarding';
+import * as api from '@/data/api';
 import { attributesFromScores, confidenceLabel, ovrFromScores, selfAssessedPct } from '@/lib/cardMath';
+import { isLive } from '@/lib/supabase';
 import { loadJson, saveJson } from '@/lib/storage';
 
 const STORAGE_KEY = 'xleague.profile.v1';
@@ -72,7 +74,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   );
   const finishOnboarding = useCallback(async () => {
     persist((p) => ({ ...p, onboarded: true, verifiedMatches: 0 }));
-  }, [persist]);
+    if (isLive) {
+      try {
+        await api.submitSelfAssessment(profile.position, profile.scores);
+      } catch {
+        // Local card still works if the RPC is unavailable.
+      }
+    }
+  }, [persist, profile.position, profile.scores]);
   const replayOnboarding = useCallback(async () => {
     persist((p) => ({ ...p, onboarded: false, verifiedMatches: 0 }));
   }, [persist]);

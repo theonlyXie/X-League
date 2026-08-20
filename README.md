@@ -129,6 +129,11 @@ arm64-v8a, debug-signed for sideloading. Or: `npx eas-cli build --platform andro
 
 ## Not yet built
 
-- Arabic copy (RTL toggle persists; translation ships with API layer)
-- Live payments integration
-- Chat / cups backend sync
+- Arabic copy (RTL toggle persists; translation ships later)
+- Chat / cups backend sync (local fixtures + AsyncStorage work offline)
+
+## Payments
+
+**Cash at the gate only.** No in-app or card payments. The player confirms a booking,
+brings the deposit to the venue, and the owner taps **Check in · collect** to confirm
+cash was received.

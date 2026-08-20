@@ -10,8 +10,8 @@ import {
 } from 'react';
 import { BOOKING, DEFAULT_SLOT, HOLD_SECONDS, ROSTER, RosterEntry, SLOTS_TAKEN, SlotTime, VENUES } from '@/data/player';
 import * as api from '@/data/api';
-import { BOOKING_DATE } from '@/data/venue';
 import { findPitch, getDefaultPitchId } from '@/lib/venueConfig';
+import { inventoryDate } from '@/lib/dates';
 import { loadJson, saveJson } from '@/lib/storage';
 import { quoteFromHourly } from '@/lib/venueQuote';
 import type { BookingContextValue, HoldState, SavedBooking } from '@/state/bookingTypes';
@@ -98,7 +98,7 @@ export function LiveBookingProvider({ children }: { children: ReactNode }) {
     if (!pitchId) return;
     setLoading(true);
     try {
-      const fetched = await api.searchAvailability(pitchId, BOOKING_DATE);
+      const fetched = await api.searchAvailability(pitchId, inventoryDate());
       setSlots(fetched);
       setTaken(fetched.filter((s) => !s.available).map(labelOf));
       setUnreachable(false);
@@ -178,6 +178,7 @@ export function LiveBookingProvider({ children }: { children: ReactNode }) {
         deposit: depositEgp,
         status: 'confirmed',
         confirmedAt: Date.now(),
+        bookingId,
       };
       await persistOverlay({
         ...overlay,
@@ -205,12 +206,37 @@ export function LiveBookingProvider({ children }: { children: ReactNode }) {
     setHold('cancelled');
   }, [overlay, persistOverlay]);
 
+  const confirmCashCollection = useCallback(
+    async (targetBookingId?: string) => {
+      if (overlay.checkedIn && !targetBookingId) return;
+      const id = targetBookingId ?? overlay.activeBooking?.bookingId ?? bookingId;
+      if (id) {
+        try {
+          const result = await api.checkInBooking(id);
+          if (!result.ok) return;
+        } catch {
+          return;
+        }
+      }
+      const active =
+        overlay.activeBooking && (!targetBookingId || overlay.activeBooking.bookingId === targetBookingId)
+          ? { ...overlay.activeBooking, status: 'checked_in' as const }
+          : overlay.activeBooking;
+      await persistOverlay({
+        ...overlay,
+        checkedIn: active?.bookingId === id || !targetBookingId ? true : overlay.checkedIn,
+        activeBooking: active,
+        history: active
+          ? overlay.history.map((b) => (b.code === active.code ? active : b))
+          : overlay.history,
+      });
+    },
+    [overlay, bookingId, persistOverlay],
+  );
+
   const toggleCheckIn = useCallback(() => {
-    if (bookingId && !overlay.checkedIn) {
-      api.checkInBooking(bookingId).catch(() => {});
-    }
-    void persistOverlay({ ...overlay, checkedIn: !overlay.checkedIn });
-  }, [bookingId, overlay, persistOverlay]);
+    void confirmCashCollection();
+  }, [confirmCashCollection]);
 
   const selectSlot = useCallback(
     (next: SlotTime) => {
@@ -279,6 +305,7 @@ export function LiveBookingProvider({ children }: { children: ReactNode }) {
       activeBooking,
       bookingHistory: overlay.history,
       checkedIn: overlay.checkedIn,
+      confirmCashCollection,
       toggleCheckIn,
       roster: overlay.roster,
       fillRosterSlot,
@@ -308,6 +335,7 @@ export function LiveBookingProvider({ children }: { children: ReactNode }) {
     cancelBooking,
     overlay,
     toggleCheckIn,
+    confirmCashCollection,
     fillRosterSlot,
     toggleDiscount,
     ready,

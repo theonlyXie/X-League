@@ -107,14 +107,12 @@ export default function Checkout() {
       </View>
 
       <View style={{ gap: 10 }}>
-        <Eyebrow>Payment</Eyebrow>
-        {/* The deposit is cash at the gate — a first-class method, not a fallback. */}
+        <Eyebrow>How you pay</Eyebrow>
+        {/* Cash at the gate only — no in-app payments. Owner confirms collection on check-in. */}
         <View
-          accessibilityRole="radio"
-          accessibilityState={{ selected: true }}
+          accessibilityRole="text"
           style={{
-            flexDirection: 'row',
-            gap: 12,
+            gap: 8,
             padding: 16,
             borderRadius: radius.control,
             borderWidth: 1,
@@ -122,29 +120,13 @@ export default function Checkout() {
             backgroundColor: 'rgba(198,163,75,.06)',
           }}
         >
-          <View
-            style={{
-              width: 18,
-              height: 18,
-              borderRadius: radius.pill,
-              borderWidth: 2,
-              borderColor: gold.base,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginTop: 1,
-            }}
-          >
-            <View style={{ width: 8, height: 8, borderRadius: radius.pill, backgroundColor: gold.base }} />
-          </View>
-          <View style={{ flex: 1, gap: 5 }}>
-            <Txt size={14} weight="semibold" color={onVoid.primary}>
-              Cash deposit at the venue
-            </Txt>
-            <Txt size={12} lh={1.55} color={onVoid.muted}>
-              Pay EGP {quote.deposit} at the gate to hold the pitch. The remaining EGP {quote.balance} is
-              settled at the venue after the match.
-            </Txt>
-          </View>
+          <Txt size={14} weight="semibold" color={onVoid.primary}>
+            Cash at the gate
+          </Txt>
+          <Txt size={12} lh={1.55} color={onVoid.muted}>
+            No card or in-app payment. Bring EGP {quote.deposit} to the venue — staff collect it when you
+            check in. The remaining EGP {quote.balance} is settled at the venue after the match.
+          </Txt>
         </View>
       </View>
 

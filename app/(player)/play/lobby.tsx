@@ -10,21 +10,22 @@ import { BOOKING, LOBBY_CHAT, RosterEntry } from '@/data/player';
 import { useBooking } from '@/state/booking';
 
 /** The booking's life so far, as the lobby header shows it (§7.2). */
-const STAGES = [
-  { label: 'Held', done: true },
-  { label: 'Confirmed', done: true },
-  { label: 'Check-in', done: false },
-  { label: 'Result', done: false },
-];
-
 /**
  * P-13 Match lobby — coordinate confirmed participants (§4.3).
  * TEAM-008: roster, open needs, venue, time, check-in state and conversation.
+ * Cash check-in is confirmed by the venue owner — no in-app payment.
  */
 export default function Lobby() {
   const router = useRouter();
-  const { roster, cancelBooking, fillRosterSlot, activeBooking } = useBooking();
+  const { roster, cancelBooking, fillRosterSlot, activeBooking, checkedIn } = useBooking();
   const filled = roster.filter((p) => p.filled).length;
+
+  const stages = [
+    { label: 'Held', done: true },
+    { label: 'Confirmed', done: true },
+    { label: 'Cash check-in', done: checkedIn || activeBooking?.status === 'checked_in' },
+    { label: 'Result', done: false },
+  ];
 
   const onCancel = () => {
     Alert.alert('Cancel booking', BOOKING.cancellation, [
@@ -70,7 +71,7 @@ export default function Lobby() {
         </View>
       </View>
 
-      <StageRail />
+      <StageRail stages={stages} />
 
       <View style={{ gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -139,10 +140,10 @@ export default function Lobby() {
   );
 }
 
-function StageRail() {
+function StageRail({ stages }: { stages: { label: string; done: boolean }[] }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      {STAGES.map((stage, i) => (
+      {stages.map((stage, i) => (
         <View key={stage.label} style={{ flexDirection: 'row', alignItems: 'center', flex: i === 0 ? 1 : 2 }}>
           {i > 0 ? (
             <View

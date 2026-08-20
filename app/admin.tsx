@@ -459,11 +459,15 @@ function LedgerRowView({ row }: { row: LedgerRow }) {
     row.kind === 'new' ? 'rgba(198,163,75,.1)' : row.kind === 'fail' ? 'rgba(101,21,37,.06)' : 'transparent';
   const codeFg = row.kind === 'new' ? gold.ink : row.kind === 'fail' ? burgundy.ink : 'rgba(20,18,16,.75)';
   const depositFg =
-    row.deposit === 'Unpaid' ? burgundy.ink : row.deposit === 'Cash · due' ? gold.ink : 'rgba(20,18,16,.6)';
+    row.deposit.includes('unpaid')
+      ? burgundy.ink
+      : row.deposit.includes('due')
+        ? gold.ink
+        : 'rgba(20,18,16,.6)';
   const statusFg =
     row.status.includes('FAIL') || row.status.includes('CANCEL')
       ? burgundy.ink
-      : row.status.includes('CONFIRM')
+      : row.status.includes('CONFIRM') || row.status.includes('CHECKED')
         ? status.positive
         : onOperative.muted;
 
