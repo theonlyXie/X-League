@@ -249,22 +249,24 @@ it is used at.
 
 ## Not yet built
 
-Tournaments and Messages (P-15–P-20, P-10–P-12, P-14), onboarding and the
-self-assessment (P-01), the remaining owner screens (O-03–O-08) and admin
-sections (A-02–A-08), and Arabic RTL — explored as option 1i but not wired
-across the screens.
+**Whole subsystems, no screens.** Tournaments (P-15–P-20), messaging and
+recruitment (P-10–P-12, P-14), the remaining owner screens (O-03–O-08) and
+admin sections (A-02–A-08). These are the M2/M3 surfaces; most have no
+artboards, so building them means designing them too. Of the 26 entities in
+§7.1 the schema carries 8 — Team, Match, PeerRating, PointLedger, Message,
+Tournament and the rest of the M2/M3 tables do not exist.
 
-Venue discovery still reads fixtures: the pitch the app books is the one named
-in `.env`. The player card, roster, tournaments and admin ledger are fixtures
-too — only the booking spine is backed by the database.
+**Screens on fixtures.** Home (P-02) and the admin console (A-01) read no live
+data at all. Venue discovery is fixtures everywhere: the pitch the app books is
+the one named in `.env`, so search returns a list of one real pitch dressed in
+fixture venues. The card's form and rater tiles read empty for a real account,
+because peer ratings, XP and levels have no tables behind them yet.
 
-Tournaments (P-15–P-20), messaging and recruitment (P-10–P-14), the remaining
-owner screens (O-03–O-08) and admin sections (A-02–A-08). These are the M2/M3
-subsystems; most have no artboards, so building them means designing them too.
+**Blocked on an SMS provider.** Phone OTP is built and the schema is live, but
+Supabase has no SMS provider configured, so `requestOtp` cannot deliver a code
+to a real handset. This is the one item that needs an account decision rather
+than code.
 
-The admin console is still entirely fixtures. Owner Mode is wired to the
-database but not translated — Arabic covers the player surface only.
-
-Venue discovery still reads fixtures: the pitch the app books is the one named
-in `.env`. Peer ratings, XP and levels do not exist yet, so the card's form and
-rater tiles read as empty for a real account.
+**Partial.** Arabic covers the player surface; Owner Mode and admin are wired
+to the database but untranslated. Cancellation and refunds are copy on the
+checkout screen, not a code path.
