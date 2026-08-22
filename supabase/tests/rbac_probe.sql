@@ -35,7 +35,7 @@ begin
 
   perform set_config('request.jwt.claims', null, true);
   select * into h from hold_slot(stadium_pitch,
-    ((current_date + interval '19 hours') at time zone 'Africa/Cairo'), 60);
+    ((current_date + 1 + interval '19 hours') at time zone 'Africa/Cairo'), 60);
   return query select 'anon cannot hold a slot', coalesce(h.reason,'(allowed!)'),
                       h.ok = false and h.reason = 'Sign in to hold a slot.';
 
@@ -87,7 +87,7 @@ begin
 
   perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
   select * into h from hold_slot(stadium_pitch,
-    ((current_date + interval '19 hours') at time zone 'Africa/Cairo'), 60);
+    ((current_date + 1 + interval '19 hours') at time zone 'Africa/Cairo'), 60);
   return query select 'a signed-in player can hold', coalesce(h.reason,'held'), h.ok = true;
 
   perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);

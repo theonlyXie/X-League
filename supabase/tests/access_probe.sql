@@ -42,6 +42,7 @@ begin
      -- in its own scan. Test scaffolding is created, run and dropped; it is
      -- not part of the surface being measured.
      and p.proname not like '%\_probe'
+     and p.proname not like 'test\_%'
      and has_function_privilege('anon', p.oid, 'execute');
 
   return query select 'a guest can reach exactly the browsing surface',

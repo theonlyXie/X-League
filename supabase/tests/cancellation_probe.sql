@@ -115,12 +115,10 @@ begin
   -- -------------------------------------------------------------------------
   -- BKG-010 — no-shows
   -- -------------------------------------------------------------------------
-  -- A match that has already started, so a no-show is a real observation.
+  -- A match that has already started, so a no-show is a real observation. Set
+  -- up directly: hold_slot refuses to sell an hour that has already begun.
   v_slot := ((current_date - 1 + interval '20 hours') at time zone 'Africa/Cairo');
-  delete from booking where pitch_id = v_pitch and during && tstzrange(v_slot, v_slot + interval '1 hour');
-  select * into h from hold_slot(v_pitch, v_slot, 60, 'Basel Elsayed');
-  v_bk := h.booking_id;
-  perform confirm_booking(v_bk);
+  v_bk := test_past_booking(v_pitch, v_slot, BASEL);
 
   select * into r from mark_no_show(v_bk);
   return query select 'a player cannot declare their own no-show',
@@ -167,11 +165,9 @@ begin
 
   -- A second one, on another evening.
   v_slot := ((current_date - 2 + interval '20 hours') at time zone 'Africa/Cairo');
-  delete from booking where pitch_id = v_pitch and during && tstzrange(v_slot, v_slot + interval '1 hour');
-  select * into h from hold_slot(v_pitch, v_slot, 60, 'Basel Elsayed');
-  perform confirm_booking(h.booking_id);
+  v_bk := test_past_booking(v_pitch, v_slot, BASEL);
   perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
-  perform mark_no_show(h.booking_id);
+  perform mark_no_show(v_bk);
 
   perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
   select no_shows, cash_allowed into r from my_standing();

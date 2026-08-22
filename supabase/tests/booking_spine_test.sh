@@ -49,20 +49,23 @@ VENUE=$(q "select venue_id from pitch where id='$PITCH'")
 # DST, so a hardcoded offset silently addresses the wrong hour — the client
 # has the same obligation and meets it by echoing back the `starts_at` that
 # search_availability returned, never by assembling a timestamp itself.
-cairo() { q "select ((current_date + interval '$1 hours') at time zone 'Africa/Cairo')::text"; }
+# Tomorrow evening throughout: an hour that has already started is no longer
+# saleable, so a suite anchored to tonight passes in the morning and fails after
+# six. The seed covers today and the next two evenings identically.
+cairo() { q "select ((current_date + 1 + interval '$1 hours') at time zone 'Africa/Cairo')::text"; }
 NINE=$(cairo 21)   # the 9 PM slot the design books
 TEN=$(cairo 22)
 SEVEN=$(cairo 19)  # a quiet hour, free in the seed
 # Tomorrow evening, for the cases that need a match still ahead of us whatever
 # time of day the suite happens to run.
-TOMORROW=$(q "select ((current_date + 1 + interval '21 hours') at time zone 'Africa/Cairo')::text")
+TOMORROW="$NINE"
 
 echo "AC-01 — search returns only saleable slots, priced"
-n=$(q "select count(*) from search_availability('$PITCH', current_date) where available")
+n=$(q "select count(*) from search_availability('$PITCH', current_date + 1) where available")
 check "three hours are free on Pitch A" "$n" "3"
-p=$(q "select price_egp from search_availability('$PITCH', current_date) where hour=21")
+p=$(q "select price_egp from search_availability('$PITCH', current_date + 1) where hour=21")
 check "9 PM is priced at EGP 300" "$p" "300"
-p=$(q "select price_egp from search_availability('$PITCH', current_date) where hour=23")
+p=$(q "select price_egp from search_availability('$PITCH', current_date + 1) where hour=23")
 check "11 PM carries the late-hour price" "$p" "260"
 
 echo
@@ -98,10 +101,10 @@ echo
 echo "AC-03 — a hold that runs out returns the slot to inventory"
 q "delete from booking where pitch_id='$PITCH'" >/dev/null
 hid=$(q "select booking_id from hold_slot('$PITCH', '$SEVEN'::timestamptz, 60, 'Basel', 2)")
-avail=$(q "select available from search_availability('$PITCH', current_date) where hour=19")
+avail=$(q "select available from search_availability('$PITCH', current_date + 1) where hour=19")
 check "the held hour is not saleable" "$avail" "f"
 sleep 3
-avail=$(q "select available from search_availability('$PITCH', current_date) where hour=19")
+avail=$(q "select available from search_availability('$PITCH', current_date + 1) where hour=19")
 check "after expiry the hour is saleable again" "$avail" "t"
 st=$(q "select state from booking where id='$hid'")
 check "the hold is recorded as expired, not deleted" "$st" "expired"
@@ -135,12 +138,12 @@ check "someone else cannot confirm it" "$res" "That hold belongs to someone else
 echo
 echo "AC-05 — a phone booking removes the slot from player search"
 as "$SALMA"
-free_before=$(q "select available from search_availability('$PITCH', current_date) where hour=19")
+free_before=$(q "select available from search_availability('$PITCH', current_date + 1) where hour=19")
 check "7 PM is saleable beforehand" "$free_before" "t"
 q "select ok from record_offline_booking('$PITCH', '$SEVEN'::timestamptz, 60, 'phone', 'Hesham Fouad')" >/dev/null
-free_after=$(q "select available from search_availability('$PITCH', current_date) where hour=19")
+free_after=$(q "select available from search_availability('$PITCH', current_date + 1) where hour=19")
 check "7 PM disappears from search" "$free_after" "f"
-src=$(q "select taken_by from search_availability('$PITCH', current_date) where hour=19")
+src=$(q "select taken_by from search_availability('$PITCH', current_date + 1) where hour=19")
 check "and it is labelled as a phone booking" "$src" "phone"
 
 echo
@@ -161,7 +164,7 @@ echo "Releasing a hold gives the slot straight back"
 q "delete from booking where pitch_id='$PITCH'" >/dev/null
 hid=$(q "select booking_id from hold_slot('$PITCH', '$NINE'::timestamptz, 60, 'Basel')")
 q "select release_hold('$hid')" >/dev/null
-avail=$(q "select available from search_availability('$PITCH', current_date) where hour=21")
+avail=$(q "select available from search_availability('$PITCH', current_date + 1) where hour=21")
 check "the slot is saleable immediately" "$avail" "t"
 
 echo
@@ -192,13 +195,13 @@ check "and names who checked it in" "$actor" "staff · Salma Rashad"
 echo
 echo "OWN-004 — a closure takes inventory off sale"
 q "delete from booking where pitch_id='$PITCH'" >/dev/null
-avail=$(q "select available from search_availability('$PITCH', current_date) where hour=22")
+avail=$(q "select available from search_availability('$PITCH', current_date + 1) where hour=22")
 check "10 PM is saleable beforehand" "$avail" "t"
 q "insert into availability_exception (pitch_id, during, kind, note)
    values ('$PITCH', tstzrange('$TEN'::timestamptz, '$TEN'::timestamptz + interval '1 hour', '[)'), 'maintenance', 'Floodlight repair')" >/dev/null
-avail=$(q "select available from search_availability('$PITCH', current_date) where hour=22")
+avail=$(q "select available from search_availability('$PITCH', current_date + 1) where hour=22")
 check "the closed hour leaves search" "$avail" "f"
-src=$(q "select coalesce(taken_by::text,'(none)') from search_availability('$PITCH', current_date) where hour=22")
+src=$(q "select coalesce(taken_by::text,'(none)') from search_availability('$PITCH', current_date + 1) where hour=22")
 check "and is not dressed up as a booking" "$src" "(none)"
 as "$BASEL"
 res=$(q "select ok from hold_slot('$PITCH', '$TEN'::timestamptz, 60, 'Basel')")
@@ -208,23 +211,23 @@ q "delete from booking where pitch_id='$PITCH'; delete from availability_excepti
 echo
 echo "VEN-001 / VEN-003 — search across every venue"
 anon
-n=$(q "select count(*) from search_venues(current_date)")
+n=$(q "select count(*) from search_venues(current_date + 1)")
 [ "$n" -ge 2 ] && ok "more than one venue is discoverable ($n)" || bad "multi-venue search" "got $n"
-v=$(q "select name from search_venues(current_date) limit 1")
+v=$(q "select name from search_venues(current_date + 1) limit 1")
 check "verified venues sort first" "$v" "Stadium One"
-s=$(q "select open_slots from search_venues(current_date) where name='Stadium One'")
+s=$(q "select open_slots from search_venues(current_date + 1) where name='Stadium One'")
 [ "$s" -gt 0 ] && ok "live slot counts come from the real timeline ($s)" || bad "slot count" "got $s"
-d=$(q "select distance_km from search_venues(current_date, 'Africa/Cairo', 30.0600, 31.3300) where name='Stadium One'")
+d=$(q "select distance_km from search_venues(current_date + 1, 'Africa/Cairo', 30.0600, 31.3300) where name='Stadium One'")
 [ -n "$d" ] && ok "distance is computed when the player shares a location ($d km)" || bad "distance" "empty"
-d=$(q "select coalesce(distance_km::text,'(null)') from search_venues(current_date) where name='Stadium One'")
+d=$(q "select coalesce(distance_km::text,'(null)') from search_venues(current_date + 1) where name='Stadium One'")
 check "and is null rather than fabricated when they do not" "$d" "(null)"
 
 echo
 echo "VEN-001 — a booked hour lowers the count search reports"
-before=$(q "select open_slots from search_venues(current_date) where name='Stadium One'")
+before=$(q "select open_slots from search_venues(current_date + 1) where name='Stadium One'")
 as "$SALMA"; q "select ok from record_offline_booking('$PITCH', '$NINE'::timestamptz, 60, 'walk_in', 'Walk-in')" >/dev/null
 anon
-after=$(q "select open_slots from search_venues(current_date) where name='Stadium One'")
+after=$(q "select open_slots from search_venues(current_date + 1) where name='Stadium One'")
 check "the count drops by exactly one" "$((before - after))" "1"
 
 echo
@@ -255,6 +258,19 @@ check "and the average follows the edit" "$avg" "3.00"
 as "$KARIM"
 res=$(q "select reason from submit_review('$b', 1, 'Never been here')")
 check "someone else's booking is not reviewable" "$res" "You can only review a booking you made."
+
+echo
+echo "An hour that has already started is not for sale"
+YESTERDAY=$(q "select ((current_date - 1 + interval '21 hours') at time zone 'Africa/Cairo')::text")
+as "$BASEL"
+res=$(q "select reason from hold_slot('$PITCH', '$YESTERDAY'::timestamptz, 60, 'Basel')")
+check "a hold on a finished hour is refused" "$res" "That slot has already started."
+n=$(q "select count(*) from booking where pitch_id='$PITCH' and during && tstzrange('$YESTERDAY'::timestamptz,'$YESTERDAY'::timestamptz+interval '1 hour')")
+check "and nothing is written" "$n" "0"
+avail=$(q "select bool_or(available) from search_availability('$PITCH', current_date - 1)")
+check "search offers nothing on a day that has passed" "$avail" "f"
+n=$(q "select count(*) from search_availability('$PITCH', current_date - 1)")
+check "though the hours are still listed, so the grid is not full of holes" "$n" "6"
 
 echo
 echo "P-02 — Home can ask what you are doing next"

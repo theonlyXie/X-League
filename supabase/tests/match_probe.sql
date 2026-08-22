@@ -30,17 +30,16 @@ begin
     from pitch p join venue v on v.id = p.venue_id
    where v.name = 'Stadium One' and p.label = 'Pitch A';
 
-  -- Yesterday evening: a match that has actually finished.
+  -- Yesterday evening: a match that has actually finished. Set up directly,
+  -- because hold_slot correctly refuses to sell an hour that has already
+  -- started; everything after this point runs through the real functions.
   v_slot := ((current_date - 1 + interval '21 hours') at time zone 'Africa/Cairo');
-  delete from booking where pitch_id = v_pitch and during && tstzrange(v_slot, v_slot + interval '1 hour');
+  v_bk := test_past_booking(v_pitch, v_slot, BASEL);
 
   -- -------------------------------------------------------------------------
   -- Only a checked-in booking becomes evidence
   -- -------------------------------------------------------------------------
   perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
-  select * into h from hold_slot(v_pitch, v_slot, 60, 'Basel Elsayed');
-  v_bk := h.booking_id;
-  perform confirm_booking(v_bk);
 
   select * into r from complete_match(v_bk, 3, 2);
   return query select 'a booking nobody checked in is not a match',

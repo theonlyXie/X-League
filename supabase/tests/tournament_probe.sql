@@ -219,12 +219,11 @@ begin
                         coalesce(r.reason, '(allowed!)'),
                         r.ok = false and r.reason = 'That fixture has not been scheduled on a pitch.';
 
-    -- The home captain books the hour like anybody else.
+    -- The home captain's booking, set up directly because the fixture has to be
+    -- in the past for a result to exist and hold_slot refuses to sell that.
     select t.captain_id into v_cap from team t where t.id = v_home;
+    v_bk := test_past_booking(v_pitch, v_slot, v_cap);
     perform set_config('request.jwt.claims', json_build_object('sub', v_cap)::text, true);
-    select * into h from hold_slot(v_pitch, v_slot, 60, 'Cup match');
-    v_bk := h.booking_id;
-    perform confirm_booking(v_bk);
 
     perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
     select * into r from schedule_fixture(v_fix, v_bk);
