@@ -194,6 +194,8 @@ export const STRINGS = {
 
     // Cups (P-15 – P-20)
     cupsTitle: 'Cups',
+    yourCups: 'Your cups',
+    allCups: 'On now',
     noCups: 'No tournaments on right now',
     noCupsBlurb: 'Venues run cups through X League. One will show up here.',
     entryFee: (amount: string) => `${amount} entry`,
@@ -413,6 +415,8 @@ export const STRINGS = {
     declineTeam: 'رفض',
 
     cupsTitle: 'البطولات',
+    yourCups: 'بطولاتك',
+    allCups: 'المتاح حالياً',
     noCups: 'لا توجد بطولات حالياً',
     noCupsBlurb: 'الملاعب تنظّم بطولاتها عبر إكس ليج. ستظهر هنا.',
     entryFee: (amount: string) => `رسوم الاشتراك ${amount}`,

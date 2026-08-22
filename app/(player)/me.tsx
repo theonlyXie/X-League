@@ -116,6 +116,15 @@ export default function Me() {
       {/* RBAC-005 / §3.1: hold more than one role, switch without signing out.
           Which venues appear is the server's answer (`my_venues`), not a guess
           the client makes — RBAC-002 scoping is enforced on every call anyway. */}
+      {/* The rooms that are not tabs: a squad's team, and what the product has
+          told this player. Both are reachable from here rather than hidden. */}
+      {signedIn || !isLive ? (
+        <View style={{ width: '100%', gap: 8 }}>
+          <RowLink label={t.teamsTitle} onPress={() => router.push('/teams')} />
+          <RowLink label={t.notifications} onPress={() => router.push('/notifications')} />
+        </View>
+      ) : null}
+
       <View style={{ width: '100%', gap: 12 }}>
         <Eyebrow>{signedIn || !isLive ? t.workspace : t.account}</Eyebrow>
         <View style={{ gap: 8 }}>
@@ -418,6 +427,33 @@ function MatchEvidenceList({
         </View>
       )}
     </View>
+  );
+}
+
+/** A plain destination row, in the design's list idiom. */
+function RowLink({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: radius.control,
+        backgroundColor: void_.surface,
+        borderWidth: 1,
+        borderColor: pressed ? goldAlpha.edge : onVoid.edgeFaint,
+      })}
+    >
+      <Txt size={14} weight="semibold" color={onVoid.primary}>
+        {label}
+      </Txt>
+      <ChevronRight size={14} color={onVoid.dim} />
+    </Pressable>
   );
 }
 
