@@ -53,6 +53,9 @@ cairo() { q "select ((current_date + interval '$1 hours') at time zone 'Africa/C
 NINE=$(cairo 21)   # the 9 PM slot the design books
 TEN=$(cairo 22)
 SEVEN=$(cairo 19)  # a quiet hour, free in the seed
+# Tomorrow evening, for the cases that need a match still ahead of us whatever
+# time of day the suite happens to run.
+TOMORROW=$(q "select ((current_date + 1 + interval '21 hours') at time zone 'Africa/Cairo')::text")
 
 echo "AC-01 — search returns only saleable slots, priced"
 n=$(q "select count(*) from search_availability('$PITCH', current_date) where available")
@@ -255,7 +258,13 @@ check "someone else's booking is not reviewable" "$res" "You can only review a b
 
 echo
 echo "P-02 — Home can ask what you are doing next"
+# A booking that has definitely not finished yet. The cases above leave Basel's
+# most recent booking earlier the same evening, so reusing it made this section
+# pass before kick-off and fail after it.
 as "$BASEL"
+q "delete from booking where pitch_id='$PITCH' and during && tstzrange('$TOMORROW'::timestamptz,'$TOMORROW'::timestamptz+interval '1 hour')" >/dev/null
+hid=$(q "select booking_id from hold_slot('$PITCH', '$TOMORROW'::timestamptz, 60, 'Basel')")
+q "select ok from confirm_booking('$hid')" >/dev/null
 n=$(q "select count(*) from my_next_booking()")
 check "the player's next booking is one call" "$n" "1"
 v=$(q "select venue_name from my_next_booking()")

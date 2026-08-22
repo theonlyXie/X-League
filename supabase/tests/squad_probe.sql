@@ -31,7 +31,12 @@ begin
    where v.name = 'Stadium One' and p.label = 'Pitch B';
 
   -- A free hour on Pitch B: the seed occupies 21 and 22, so 19 is clear.
-  v_slot := ((current_date + interval '19 hours') at time zone 'Africa/Cairo');
+  --
+  -- Two days out rather than tonight, because my_invitations and
+  -- my_squad_matches only return matches that have not finished. Booking
+  -- "today at 7 PM" made these cases pass in the morning and fail in the
+  -- evening — a suite whose result depends on the hour it runs is not a suite.
+  v_slot := ((current_date + 2 + interval '19 hours') at time zone 'Africa/Cairo');
   delete from booking where pitch_id = v_pitch and during && tstzrange(v_slot, v_slot + interval '1 hour');
 
   -- Basel books the pitch.
