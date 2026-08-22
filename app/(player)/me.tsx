@@ -11,6 +11,7 @@ import { cssAngle } from '@/theme/gradient';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { CARD } from '@/data/player';
 import { useCard } from '@/state/card';
+import type { MatchEvidence } from '@/data/progress';
 import { CONFIDENCE_COPY } from '@/data/assessment';
 import { useI18n } from '@/i18n';
 import { useSession } from '@/state/session';
@@ -25,7 +26,7 @@ import { isLive } from '@/lib/supabase';
 export default function Me() {
   const router = useRouter();
   const { signedIn, displayName, venues, signOut } = useSession();
-  const { card, loading } = useCard();
+  const { card, evidence, matches, loading } = useCard();
   const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
   // Signed in with a real card: show theirs. Otherwise the design's fixture,
@@ -69,10 +70,21 @@ export default function Me() {
       )}
 
       <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
-        <StatTile label={t.form} value={live ? '—' : `${CARD.form}`} gold={!live} icon={!live} />
+        {/* The three tiles that read empty for a real account until matches,
+            ratings and XP existed. `-` in the form strip means no score was
+            ever reported, which the strip has to be able to say. */}
+        <StatTile
+          label={t.form}
+          value={live ? (evidence?.form.length ? evidence.form.join(' ') : '—') : `${CARD.form}`}
+          gold={!live}
+          icon={!live}
+        />
         <StatTile label={t.verifiedMatches} value={t.matches(num(evidenceCount))} />
-        <StatTile label={t.raters} value={num(live ? 0 : CARD.raters)} />
+        <StatTile label={t.raters} value={num(live ? (evidence?.raterCount ?? 0) : CARD.raters)} />
       </View>
+
+      {/* PRO-007: the evidence itself, not just its count. */}
+      {live ? <MatchEvidenceList matches={matches} onRate={(id) => router.push(`/play/rate?match=${id}`)} /> : null}
 
       {/* §5.1: every displayed score exposes where it came from. */}
       <View
@@ -333,6 +345,79 @@ function VoidCard({
         ))}
       </View>
     </LinearGradient>
+  );
+}
+
+/**
+ * P-09's "Match evidence". Each row says how many independent people have
+ * rated in that match, because three is the threshold at which it counts —
+ * a player watching that number climb is watching their card become real.
+ */
+function MatchEvidenceList({
+  matches,
+  onRate,
+}: {
+  matches: MatchEvidence[];
+  onRate: (matchId: string) => void;
+}) {
+  const { t, num, shortDate } = useI18n();
+
+  return (
+    <View style={{ width: '100%', gap: 12 }}>
+      <Eyebrow>{t.matchEvidence}</Eyebrow>
+      {matches.length === 0 ? (
+        <View style={{ gap: 4 }}>
+          <Txt size={13} color={onVoid.muted}>
+            {t.matchEvidenceEmpty}
+          </Txt>
+          <Txt size={11.5} color={onVoid.dim}>
+            {t.matchEvidenceBlurb}
+          </Txt>
+        </View>
+      ) : (
+        <View style={{ gap: 8 }}>
+          {matches.map((m) => (
+            <Pressable
+              key={m.matchId}
+              accessibilityRole="button"
+              accessibilityLabel={`${m.venueName}, ${m.raters} raters`}
+              disabled={!m.canRate}
+              onPress={() => onRate(m.matchId)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderRadius: radius.control,
+                backgroundColor: void_.surface,
+                borderWidth: 1,
+                borderColor: m.state === 'verified' ? goldAlpha.edgeSoft : onVoid.edgeFaint,
+              }}
+            >
+              <View style={{ flex: 1, gap: 3 }}>
+                <Txt size={13.5} weight="semibold" color={onVoid.primary}>
+                  {m.venueName}
+                </Txt>
+                <Txt size={11} color={onVoid.faint}>
+                  {shortDate(m.playedAt)}
+                  {m.scoreHome != null && m.scoreAway != null
+                    ? ` · ${num(m.scoreHome)}–${num(m.scoreAway)}`
+                    : ''}
+                </Txt>
+              </View>
+              <Txt
+                size={11}
+                weight="semibold"
+                color={m.state === 'verified' ? gold.base : onVoid.dim}
+              >
+                {m.state === 'verified' ? t.verified3 : t.awaitingRaters(num(m.raters))}
+              </Txt>
+            </Pressable>
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 

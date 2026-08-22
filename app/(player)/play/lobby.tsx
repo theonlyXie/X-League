@@ -1,29 +1,46 @@
-import { useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Eyebrow } from '@/components/ui';
+import { Button, Divider, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
-import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { BOOKING, LOBBY_CHAT, ROSTER, RosterEntry } from '@/data/player';
+import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { useBooking } from '@/state/booking';
-
-/** The booking's life so far, as the lobby header shows it (§7.2). */
-const STAGES = [
-  { label: 'Held', done: true },
-  { label: 'Confirmed', done: true },
-  { label: 'Check-in', done: false },
-  { label: 'Result', done: false },
-];
+import { useLobby } from '@/state/lobby';
+import { leaveBooking, removeParticipant } from '@/data/squad';
+import { cancelBooking } from '@/data/discovery';
+import { sendMessage } from '@/data/social';
+import { useI18n } from '@/i18n';
 
 /**
  * P-13 Match lobby — coordinate confirmed participants (§4.3).
  * TEAM-008: roster, open needs, venue, time, check-in state and conversation.
+ *
+ * The whole screen hangs off one booking id, which arrives in the URL. Home,
+ * the confirmation screen and a notification all deep-link here, so the lobby
+ * cannot assume it is showing "the" booking the app happens to have in memory.
  */
 export default function Lobby() {
   const router = useRouter();
-  const { code } = useBooking();
-  const filled = ROSTER.filter((p) => p.filled).length;
+  const params = useLocalSearchParams<{ booking?: string }>();
+  const { bookingId: heldBookingId, code } = useBooking();
+  const bookingId = params.booking ?? heldBookingId;
+  const lobby = useLobby(bookingId);
+  const { t, num, hour, shortDate, money } = useI18n();
+
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  const header = lobby.booking;
+  const stages = [
+    { label: t.held, done: true },
+    { label: t.confirmed, done: true },
+    { label: t.checkIn, done: header?.state === 'checked_in' || header?.state === 'completed' },
+    { label: t.result, done: header?.state === 'completed' },
+  ];
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
@@ -45,190 +62,319 @@ export default function Lobby() {
         >
           <ArrowLeft size={16} color={onVoid.secondary} />
         </Pressable>
-        <View style={{ gap: 2 }}>
+        <View style={{ gap: 2, flex: 1 }}>
           <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
-            Match lobby
+            {t.matchLobbyTitle}
           </Txt>
           <Txt size={11.5} color={onVoid.faint}>
-            {code} · {BOOKING.venue} · {BOOKING.pitch}
+            {[header?.code ?? code, header?.venueName, header?.pitchLabel]
+              .filter(Boolean)
+              .join(' · ')}
           </Txt>
         </View>
       </View>
 
-      <StageRail />
+      {lobby.loading ? (
+        <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+          <ActivityIndicator color={gold.base} />
+        </View>
+      ) : null}
 
-      <View style={{ gap: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Eyebrow>Squad · 5-a-side</Eyebrow>
-          <Txt size={11.5} color={onVoid.faint}>
-            {filled} of 5 confirmed
+      {lobby.denied ? (
+        <View
+          style={{
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            borderRadius: radius.chip,
+            borderWidth: 1,
+            borderColor: 'rgba(101,21,37,.5)',
+            backgroundColor: 'rgba(101,21,37,.09)',
+          }}
+        >
+          <Txt size={13} weight="semibold" color={burgundy.action}>
+            {lobby.denied}
           </Txt>
         </View>
-        <View style={{ gap: 8 }}>
-          {ROSTER.map((entry) => (
-            <RosterRow key={entry.name} entry={entry} onFill={() => router.push('/play')} />
-          ))}
-        </View>
-      </View>
+      ) : null}
 
-      <View
-        style={{
-          padding: 16,
-          borderRadius: radius.control,
-          backgroundColor: void_.surface,
-          borderWidth: 1,
-          borderColor: onVoid.edge,
-          gap: 10,
-        }}
-      >
-        <Eyebrow>Lobby chat</Eyebrow>
-        {LOBBY_CHAT.map((msg, i) => (
-          <View key={i} style={{ flexDirection: 'row', gap: 9 }}>
-            <View
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: radius.pill,
-                backgroundColor: void_.inset,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Txt size={9} weight="bold" color={gold.base}>
-                {msg.initials}
+      {!lobby.loading && !lobby.denied ? (
+        <>
+          <StageRail stages={stages} />
+
+          {header ? (
+            <View style={{ gap: 4 }}>
+              <Txt size={15} weight="semibold" color={onVoid.primary}>
+                {shortDate(header.startsAt)} · {hour(header.startsAt)}
               </Txt>
+              {header.area ? (
+                <Txt size={12} color={onVoid.muted}>
+                  {header.area}
+                </Txt>
+              ) : null}
             </View>
-            <Txt size={12.5} lh={1.5} color="rgba(243,238,229,.7)" style={{ flex: 1 }}>
-              {msg.line}
-            </Txt>
-          </View>
-        ))}
-      </View>
+          ) : null}
 
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <Button
-          label="Message squad"
-          variant="ghost"
-          flex={1}
-          size={13.5}
-          style={{ borderColor: onVoid.line }}
-          onPress={() => {}}
-        />
-        <Button label="Cancel booking" variant="danger" flex={1} size={13.5} onPress={() => {}} />
-      </View>
+          {/* The counts come from the server, not from counting this list. */}
+          <View style={{ gap: 12 }}>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}
+            >
+              <Eyebrow>{t.squadTitle}</Eyebrow>
+              {lobby.counts ? (
+                <Txt size={11.5} color={onVoid.faint}>
+                  {t.startersOf(
+                    num(lobby.counts.acceptedStarters),
+                    num(lobby.counts.starterCapacity),
+                  )}
+                  {lobby.counts.pending > 0 ? ` · ${t.awaitingReply(num(lobby.counts.pending))}` : ''}
+                </Txt>
+              ) : null}
+            </View>
+
+            <View style={{ gap: 8 }}>
+              {lobby.squad.map((member) => (
+                <View
+                  key={member.participantId}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 11,
+                    paddingHorizontal: 14,
+                    borderRadius: radius.control,
+                    backgroundColor: void_.surface,
+                    borderWidth: 1,
+                    borderColor:
+                      member.state === 'invited' ? goldAlpha.edgeSoft : onVoid.edgeFaint,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: radius.pill,
+                      backgroundColor: void_.inset,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Txt size={11} weight="bold" color={gold.base}>
+                      {member.displayName.slice(0, 2).toUpperCase()}
+                    </Txt>
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Txt size={13.5} weight="semibold" color={onVoid.primary}>
+                      {member.displayName}
+                    </Txt>
+                    <Txt size={11} color={onVoid.faint}>
+                      {[
+                        member.isCaptain ? t.captain : null,
+                        member.slotKind === 'sub' ? t.sub : t.starter,
+                        member.position,
+                        member.state === 'invited' ? t.invited : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </Txt>
+                  </View>
+                  {member.ovr != null ? (
+                    <Txt size={14} weight="bold" color={gold.base}>
+                      {num(member.ovr)}
+                    </Txt>
+                  ) : null}
+                  {lobby.booking && !member.isCaptain ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${t.removePlayer} ${member.displayName}`}
+                      hitSlop={10}
+                      onPress={async () => {
+                        const res = await removeParticipant(member.participantId);
+                        if (!res.ok) setNotice(res.reason ?? null);
+                        lobby.reload();
+                      }}
+                    >
+                      <Txt size={11} color={burgundy.action}>
+                        {t.removePlayer}
+                      </Txt>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+
+            {lobby.booking ? (
+              <Button
+                label={t.invitePlayers}
+                variant="ghost"
+                height={42}
+                onPress={() => router.push(`/play/invite?booking=${bookingId}`)}
+              />
+            ) : null}
+          </View>
+
+          <Divider />
+
+          {/* MSG-001: the lobby conversation, in the lobby. */}
+          <View style={{ gap: 12 }}>
+            <Eyebrow>{t.lobbyChat}</Eyebrow>
+            {lobby.messages.length === 0 ? (
+              <Txt size={12.5} color={onVoid.dim}>
+                {t.noMessages}
+              </Txt>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {[...lobby.messages].reverse().slice(-8).map((m) => (
+                  <View key={m.messageId} style={{ gap: 3 }}>
+                    <Txt size={11} color={m.mine ? gold.base : onVoid.faint}>
+                      {m.mine ? '' : `${m.senderName} · `}
+                      {hour(m.at)}
+                    </Txt>
+                    <Txt size={13} lh={1.5} color={onVoid.secondary}>
+                      {m.body}
+                    </Txt>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {lobby.conversationId ? (
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <TextInput
+                  value={draft}
+                  onChangeText={setDraft}
+                  placeholder={t.messagePlaceholder}
+                  placeholderTextColor={onVoid.dim}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    paddingHorizontal: 14,
+                    borderRadius: radius.control,
+                    borderWidth: 1,
+                    borderColor: onVoid.edge,
+                    color: onVoid.primary,
+                    backgroundColor: void_.surface,
+                  }}
+                />
+                <Button
+                  label={t.send}
+                  height={44}
+                  disabled={sending || draft.trim().length === 0}
+                  onPress={async () => {
+                    if (!lobby.conversationId) return;
+                    setSending(true);
+                    const res = await sendMessage(lobby.conversationId, draft);
+                    setSending(false);
+                    if (res.ok) {
+                      setDraft('');
+                      lobby.reloadMessages();
+                    } else {
+                      setNotice(res.reason ?? null);
+                    }
+                  }}
+                />
+              </View>
+            ) : null}
+          </View>
+
+          {notice ? (
+            <Txt size={12} color={burgundy.action}>
+              {notice}
+            </Txt>
+          ) : null}
+
+          <Divider />
+
+          {/* BKG-008: the cancellation the checkout screen promised. */}
+          {lobby.booking ? (
+            <View style={{ gap: 10 }}>
+              {lobby.terms ? (
+                <Txt size={11.5} color={onVoid.faint}>
+                  {lobby.terms.freeNow
+                    ? t.freeUntil(hour(lobby.terms.cutoffAt))
+                    : `${t.cutoffPassed} · ${money(lobby.terms.depositEgp)}`}
+                </Txt>
+              ) : null}
+
+              {confirmCancel ? (
+                <View style={{ gap: 10 }}>
+                  <Txt size={13} weight="semibold" color={onVoid.primary}>
+                    {t.cancelConfirm}
+                  </Txt>
+                  <Txt size={12} color={onVoid.muted}>
+                    {lobby.terms?.freeNow ? t.cancelFreeNote : t.cancelLateNote}
+                  </Txt>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Button
+                      label={t.cancelNow}
+                      variant="decline"
+                      flex={1}
+                      height={42}
+                      onPress={async () => {
+                        if (!bookingId) return;
+                        const res = await cancelBooking(bookingId);
+                        if (res.ok) router.replace('/');
+                        else setNotice(res.reason ?? null);
+                      }}
+                    />
+                    <Button
+                      label={t.keepBooking}
+                      variant="ghost"
+                      flex={1}
+                      height={42}
+                      onPress={() => setConfirmCancel(false)}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <Button
+                  label={t.cancelBooking}
+                  variant="decline"
+                  height={42}
+                  onPress={() => setConfirmCancel(true)}
+                />
+              )}
+            </View>
+          ) : (
+            <Button
+              label={t.leaveMatch}
+              variant="decline"
+              height={42}
+              onPress={async () => {
+                if (!bookingId) return;
+                const res = await leaveBooking(bookingId);
+                if (res.ok) router.replace('/');
+                else setNotice(res.reason ?? null);
+              }}
+            />
+          )}
+        </>
+      ) : null}
     </Screen>
   );
 }
 
-function StageRail() {
+/** The booking's life so far, as the lobby header shows it (§7.2). */
+function StageRail({ stages }: { stages: { label: string; done: boolean }[] }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      {STAGES.map((stage, i) => (
-        <View key={stage.label} style={{ flexDirection: 'row', alignItems: 'center', flex: i === 0 ? 1 : 2 }}>
-          {i > 0 ? (
-            <View
-              style={{
-                height: 1,
-                flex: 1,
-                marginBottom: 16,
-                backgroundColor: stage.done ? gold.base : 'rgba(243,238,229,.15)',
-              }}
-            />
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {stages.map((stage, i) => (
+        <View key={stage.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: radius.pill,
+              backgroundColor: stage.done ? gold.base : 'rgba(243,238,229,.18)',
+            }}
+          />
+          <Txt size={10.5} weight={stage.done ? 'semibold' : 'regular'} color={stage.done ? gold.base : onVoid.dim}>
+            {stage.label}
+          </Txt>
+          {i < stages.length - 1 ? (
+            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(243,238,229,.1)' }} />
           ) : null}
-          <View style={{ flex: 1, alignItems: 'center', gap: 6 }}>
-            <View
-              style={{
-                width: 9,
-                height: 9,
-                borderRadius: radius.pill,
-                ...(stage.done
-                  ? { backgroundColor: gold.base }
-                  : { borderWidth: 1, borderColor: 'rgba(243,238,229,.3)' }),
-              }}
-            />
-            <Txt size={10} weight="semibold" color={stage.done ? gold.base : onVoid.dim}>
-              {stage.label}
-            </Txt>
-          </View>
         </View>
       ))}
     </View>
-  );
-}
-
-function RosterRow({ entry, onFill }: { entry: RosterEntry; onFill: () => void }) {
-  const open = entry.tag === 'OPEN';
-  const initials = entry.filled
-    ? entry.name
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : '+';
-
-  const content = (
-    <>
-      <View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: radius.pill,
-          backgroundColor: entry.filled ? void_.inset : 'transparent',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Txt size={10.5} weight="bold" color={entry.filled ? gold.base : onVoid.dim}>
-          {initials}
-        </Txt>
-      </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Txt
-          size={13.5}
-          weight="semibold"
-          color={entry.filled ? onVoid.primary : open ? gold.base : 'rgba(243,238,229,.55)'}
-        >
-          {entry.name}
-        </Txt>
-        <Txt size={11} color={onVoid.dim}>
-          {entry.meta}
-        </Txt>
-      </View>
-      <Txt
-        size={10.5}
-        weight="bold"
-        em={0.08}
-        color={entry.tag === 'YOU' ? onVoid.dim : open ? gold.base : onVoid.dim}
-      >
-        {entry.tag}
-      </Txt>
-    </>
-  );
-
-  const style = {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    borderRadius: radius.row,
-    backgroundColor: entry.filled ? void_.surface : 'transparent',
-    borderWidth: 1,
-    borderStyle: (entry.filled ? 'solid' : 'dashed') as 'solid' | 'dashed',
-    borderColor: entry.filled ? onVoid.edgeFaint : open ? goldAlpha.accent : 'rgba(243,238,229,.14)',
-  };
-
-  if (entry.filled) return <View style={style}>{content}</View>;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${entry.name}. ${entry.meta}`}
-      onPress={onFill}
-      style={({ pressed }) => [style, { opacity: pressed ? 0.75 : 1 }]}
-    >
-      {content}
-    </Pressable>
   );
 }
