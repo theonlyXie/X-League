@@ -40,10 +40,17 @@ export type SearchVenuesOptions = {
   limit?: number;
 };
 
-/** VEN-001 / VEN-003: P-03's list, across every venue rather than one pitch. */
+/**
+ * VEN-001 / VEN-003: P-03's list, across every venue rather than one pitch.
+ *
+ * `p_date` is only sent when there is one. PostgREST applies a function's SQL
+ * default for a parameter the body omits, but an explicit `null` *overrides*
+ * it — which silently made every venue report zero open slots, because
+ * availability for the null date is no availability at all.
+ */
 export async function searchVenues(opts: SearchVenuesOptions = {}): Promise<VenueSummary[]> {
   const { data, error } = await supabase().rpc('search_venues', {
-    p_date: opts.date ?? null,
+    ...(opts.date ? { p_date: opts.date } : {}),
     p_tz: 'Africa/Cairo',
     p_lat: opts.lat ?? null,
     p_lon: opts.lon ?? null,

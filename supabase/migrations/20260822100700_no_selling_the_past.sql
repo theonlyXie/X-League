@@ -173,3 +173,171 @@ grant  execute on function public.search_availability(uuid, date, text) to anon,
 
 revoke execute on function public.hold_slot(uuid, timestamptz, integer, text, integer) from public, anon, authenticated;
 grant  execute on function public.hold_slot(uuid, timestamptz, integer, text, integer) to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- A null date means today, not "no date"
+-- ---------------------------------------------------------------------------
+
+-- PostgREST applies a function's SQL default only for a parameter the request
+-- body omits; an explicit `null` overrides it. A JSON client that helpfully
+-- sends `{"p_date": null}` therefore searched availability for the null date,
+-- which is no availability at all — every venue reported zero open slots and
+-- nothing anywhere raised. Coalescing here means both callers get the same
+-- answer, whichever way they express "today".
+create or replace function search_venues(
+  p_date      date    default current_date,
+  p_tz        text    default 'Africa/Cairo',
+  p_lat       numeric default null,
+  p_lon       numeric default null,
+  p_from_hour smallint default 0,
+  p_to_hour   smallint default 24,
+  p_format    text    default null,
+  p_limit     integer default 25
+)
+returns table (
+  venue_id      uuid,
+  name          text,
+  area          text,
+  verification  text,
+  lat           numeric,
+  lon           numeric,
+  distance_km   numeric,
+  rating_avg    numeric,
+  rating_count  integer,
+  open_slots    integer,
+  min_price_egp integer,
+  next_slot     timestamptz,
+  cover_url     text,
+  amenities     text[]
+)
+language plpgsql security definer
+set search_path = public, pg_temp as $$
+declare
+  v_date date     := coalesce(p_date, current_date);
+  v_tz   text     := coalesce(p_tz, 'Africa/Cairo');
+  v_from smallint := coalesce(p_from_hour, 0);
+  v_to   smallint := coalesce(p_to_hour, 24);
+  v_lim  integer  := coalesce(p_limit, 25);
+begin
+  perform expire_stale_holds(null);
+
+  return query
+  with candidate as (
+    select v.*
+      from venue v
+     where exists (
+       select 1 from pitch p
+        where p.venue_id = v.id
+          and p.operational
+          and (p_format is null or p.format = p_format)
+     )
+  ),
+  cell as (
+    select c.id as venue_id, a.starts_at, a.price_egp, a.available
+    from candidate c
+    join pitch p on p.venue_id = c.id and p.operational
+                and (p_format is null or p.format = p_format)
+    cross join lateral search_availability(p.id, v_date, v_tz) a
+    where a.hour >= v_from and a.hour < v_to
+  ),
+  rollup as (
+    select
+      cell.venue_id,
+      count(*) filter (where cell.available)::integer as open_slots,
+      min(cell.price_egp) filter (where cell.available)  as min_price,
+      min(cell.starts_at) filter (where cell.available)  as next_slot
+    from cell
+    group by cell.venue_id
+  )
+  select
+    c.id, c.name, c.area, c.verification, c.lat, c.lon,
+    distance_km(p_lat, p_lon, c.lat, c.lon),
+    c.rating_avg, c.rating_count,
+    coalesce(r.open_slots, 0),
+    coalesce(r.min_price, 0)::integer,
+    r.next_slot,
+    c.cover_url,
+    c.amenities
+  from candidate c
+  left join rollup r on r.venue_id = c.id
+  order by
+    (c.verification = 'verified') desc,
+    distance_km(p_lat, p_lon, c.lat, c.lon) asc nulls last,
+    coalesce(r.open_slots, 0) desc,
+    c.name
+  limit greatest(1, least(v_lim, 100));
+end;
+$$;
+
+-- Same for the single-pitch grid: a null date is today, and a null zone is the
+-- venue's own.
+create or replace function search_availability(
+  p_pitch_id uuid,
+  p_date     date default current_date,
+  p_tz       text default 'Africa/Cairo'
+)
+returns table (
+  starts_at timestamptz,
+  ends_at   timestamptz,
+  hour      smallint,
+  price_egp integer,
+  deposit_egp integer,
+  available boolean,
+  taken_by  booking_source
+)
+language plpgsql security definer
+set search_path = public, pg_temp as $$
+declare
+  v_date date := coalesce(p_date, current_date);
+  v_tz   text := coalesce(p_tz, 'Africa/Cairo');
+begin
+  perform expire_stale_holds(p_pitch_id);
+
+  return query
+  with rule as (
+    select ar.open_hour, ar.close_hour, ar.slot_minutes
+      from availability_rule ar
+     where ar.pitch_id = p_pitch_id
+       and ar.day_of_week = extract(dow from v_date)::smallint
+     limit 1
+  ),
+  slot as (
+    select
+      h::smallint as hour,
+      ((v_date + make_interval(hours => h)) at time zone v_tz) as starts_at,
+      ((v_date + make_interval(hours => h) + make_interval(mins => r.slot_minutes)) at time zone v_tz) as ends_at
+    from rule r,
+         generate_series(r.open_hour, r.close_hour - 1) as h
+  )
+  select
+    s.starts_at,
+    s.ends_at,
+    s.hour,
+    coalesce(pr.price_egp, 0),
+    coalesce(pr.deposit_egp, 0),
+    b.id is null and x.id is null and s.starts_at > now(),
+    b.source
+  from slot s
+  left join price_rule pr
+    on pr.pitch_id = p_pitch_id
+   and s.hour >= pr.start_hour and s.hour < pr.end_hour
+   and pr.valid_from <= v_date
+   and (pr.valid_to is null or pr.valid_to > v_date)
+  left join booking b
+    on b.pitch_id = p_pitch_id
+   and b.during && tstzrange(s.starts_at, s.ends_at, '[)')
+   and b.state in ('held', 'pending_payment', 'confirmed', 'checked_in', 'completed')
+  left join lateral (
+    select ae.id from availability_exception ae
+     where ae.pitch_id = p_pitch_id
+       and ae.during && tstzrange(s.starts_at, s.ends_at, '[)')
+     limit 1
+  ) x on true
+  order by s.starts_at;
+end;
+$$;
+
+revoke execute on function public.search_venues(date, text, numeric, numeric, smallint, smallint, text, integer) from public, anon, authenticated;
+grant  execute on function public.search_venues(date, text, numeric, numeric, smallint, smallint, text, integer) to anon, authenticated;
+revoke execute on function public.search_availability(uuid, date, text) from public, anon, authenticated;
+grant  execute on function public.search_availability(uuid, date, text) to anon, authenticated;

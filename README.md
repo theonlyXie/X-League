@@ -19,9 +19,17 @@ npm run build:web  # static web bundle
 
 ## What is built
 
-One evening, followed end to end: Basel Elsayed finds a live 5-a-side slot at
-Stadium One, holds it, pays a cash deposit at the gate, and the venue sees the
-booking land in the same calendar that holds its phone and walk-in bookings.
+A season, not one evening. A player finds a pitch, holds it, fills the squad,
+plays, gets rated, and their card moves; the venue prices its hours, closes
+what it cannot sell, takes cash at the gate and reconciles the week; the
+platform verifies venues, moderates reports and can explain every privileged
+action from the audit log.
+
+Every screen reads live data. The only fixtures left are the fallbacks that
+render when no database is configured, so the app can still be opened and
+looked at with an empty `.env`.
+
+### Player
 
 | Screen | Spec | Route |
 | --- | --- | --- |
@@ -30,11 +38,35 @@ booking land in the same calendar that holds its phone and walk-in bookings.
 | Pitch detail | P-04 | `/play/pitch` |
 | Checkout | P-05 | `/play/checkout` |
 | Confirmation | P-06 | `/play/confirmation` |
-| Match lobby | P-13 | `/play/lobby` |
+| Fill the squad | P-07 / P-11 | `/play/invite` |
 | Player card | P-08 / P-09 | `/me` |
-| Owner Today | O-01 | `/owner` |
-| Owner Calendar | O-02 | `/owner/calendar` |
-| Admin Overview | A-01 | `/admin` |
+| Rate a match | P-09 | `/play/rate` |
+| Teams | P-10 | `/teams` |
+| Chat | P-12 / P-14 | `/chat` |
+| Match lobby | P-13 | `/play/lobby` |
+| Cups | P-15 – P-20 | `/cups` |
+| Notifications | — | `/notifications` |
+| Onboarding | P-01 | `/onboarding` |
+
+### Venue
+
+| Screen | Spec | Route |
+| --- | --- | --- |
+| Today | O-01 | `/owner` |
+| Calendar | O-02 | `/owner/calendar` |
+| Pricing | O-03 | `/owner/setup/pricing` |
+| Closures | O-04 | `/owner/setup/closures` |
+| Staff | O-05 | `/owner/setup/staff` |
+| Money | O-06 | `/owner/money` |
+| Venue profile | O-07 | `/owner/setup/profile` |
+| Reviews | O-08 | `/owner/reviews` |
+
+### Platform
+
+`/admin` carries all of A-01 – A-08 in one console: overview, verification
+queue, users and suspensions, moderation, ledger, policy settings and the audit
+log. Which sections appear depends on the caller's platform role, though every
+function checks authority for itself regardless.
 
 The three surfaces share one identity, so Player and Owner mode switch without
 signing out (RBAC-005): the switch lives on the player card under **Workspace**,
@@ -79,15 +111,28 @@ app/                     expo-router routes; directory structure is the URL stru
   (player)/              player tabs — the group adds no path segment
     play/                everything downstream of Play, so the Play tick stays
                          gold through the whole booking flow
+    cups/  chat/         the other two tabs
   owner/                 owner tabs, Operative surfaces
+    setup/               pricing, closures, staff, venue profile
+  teams/  notifications  reachable from the profile rather than a tab
   admin.tsx              the console's own fixed 1180pt canvas
 src/
   theme/tokens.ts        every colour, radius and metric, lifted from the design
   theme/typography.ts    Inter faces by name + em→pt tracking
   components/            Txt, VoidMark, SlotGrid, tab bars, icons
-  data/                  the design's fixture data, typed
+  components/operative.tsx  the Operative kit Owner Mode and admin share
+  data/api.ts            the booking spine's RPCs
+  data/discovery.ts      venues, reviews, cancellation, standing
+  data/squad.ts          squads, invitations, teams, player search
+  data/progress.ts       matches, peer ratings, XP
+  data/social.ts         conversations, notifications, reports
+  data/cups.ts           tournaments
+  data/manage.ts         Owner Mode configuration and the admin console
   state/booking.tsx      slot selection, the hold countdown, owner check-in
 ```
+
+Each `data/` module mirrors one migration, and every one converts snake_case to
+camelCase once at the boundary — a screen never sees a database column name.
 
 ## The booking spine
 
@@ -212,6 +257,59 @@ BKG-009, BKG-011 and OWN-006 — and reseeds itself, so runs are independent.
 Copy `.env.example` to `.env` to point the app at a database. Without it the
 app runs on fixtures in demo mode; that switch is made in exactly one place,
 `src/lib/supabase.ts`.
+
+### Squads, matches and the card's evidence
+
+A booking is a transaction; a match is a fact about people. `booking_participant`
+is the middle: a squad place is a claim on inventory the captain already paid
+for, so capacity is enforced in the database exactly like pitch occupancy is,
+and a pending invitation holds that shirt the way a hold holds a pitch-hour.
+
+A checked-in booking becomes a `match` with a team sheet drawn from the accepted
+squad. Check-in is load-bearing — it is the venue's testimony that people turned
+up, and without it a completed match would be a self-report, which is precisely
+what the card is designed not to trust. The people on the sheet rate each other,
+three independent raters make the match verified evidence, and the card is
+rebuilt blending self-assessment with peer means at the weight §5.1's ladder
+prescribes. An attribute nobody rated keeps its self-assessed value rather than
+decaying toward a number no one asserted.
+
+XP is an append-only ledger rather than a counter, so a total is explainable
+line by line, and a unique index rather than careful code is what stops a match
+paying twice.
+
+### Cancellation, and the policy P-05 states
+
+The checkout screen tells players in both languages that cancellation is free
+until 3 PM and that two unexcused no-shows in a season restrict cash-deposit
+booking. Both are now enforced. The cutoff and the limit are rows in
+`policy_setting` rather than constants, so the admin console moves them without
+a deploy, and the restriction is checked in `hold_slot` because that is the only
+place inventory is claimed and therefore the only place the promise can be kept.
+
+Cancelling returns the hour to inventory the moment it commits — the exclusion
+constraint only counts live states, so no sweeper is in the loop.
+
+### Tournaments
+
+A fixture is not a separate kind of match. It points at the same `match` row the
+spine produces, so a cup game is booked, checked in, rated and credited exactly
+like any other, and the exclusion constraint stays the only thing deciding
+whether a pitch-hour is sold twice. Standings are appended snapshots rather than
+a live aggregate, because a table shown mid-tournament has to be reproducible
+afterwards and a points rule that changes must not rewrite history.
+
+### Conversations
+
+A conversation is derived from a relationship that already exists — a squad, a
+team, or two people who have shared a pitch. Player search honours PRO-006
+visibility, so messaging honours the same boundary; otherwise it is an open
+channel to any account whose name somebody can guess. There is deliberately no
+"new message" button.
+
+A notification is a row rather than a push. Delivery is a separate concern, but
+the record of what a player was told survives whether or not a device was
+reachable.
 
 ## Design system
 
