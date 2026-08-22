@@ -10,13 +10,17 @@ import type { TabBarProps } from './tabBarTypes';
  * Owner mode runs in Operative: bone surfaces, denser type, 8–12 px corners.
  * It is shift software, so the active tab is ink rather than gold — gold stays
  * reserved for money and for the app-sourced booking.
+ *
+ * The last three tabs were drawn but inert. They now carry the rest of §4.5:
+ * what the venue is owed (O-06), what players said (O-08), and the
+ * configuration behind both (O-03, O-04, O-05, O-07).
  */
-const ITEMS: { label: string; route?: string }[] = [
+const ITEMS: { label: string; route: string }[] = [
   { label: 'Today', route: 'index' },
   { label: 'Calendar', route: 'calendar' },
-  { label: 'Bookings' },
-  { label: 'Customers' },
-  { label: 'More' },
+  { label: 'Money', route: 'money' },
+  { label: 'Reviews', route: 'reviews' },
+  { label: 'Setup', route: 'setup' },
 ];
 
 export function OwnerTabBar({ state, navigation }: TabBarProps) {
@@ -37,17 +41,16 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
       }}
     >
       {ITEMS.map((item) => {
-        const active = !!item.route && item.route === activeRoute;
+        const active = item.route === activeRoute;
         const color = active ? ink : onOperative.dim;
         return (
           <Pressable
             key={item.label}
             accessibilityRole="tab"
             accessibilityLabel={item.label}
-            accessibilityState={{ selected: active, disabled: !item.route }}
-            disabled={!item.route}
+            accessibilityState={{ selected: active }}
             onPress={() => {
-              if (!item.route || active) return;
+              if (active) return;
               navigation.navigate(item.route as never);
             }}
             style={{ flex: 1, alignItems: 'center', paddingTop: 11, gap: 7 }}
