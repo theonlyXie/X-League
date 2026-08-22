@@ -11,7 +11,7 @@ import {
 import { DEFAULT_SLOT, HOLD_SECONDS, SLOTS_TAKEN, SlotTime, BOOKING } from '@/data/player';
 import { isLive } from '@/lib/supabase';
 import * as api from '@/data/api';
-import { DEMO_PITCH_ID, BOOKING_DATE } from '@/data/venue';
+import { DEMO_PITCH_ID, today } from '@/data/venue';
 
 /**
  * The booking spine's shared state.
@@ -36,6 +36,13 @@ type BookingContextValue = {
   slotEndLabel: string;
   /** Hours already sold, through any channel. */
   taken: SlotTime[];
+  /**
+   * Price per hour label. A pitch can be priced differently by hour (OWN-007),
+   * so the footer quotes the hour the player actually selected rather than one
+   * number for the whole evening.
+   */
+  slotPrices: Record<string, number>;
+  slotDeposits: Record<string, number>;
   /** True while availability is being re-read from the venue calendar. */
   loading: boolean;
   /** True when the venue calendar could not be reached (§4.7 error state). */
@@ -61,6 +68,15 @@ type BookingContextValue = {
 
   /** Re-read availability from the venue calendar. */
   refresh: () => Promise<void>;
+
+  /**
+   * Point the spine at a pitch and a date. Discovery hands these in from the
+   * venue the player tapped; before it existed the pitch came from `.env`, so
+   * the app could only ever sell one.
+   */
+  setTarget: (pitchId: string, date: string) => void;
+  pitchId: string;
+  date: string;
 };
 
 const BookingContext = createContext<BookingContextValue | null>(null);
@@ -71,6 +87,8 @@ const hourOf = (t: SlotTime) => parseInt(t, 10);
 const labelOf = (s: api.Slot) => `${s.hour - 12}:00` as SlotTime;
 
 export function BookingProvider({ children }: { children: ReactNode }) {
+  const [pitchId, setPitchId] = useState<string>(DEMO_PITCH_ID);
+  const [date, setDate] = useState<string>(() => today());
   const [slot, setSlot] = useState<SlotTime>(DEFAULT_SLOT);
   const [taken, setTaken] = useState<SlotTime[]>(SLOTS_TAKEN);
   const [slots, setSlots] = useState<api.Slot[]>([]);
@@ -109,10 +127,10 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   }, [hold, remaining, expiresAt]);
 
   const refresh = useCallback(async () => {
-    if (!isLive) return;
+    if (!isLive || !pitchId) return;
     setLoading(true);
     try {
-      const fetched = await api.searchAvailability(DEMO_PITCH_ID, BOOKING_DATE);
+      const fetched = await api.searchAvailability(pitchId, date);
       setSlots(fetched);
       setTaken(fetched.filter((s) => !s.available).map(labelOf));
       setUnreachable(false);
@@ -124,11 +142,32 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pitchId, date]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  /**
+   * Changing pitch has to drop any hold in flight. A countdown left running
+   * against a slot at another venue would be showing the player a claim on
+   * inventory they are no longer looking at.
+   */
+  const setTarget = useCallback(
+    (nextPitch: string, nextDate: string) => {
+      setPitchId((current) => {
+        if (current !== nextPitch) {
+          setHold('idle');
+          setExpiresAt(null);
+          setBookingId(null);
+          setConflict(null);
+        }
+        return nextPitch;
+      });
+      setDate(nextDate);
+    },
+    [],
+  );
 
   const beginHold = useCallback(async (): Promise<boolean> => {
     setConflict(null);
@@ -153,8 +192,9 @@ export function BookingProvider({ children }: { children: ReactNode }) {
 
     let result: Awaited<ReturnType<typeof api.holdSlot>>;
     try {
-      result = await api.holdSlot(DEMO_PITCH_ID, chosen.startsAt, {
-        captainName: 'Basel Elsayed',
+      // No captain name: the server falls back to the signed-in player's own
+      // profile, which is more honest than the client asserting who it is.
+      result = await api.holdSlot(pitchId, chosen.startsAt, {
         holdSeconds: HOLD_SECONDS,
       });
     } catch {
@@ -181,7 +221,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     setExpiresAt(new Date(result.expiresAt).getTime());
     setHold('holding');
     return true;
-  }, [slot, slots, refresh]);
+  }, [slot, slots, refresh, pitchId]);
 
   const releaseHold = useCallback(() => {
     setHold((h) => {
@@ -234,6 +274,8 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       slotLabel: `${slot} PM`,
       slotEndLabel: `${hourOf(slot) + 1}:00 PM`,
       taken,
+      slotPrices: Object.fromEntries(slots.map((s) => [labelOf(s), s.priceEgp])),
+      slotDeposits: Object.fromEntries(slots.map((s) => [labelOf(s), s.depositEgp])),
       loading,
       unreachable,
       hold,
@@ -248,11 +290,15 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       checkedIn,
       toggleCheckIn,
       refresh,
+      setTarget,
+      pitchId,
+      date,
     };
   }, [
     slot,
     selectSlot,
     taken,
+    slots,
     loading,
     unreachable,
     hold,
@@ -266,6 +312,9 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     checkedIn,
     toggleCheckIn,
     refresh,
+    setTarget,
+    pitchId,
+    date,
   ]);
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;

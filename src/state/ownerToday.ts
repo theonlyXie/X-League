@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import * as api from '@/data/api';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
-import { BOOKING_DATE } from '@/data/venue';
+import { today } from '@/data/venue';
 
 /**
  * O-01's arrivals and tiles, from the venue's own calendar.
@@ -30,8 +30,8 @@ export function useOwnerToday() {
     setError(null);
     try {
       const [a, s] = await Promise.all([
-        api.ownerArrivals(venue.venueId, BOOKING_DATE),
-        api.ownerSummary(venue.venueId, BOOKING_DATE),
+        api.ownerArrivals(venue.venueId, today()),
+        api.ownerSummary(venue.venueId, today()),
       ]);
       setArrivals(a);
       setSummary(s);

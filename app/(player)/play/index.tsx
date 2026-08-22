@@ -1,48 +1,117 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Eyebrow, TurfSwatch, hitSlopTo44 } from '@/components/ui';
 import { Star } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { VENUES, Venue } from '@/data/player';
-import { useBooking } from '@/state/booking';
+import { searchVenues, type VenueSummary } from '@/data/discovery';
 import { useI18n } from '@/i18n';
-
-const DAYS = ['Tonight', 'Tomorrow', 'Pick date'];
-const WINDOWS = ['6–8 PM', '8–10 PM', '10–12'];
+import { isLive } from '@/lib/supabase';
 
 /**
- * P-03 Play — availability first (§1.3). The player states area, date and time
- * before results are returned, and results only ever show slots that are
- * saleable at query time (VEN-001, VEN-002).
+ * P-03 Play — availability first (§1.3). The player states date and time before
+ * results are returned, and results only ever show slots that are saleable at
+ * query time (VEN-001, VEN-002).
+ *
+ * The filters are part of the query rather than applied to a list afterwards:
+ * "how many slots does this venue have between 8 and 10" is a different number
+ * from "how many does it have", and showing the second under the first filter
+ * would be a lie the player only discovers on the next screen.
  */
+
+type DayKey = 'tonight' | 'tomorrow' | 'later';
+type WindowKey = 'early' | 'prime' | 'late';
+
+const WINDOWS: Record<WindowKey, { from: number; to: number; label: string }> = {
+  early: { from: 18, to: 20, label: '6–8 PM' },
+  prime: { from: 20, to: 22, label: '8–10 PM' },
+  late: { from: 22, to: 24, label: '10–12' },
+};
+
+const isoDate = (offset: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0, 10);
+};
+
 export default function PlaySearch() {
   const router = useRouter();
-  const [day, setDay] = useState('Tonight');
-  const [window_, setWindow] = useState('8–10 PM');
-  const [view, setView] = useState<'List' | 'Map'>('List');
-  const { t, num } = useI18n();
-  const dayLabels: Record<string, string> = { Tonight: t.tonight, Tomorrow: t.tomorrow, 'Pick date': t.pickDate };
-  const viewLabels: Record<string, string> = { List: t.list, Map: t.map };
+  const { t, num, money, hour } = useI18n();
+
+  const [day, setDay] = useState<DayKey>('tonight');
+  const [window_, setWindow] = useState<WindowKey>('prime');
+  const [venues, setVenues] = useState<VenueSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [unreachable, setUnreachable] = useState(false);
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
+  const [nonce, setNonce] = useState(0);
+
+  const dayLabels: Record<DayKey, string> = {
+    tonight: t.tonight,
+    tomorrow: t.tomorrow,
+    later: t.pickDate,
+  };
+  const dayOffset: Record<DayKey, number> = { tonight: 0, tomorrow: 1, later: 2 };
+
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!isLive) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setUnreachable(false);
+      try {
+        const rows = await searchVenues({
+          date: isoDate(dayOffset[day]),
+          fromHour: WINDOWS[window_].from,
+          toHour: WINDOWS[window_].to,
+        });
+        if (cancelled) return;
+        setVenues(rows);
+        setCheckedAt(new Date());
+      } catch {
+        if (!cancelled) setUnreachable(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [day, window_, nonce]);
+
+  const liveSlots = venues.reduce((sum, v) => sum + v.openSlots, 0);
+  const secondsAgo = checkedAt ? Math.max(0, Math.round((Date.now() - checkedAt.getTime()) / 1000)) : 0;
 
   return (
-    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
+    <Screen
+      contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}
+      refreshControl={
+        isLive ? (
+          <RefreshControl refreshing={loading} onRefresh={reload} tintColor={gold.base} colors={[gold.base]} />
+        ) : undefined
+      }
+    >
       <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
         {t.whenPlay}
       </Txt>
 
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {DAYS.map((d) => {
+          {(Object.keys(dayLabels) as DayKey[]).map((d) => {
             const on = d === day;
             return (
               <Pressable
                 key={d}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={d}
+                accessibilityLabel={dayLabels[d]}
                 onPress={() => setDay(d)}
                 hitSlop={hitSlopTo44(40)}
                 style={{
@@ -56,8 +125,12 @@ export default function PlaySearch() {
                     : { borderWidth: 1, borderColor: 'rgba(243,238,229,.14)' }),
                 }}
               >
-                <Txt size={13} weight={on ? 'bold' : 'semibold'} color={on ? void_.bg : 'rgba(243,238,229,.65)'}>
-                  {dayLabels[d] ?? d}
+                <Txt
+                  size={13}
+                  weight={on ? 'bold' : 'semibold'}
+                  color={on ? void_.bg : 'rgba(243,238,229,.65)'}
+                >
+                  {dayLabels[d]}
                 </Txt>
               </Pressable>
             );
@@ -65,14 +138,14 @@ export default function PlaySearch() {
         </View>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {WINDOWS.map((w) => {
+          {(Object.keys(WINDOWS) as WindowKey[]).map((w) => {
             const on = w === window_;
             return (
               <Pressable
                 key={w}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`${w} kick-off window`}
+                accessibilityLabel={`${WINDOWS[w].label} kick-off window`}
                 onPress={() => setWindow(w)}
                 hitSlop={hitSlopTo44(36)}
                 style={{
@@ -86,66 +159,12 @@ export default function PlaySearch() {
                   ...(on ? { backgroundColor: 'rgba(198,163,75,.12)' } : null),
                 }}
               >
-                <Txt size={12} weight={on ? 'bold' : 'regular'} color={on ? gold.base : 'rgba(243,238,229,.55)'}>
-                  {w}
-                </Txt>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Search area: Nasr City within 5 kilometres"
-          hitSlop={hitSlopTo44(32)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 7,
-            paddingVertical: 7,
-            paddingHorizontal: 12,
-            borderRadius: radius.pill,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-          }}
-        >
-          <View style={{ width: 5, height: 5, borderRadius: radius.pill, backgroundColor: gold.base }} />
-          <Txt size={12} color={onVoid.primary}>
-            Nasr City · 5 km
-          </Txt>
-        </Pressable>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            padding: 3,
-            borderRadius: radius.pill,
-            backgroundColor: void_.surface,
-            borderWidth: 1,
-            borderColor: onVoid.edge,
-          }}
-        >
-          {(['List', 'Map'] as const).map((v) => {
-            const on = v === view;
-            return (
-              <Pressable
-                key={v}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={`${v} view`}
-                onPress={() => setView(v)}
-                hitSlop={hitSlopTo44(26)}
-                style={{
-                  paddingVertical: 5,
-                  paddingHorizontal: 12,
-                  borderRadius: radius.pill,
-                  ...(on ? { backgroundColor: 'rgba(198,163,75,.16)' } : null),
-                }}
-              >
-                <Txt size={11.5} weight={on ? 'bold' : 'semibold'} color={on ? gold.base : onVoid.faint}>
-                  {viewLabels[v] ?? v}
+                <Txt
+                  size={12}
+                  weight={on ? 'bold' : 'regular'}
+                  color={on ? gold.base : 'rgba(243,238,229,.55)'}
+                >
+                  {WINDOWS[w].label}
                 </Txt>
               </Pressable>
             );
@@ -154,30 +173,86 @@ export default function PlaySearch() {
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <Eyebrow>{t.liveSlots(num(12))}</Eyebrow>
+        <Eyebrow>{t.liveSlots(num(liveSlots))}</Eyebrow>
         {/* VEN-002: results must say when availability was last confirmed. */}
         <Txt size={11} color="rgba(243,238,229,.3)">
-          {t.updatedAgo(num(9))}
+          {loading ? t.checking : t.updatedAgo(num(secondsAgo))}
         </Txt>
       </View>
 
+      {unreachable ? (
+        <Pressable
+          accessibilityRole="alert"
+          accessibilityLabel={t.offline}
+          onPress={reload}
+          style={{
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderRadius: radius.chip,
+            borderWidth: 1,
+            borderColor: 'rgba(101,21,37,.5)',
+            backgroundColor: 'rgba(101,21,37,.09)',
+          }}
+        >
+          <Txt size={12.5} weight="semibold" color={burgundy.action}>
+            {t.offline}
+          </Txt>
+        </Pressable>
+      ) : null}
+
+      {loading && venues.length === 0 ? (
+        <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+          <ActivityIndicator color={gold.base} />
+        </View>
+      ) : null}
+
+      {!loading && venues.length === 0 && !unreachable ? (
+        <Txt size={13} color={onVoid.muted}>
+          {t.noVenues}
+        </Txt>
+      ) : null}
+
       <View style={{ gap: 12 }}>
-        {VENUES.map((venue) => (
-          <VenueCard key={venue.name} venue={venue} onPress={() => router.push('/play/pitch')} />
+        {venues.map((venue) => (
+          <VenueCard
+            key={venue.venueId}
+            venue={venue}
+            onPress={() => router.push(`/play/pitch?venue=${venue.venueId}&date=${isoDate(dayOffset[day])}`)}
+            t={t}
+            num={num}
+            money={money}
+            hour={hour}
+          />
         ))}
       </View>
     </Screen>
   );
 }
 
-function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => void }) {
-  const { slot } = useBooking();
-  const soldOut = venue.open.length === 0;
+function VenueCard({
+  venue,
+  onPress,
+  t,
+  num,
+  money,
+  hour,
+}: {
+  venue: VenueSummary;
+  onPress: () => void;
+  t: ReturnType<typeof useI18n>['t'];
+  num: (v: number) => string;
+  money: (v: number) => string;
+  hour: (iso: string) => string;
+}) {
+  const soldOut = venue.openSlots === 0;
+  const verified = venue.verification === 'verified';
 
   const meta = [
-    `${venue.distanceKm} km`,
-    ...(venue.surface ? [venue.surface] : []),
-  ].join(' · ');
+    venue.distanceKm != null ? `${num(venue.distanceKm)} km` : venue.area,
+    ...venue.amenities.slice(0, 1),
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const body = (
     <>
@@ -189,7 +264,7 @@ function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => void }) {
               {venue.name}
             </Txt>
             {/* VEN-006: verification status is always visible. */}
-            {venue.verified ? (
+            {verified ? (
               <View
                 style={{
                   borderWidth: 1,
@@ -200,78 +275,60 @@ function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => void }) {
                 }}
               >
                 <Txt size={10} weight="bold" em={0.08} color={gold.base}>
-                  VERIFIED
+                  {t.verified}
                 </Txt>
               </View>
             ) : null}
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Star size={11} color={gold.base} />
+            {venue.ratingAvg != null ? <Star size={11} color={gold.base} /> : null}
             <Txt size={11.5} color={onVoid.faint}>
-              {venue.rating} ({venue.reviews}) · {meta}
+              {venue.ratingAvg != null
+                ? `${num(venue.ratingAvg)} (${num(venue.ratingCount)}) · ${meta}`
+                : meta}
             </Txt>
           </View>
           {soldOut ? (
             <Txt size={11.5} color={burgundy.onVoid}>
-              {venue.note}
+              {t.fullyBooked}
             </Txt>
           ) : (
             <Txt size={12} weight="semibold" color={onVoid.primary}>
-              EGP {venue.hourly} / hour
+              {t.perHour(money(venue.minPriceEgp))}
             </Txt>
           )}
         </View>
       </View>
 
       {soldOut ? null : (
-        <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 14 }}>
-          {(venue.gone ?? []).map((t) => (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingHorizontal: 14,
+            paddingBottom: 14,
+          }}
+        >
+          {venue.nextSlot ? (
             <View
-              key={t}
               style={{
-                flex: 1,
                 height: 34,
+                paddingHorizontal: 14,
                 borderRadius: 10,
-                borderWidth: 1,
-                borderColor: onVoid.edge,
+                backgroundColor: gold.base,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Txt size={12} color={onVoid.disabled} style={{ textDecorationLine: 'line-through' }}>
-                {t}
-              </Txt>
-            </View>
-          ))}
-          {venue.open.map((t) => {
-            const on = venue.verified && t === slot;
-            return (
-              <View
-                key={t}
-                style={{
-                  flex: 1,
-                  height: 34,
-                  borderRadius: 10,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  ...(on
-                    ? { backgroundColor: gold.base }
-                    : { borderWidth: 1, borderColor: onVoid.hairline }),
-                }}
-              >
-                <Txt size={12} weight={on ? 'bold' : 'regular'} color={on ? void_.bg : onVoid.secondary}>
-                  {t}
-                </Txt>
-              </View>
-            );
-          })}
-          {venue.note ? (
-            <View style={{ flex: 2, height: 34, justifyContent: 'center', paddingLeft: 8 }}>
-              <Txt size={11} color="rgba(243,238,229,.3)">
-                {venue.note}
+              <Txt size={12} weight="bold" color={void_.bg}>
+                {hour(venue.nextSlot)}
               </Txt>
             </View>
           ) : null}
+          <Txt size={11.5} color={onVoid.faint}>
+            {t.slotsLeftTonight(num(venue.openSlots))}
+          </Txt>
         </View>
       )}
     </>
@@ -296,13 +353,13 @@ function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${venue.name}, rated ${venue.rating}, EGP ${venue.hourly} per hour`}
+      accessibilityLabel={`${venue.name}, ${venue.openSlots} slots, from ${money(venue.minPriceEgp)} per hour`}
       onPress={onPress}
       style={({ pressed }) => ({
         borderRadius: radius.cardInner,
         backgroundColor: void_.surface,
         borderWidth: 1,
-        borderColor: venue.verified || pressed ? 'rgba(198,163,75,.28)' : onVoid.edgeFaint,
+        borderColor: verified || pressed ? 'rgba(198,163,75,.28)' : onVoid.edgeFaint,
         overflow: 'hidden',
       })}
     >

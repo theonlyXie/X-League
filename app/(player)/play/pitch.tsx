@@ -1,4 +1,5 @@
-import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +9,9 @@ import { Star } from '@/components/icons';
 import { SlotGrid } from '@/components/SlotGrid';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { BOOKING, HOUSE_RULES, PITCH_AMENITIES, SLOT_TIMES, VENUES } from '@/data/player';
+import { HOUSE_RULES, PITCH_AMENITIES, SLOT_TIMES } from '@/data/player';
+import { DEMO_VENUE_ID, today } from '@/data/venue';
+import { venueDetail, venueReviews, type Review, type VenueDetail } from '@/data/discovery';
 import { useBooking } from '@/state/booking';
 import { useSession } from '@/state/session';
 import { useI18n } from '@/i18n';
@@ -18,15 +21,74 @@ import { isLive } from '@/lib/supabase';
  * P-04 Pitch detail — build confidence before purchase (§4.2). VEN-005: media,
  * format, facilities, rules, price, cancellation, rating breakdown and the live
  * slots, all on one page.
+ *
+ * The venue comes from the search result the player tapped. A pitch with more
+ * than one surface gets a selector, because "Pitch A is free at 9" and "Pitch B
+ * is free at 9" are different things to sell and the grid can only show one.
  */
 export default function PitchDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { slot, selectSlot, slotLabel, beginHold, taken, loading, unreachable, conflict, clearConflict } =
-    useBooking();
+  const params = useLocalSearchParams<{ venue?: string; date?: string }>();
+  const venueId = params.venue ?? DEMO_VENUE_ID;
+  const date = params.date ?? today();
+
+  const {
+    slot,
+    selectSlot,
+    slotLabel,
+    beginHold,
+    taken,
+    loading,
+    unreachable,
+    conflict,
+    clearConflict,
+    setTarget,
+    pitchId,
+  } = useBooking();
   const { signedIn } = useSession();
-  const { t, num, money } = useI18n();
-  const venue = VENUES[0];
+  const { t, num } = useI18n();
+
+  const [venue, setVenue] = useState<VenueDetail | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingVenue, setLoadingVenue] = useState(isLive);
+
+  useEffect(() => {
+    if (!isLive || !venueId) {
+      setLoadingVenue(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingVenue(true);
+      try {
+        const [detail, revs] = await Promise.all([
+          venueDetail(venueId),
+          venueReviews(venueId, 5).catch(() => []),
+        ]);
+        if (cancelled) return;
+        setVenue(detail);
+        setReviews(revs);
+        // Point the booking spine at this venue's first operational pitch.
+        const first = detail?.pitches[0];
+        if (first) setTarget(first.id, date);
+      } catch {
+        // The spine's own `unreachable` covers the slot grid; the header simply
+        // stays empty rather than showing another venue's name.
+      } finally {
+        if (!cancelled) setLoadingVenue(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [venueId, date, setTarget]);
+
+  const name = venue?.name ?? '';
+  const amenities = venue?.amenities.length ? venue.amenities : PITCH_AMENITIES;
+  const rules = venue?.houseRules ?? HOUSE_RULES;
+  const verified = venue?.verification === 'verified';
+  const activePitch = venue?.pitches.find((p) => p.id === pitchId) ?? venue?.pitches[0];
 
   return (
     <View style={{ flex: 1, backgroundColor: void_.bg, paddingTop: insets.top }}>
@@ -37,32 +99,36 @@ export default function PitchDetail() {
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Txt size={24} weight="bold" em={-0.02} color={onVoid.primary}>
-                {venue.name}
+                {name || (loadingVenue ? '' : '—')}
               </Txt>
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: goldAlpha.accent,
-                  borderRadius: radius.badge,
-                  paddingVertical: 2,
-                  paddingHorizontal: 5,
-                }}
-              >
-                <Txt size={10} weight="bold" em={0.08} color={gold.base}>
-                  {t.verified}
-                </Txt>
-              </View>
+              {verified ? (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: goldAlpha.accent,
+                    borderRadius: radius.badge,
+                    paddingVertical: 2,
+                    paddingHorizontal: 5,
+                  }}
+                >
+                  <Txt size={10} weight="bold" em={0.08} color={gold.base}>
+                    {t.verified}
+                  </Txt>
+                </View>
+              ) : null}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Star size={12} color={gold.base} />
+              {venue?.ratingAvg != null ? <Star size={12} color={gold.base} /> : null}
               <Txt size={12.5} color={onVoid.muted}>
-                {num(venue.rating)} · {num(venue.reviews)} reviews · {BOOKING.area} · {num(venue.distanceKm)} km
+                {venue?.ratingAvg != null
+                  ? `${num(venue.ratingAvg)} · ${num(venue.ratingCount)} reviews · ${venue.area ?? ''}`
+                  : (venue?.area ?? '')}
               </Txt>
             </View>
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-            {PITCH_AMENITIES.map((a) => (
+            {amenities.map((a) => (
               <View
                 key={a}
                 style={{
@@ -80,11 +146,41 @@ export default function PitchDetail() {
             ))}
           </View>
 
+          {/* More than one pitch is a real choice, not a detail. */}
+          {venue && venue.pitches.length > 1 ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {venue.pitches.map((p) => {
+                const on = p.id === pitchId;
+                return (
+                  <Pressable
+                    key={p.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={p.label}
+                    onPress={() => setTarget(p.id, date)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 14,
+                      borderRadius: radius.chip,
+                      ...(on
+                        ? { backgroundColor: 'rgba(198,163,75,.14)', borderWidth: 1, borderColor: goldAlpha.accent }
+                        : { borderWidth: 1, borderColor: onVoid.hairline }),
+                    }}
+                  >
+                    <Txt size={12.5} weight={on ? 'bold' : 'regular'} color={on ? gold.base : onVoid.muted}>
+                      {p.label}
+                    </Txt>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+
           <View style={{ gap: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
               <Eyebrow>{t.availableTonight}</Eyebrow>
               <Txt size={11} color="rgba(243,238,229,.3)">
-                {BOOKING.pitch}
+                {activePitch?.label ?? ''}
               </Txt>
             </View>
             <SlotGrid times={SLOT_TIMES} taken={taken} selected={slot} onSelect={selectSlot} />
@@ -127,9 +223,38 @@ export default function PitchDetail() {
           <View style={{ gap: 10 }}>
             <Eyebrow>{t.houseRules}</Eyebrow>
             <Txt size={12.5} lh={1.6} color="rgba(243,238,229,.55)">
-              {HOUSE_RULES}
+              {rules}
             </Txt>
           </View>
+
+          {/* VEN-008: the reviews sit under the rating they produced. */}
+          {reviews.length ? (
+            <>
+              <Divider />
+              <View style={{ gap: 12 }}>
+                <Eyebrow>{t.reviewTitle}</Eyebrow>
+                {reviews.map((r, i) => (
+                  <View key={i} style={{ gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Txt size={12.5} weight="semibold" color={onVoid.primary}>
+                        {r.author}
+                      </Txt>
+                      <View style={{ flexDirection: 'row', gap: 2 }}>
+                        {Array.from({ length: r.rating }).map((_, s) => (
+                          <Star key={s} size={10} color={gold.base} />
+                        ))}
+                      </View>
+                    </View>
+                    {r.body ? (
+                      <Txt size={12} lh={1.55} color={onVoid.muted}>
+                        {r.body}
+                      </Txt>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -146,14 +271,7 @@ export default function PitchDetail() {
           gap: 14,
         }}
       >
-        <View style={{ gap: 2 }}>
-          <Txt size={17} weight="bold" color={onVoid.primary}>
-            {money(BOOKING.hourly)}
-          </Txt>
-          <Txt size={10.5} color={onVoid.dim}>
-            {t.perHourLabel}
-          </Txt>
-        </View>
+        <PriceForSlot />
         <Button
           label={isLive && !signedIn ? t.signInToHold(slotLabel) : t.hold(slotLabel)}
           flex={1}
@@ -165,7 +283,7 @@ export default function PitchDetail() {
             // refuses an anonymous hold regardless; asking here just saves the
             // player a pointless round trip and a confusing error.
             if (isLive && !signedIn) {
-              router.push('/sign-in?next=/play/pitch');
+              router.push(`/sign-in?next=/play/pitch?venue=${venueId}`);
               return;
             }
             // Only move on if the slot is actually ours now.
@@ -173,6 +291,26 @@ export default function PitchDetail() {
           }}
         />
       </LinearGradient>
+    </View>
+  );
+}
+
+/**
+ * The price of the hour actually selected, read off the availability the spine
+ * already fetched. A pitch can be priced differently by hour (OWN-007), so one
+ * number for the whole evening would misquote it.
+ */
+function PriceForSlot() {
+  const { t, money } = useI18n();
+  const { slot, slotPrices } = useBooking();
+  return (
+    <View style={{ gap: 2 }}>
+      <Txt size={17} weight="bold" color={onVoid.primary}>
+        {money(slotPrices[slot] ?? 0)}
+      </Txt>
+      <Txt size={10.5} color={onVoid.dim}>
+        {t.perHourLabel}
+      </Txt>
     </View>
   );
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import * as api from '@/data/api';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
-import { BOOKING_DATE } from '@/data/venue';
+import { today } from '@/data/venue';
 import { CALENDAR, CalendarRow, Cell, BookingSource } from '@/data/owner';
 
 /**
@@ -31,7 +31,7 @@ export function useOwnerDay() {
     setLoading(true);
     setError(null);
     try {
-      const cells = await api.ownerDay(venue.venueId, BOOKING_DATE);
+      const cells = await api.ownerDay(venue.venueId, today());
       setRows(toRows(cells));
       setLive(true);
     } catch (e) {
