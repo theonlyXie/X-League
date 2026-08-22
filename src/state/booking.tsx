@@ -11,7 +11,7 @@ import {
 import { DEFAULT_SLOT, HOLD_SECONDS, SLOTS_TAKEN, SlotTime, BOOKING } from '@/data/player';
 import { isLive } from '@/lib/supabase';
 import * as api from '@/data/api';
-import { DEMO_PITCH_ID, today } from '@/data/venue';
+import { DEMO_PITCH_ID, DEMO_VENUE_ID, today } from '@/data/venue';
 
 /**
  * The booking spine's shared state.
@@ -74,8 +74,10 @@ type BookingContextValue = {
    * venue the player tapped; before it existed the pitch came from `.env`, so
    * the app could only ever sell one.
    */
-  setTarget: (pitchId: string, date: string) => void;
+  setTarget: (pitchId: string, date: string, venueId?: string) => void;
   pitchId: string;
+  /** The venue that pitch belongs to, so checkout can name it. */
+  venueId: string;
   date: string;
 };
 
@@ -88,6 +90,7 @@ const labelOf = (s: api.Slot) => `${s.hour - 12}:00` as SlotTime;
 
 export function BookingProvider({ children }: { children: ReactNode }) {
   const [pitchId, setPitchId] = useState<string>(DEMO_PITCH_ID);
+  const [venueId, setVenueId] = useState<string>(DEMO_VENUE_ID);
   const [date, setDate] = useState<string>(() => today());
   const [slot, setSlot] = useState<SlotTime>(DEFAULT_SLOT);
   const [taken, setTaken] = useState<SlotTime[]>(SLOTS_TAKEN);
@@ -154,7 +157,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
    * inventory they are no longer looking at.
    */
   const setTarget = useCallback(
-    (nextPitch: string, nextDate: string) => {
+    (nextPitch: string, nextDate: string, nextVenue?: string) => {
       setPitchId((current) => {
         if (current !== nextPitch) {
           setHold('idle');
@@ -165,6 +168,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         return nextPitch;
       });
       setDate(nextDate);
+      if (nextVenue) setVenueId(nextVenue);
     },
     [],
   );
@@ -292,6 +296,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       refresh,
       setTarget,
       pitchId,
+      venueId,
       date,
     };
   }, [
@@ -314,6 +319,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     refresh,
     setTarget,
     pitchId,
+    venueId,
     date,
   ]);
 

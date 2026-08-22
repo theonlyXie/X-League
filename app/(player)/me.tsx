@@ -25,7 +25,7 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Me() {
   const router = useRouter();
-  const { signedIn, displayName, venues, signOut } = useSession();
+  const { signedIn, displayName, venues, platformRole, signOut } = useSession();
   const { card, evidence, matches, loading } = useCard();
   const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
@@ -145,11 +145,20 @@ export default function Me() {
             />
           ))}
 
-          <WorkspaceRow
-            title={t.adminConsole}
-            detail="Platform operations · audited"
-            onPress={() => router.push('/admin')}
-          />
+          {/* RBAC-003: offered only to somebody who actually holds a console
+              role. The console refuses everyone else anyway, but a door that
+              always says no is worse than no door. */}
+          {!isLive || platformRole ? (
+            <WorkspaceRow
+              title={t.adminConsole}
+              detail={
+                platformRole
+                  ? `Platform operations · ${platformRole} · audited`
+                  : 'Platform operations · audited'
+              }
+              onPress={() => router.push('/admin')}
+            />
+          ) : null}
 
           <View
             style={{

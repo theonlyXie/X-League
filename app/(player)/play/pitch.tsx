@@ -71,7 +71,7 @@ export default function PitchDetail() {
         setReviews(revs);
         // Point the booking spine at this venue's first operational pitch.
         const first = detail?.pitches[0];
-        if (first) setTarget(first.id, date);
+        if (first) setTarget(first.id, date, venueId);
       } catch {
         // The spine's own `unreachable` covers the slot grid; the header simply
         // stays empty rather than showing another venue's name.
@@ -157,7 +157,7 @@ export default function PitchDetail() {
                     accessibilityRole="radio"
                     accessibilityState={{ selected: on }}
                     accessibilityLabel={p.label}
-                    onPress={() => setTarget(p.id, date)}
+                    onPress={() => setTarget(p.id, date, venueId)}
                     style={{
                       paddingVertical: 8,
                       paddingHorizontal: 14,

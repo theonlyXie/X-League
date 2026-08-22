@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
@@ -10,7 +10,9 @@ import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { venueDetail, myStanding, type Standing } from '@/data/discovery';
 import { useI18n } from '@/i18n';
+import { isLive } from '@/lib/supabase';
 
 /**
  * P-05 Checkout — reserve without ambiguity (§4.2).
@@ -21,12 +23,57 @@ import { useI18n } from '@/i18n';
  */
 export default function Checkout() {
   const router = useRouter();
-  const { slotLabel, slotEndLabel, holdText, hold, releaseHold, confirmBooking } = useBooking();
-  const { t, money, clock } = useI18n();
+  const {
+    slot,
+    slotLabel,
+    slotEndLabel,
+    holdText,
+    hold,
+    releaseHold,
+    confirmBooking,
+    slotPrices,
+    slotDeposits,
+    pitchId,
+    venueId,
+    date,
+  } = useBooking();
+  const { t, money, clock, num, longDate } = useI18n();
   const expired = hold === 'expired';
+
+  const [venueLine, setVenueLine] = useState<string | null>(null);
+  const [standing, setStanding] = useState<Standing | null>(null);
 
   // AC-03: leaving checkout without confirming returns the slot to inventory.
   useEffect(() => () => releaseHold(), [releaseHold]);
+
+  // The quote is the one the hold snapshotted (§5.4), so the price shown here
+  // is the hour's own price rather than the venue's headline rate.
+  const price = slotPrices[slot] ?? BOOKING.hourly;
+  const deposit = slotDeposits[slot] ?? BOOKING.deposit;
+  const balance = Math.max(0, price - deposit);
+
+  useEffect(() => {
+    if (!isLive || !venueId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        // The venue the player actually chose, carried through the booking
+        // spine rather than looked up from configuration.
+        const detail = await venueDetail(venueId).catch(() => null);
+        const pitch = detail?.pitches.find((p) => p.id === pitchId);
+        if (!cancelled && detail) {
+          setVenueLine(pitch ? `${detail.name} · ${pitch.label}` : detail.name);
+        }
+        const st = await myStanding().catch(() => null);
+        if (!cancelled) setStanding(st);
+      } catch {
+        /* the fixture line stands in */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [venueId, pitchId]);
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
@@ -100,8 +147,8 @@ export default function Checkout() {
           gap: 14,
         }}
       >
-        <DetailRow label={t.venue} value={`${BOOKING.venue} · ${BOOKING.pitch}`} />
-        <DetailRow label={t.date} value={BOOKING.date} />
+        <DetailRow label={t.venue} value={venueLine ?? `${BOOKING.venue} · ${BOOKING.pitch}`} />
+        <DetailRow label={t.date} value={longDate(`${date}T18:00:00Z`)} />
         <DetailRow label={t.time} value={`${slotLabel} – ${slotEndLabel}`} />
         <DetailRow label={t.format} value={t.fiveASide} />
       </View>
@@ -141,7 +188,7 @@ export default function Checkout() {
               {t.cashAtVenue}
             </Txt>
             <Txt size={12} lh={1.55} color={onVoid.muted}>
-              {t.cashExplainer(money(BOOKING.deposit), money(BOOKING.balance))}
+              {t.cashExplainer(money(deposit), money(balance))}
             </Txt>
           </View>
         </View>
@@ -157,7 +204,7 @@ export default function Checkout() {
           borderColor: onVoid.edge,
         }}
       >
-        <PriceRow label={t.pitchHour} value={money(BOOKING.hourly)} />
+        <PriceRow label={t.pitchHour} value={money(price)} />
         <PriceRow label={t.bookingFee} value={money(BOOKING.bookingFee)} />
         <Divider />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -165,15 +212,26 @@ export default function Checkout() {
             {t.cashAtGate}
           </Txt>
           <Txt size={16} weight="bold" color={gold.base}>
-            {money(BOOKING.deposit)}
+            {money(deposit)}
           </Txt>
         </View>
-        <PriceRow label={t.balanceAfter} value={money(BOOKING.balance)} />
+        <PriceRow label={t.balanceAfter} value={money(balance)} />
       </View>
 
       <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
         {t.cancellationNote}
       </Txt>
+
+      {/* BKG-010: a restriction the player can see is one they can fix. It is
+          enforced in hold_slot, so reaching checkout means it did not apply —
+          this is a warning about the next booking, not a block on this one. */}
+      {standing && standing.noShows > 0 ? (
+        <Txt size={11.5} lh={1.6} color={burgundy.action}>
+          {standing.cashAllowed
+            ? t.restrictedBlurb(num(standing.noShows))
+            : `${t.restricted}. ${t.restrictedBlurb(num(standing.noShows))}`}
+        </Txt>
+      ) : null}
 
       {expired ? (
         <Button

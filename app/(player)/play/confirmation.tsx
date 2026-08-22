@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/ui';
@@ -8,7 +9,9 @@ import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
 import { useBooking } from '@/state/booking';
+import { venueDetail, type VenueDetail } from '@/data/discovery';
 import { useI18n } from '@/i18n';
+import { isLive } from '@/lib/supabase';
 
 /**
  * P-06 Confirmation — make arrival effortless (§4.2).
@@ -19,8 +22,25 @@ import { useI18n } from '@/i18n';
  */
 export default function Confirmation() {
   const router = useRouter();
-  const { slot, slotLabel, slotEndLabel, code } = useBooking();
+  const { slot, slotLabel, slotEndLabel, code, bookingId, venueId, pitchId, slotDeposits } =
+    useBooking();
   const { t, money, pm } = useI18n();
+
+  const [venue, setVenue] = useState<VenueDetail | null>(null);
+
+  useEffect(() => {
+    if (!isLive || !venueId) return;
+    let cancelled = false;
+    venueDetail(venueId)
+      .then((d) => !cancelled && setVenue(d))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [venueId]);
+
+  const pitchLabel = venue?.pitches.find((p) => p.id === pitchId)?.label;
+  const deposit = slotDeposits[slot] ?? BOOKING.deposit;
 
   return (
     <Screen
@@ -56,7 +76,7 @@ export default function Confirmation() {
       >
         <View style={{ gap: 4 }}>
           <Txt size={17} weight="bold" color={onVoid.primary}>
-            {BOOKING.venue} · {BOOKING.pitch}
+            {venue ? [venue.name, pitchLabel].filter(Boolean).join(' · ') : `${BOOKING.venue} · ${BOOKING.pitch}`}
           </Txt>
           <Txt size={12.5} color={onVoid.muted}>
             {t.bookingWhen('Tue 18 Aug', pm(slot), pm(slotEndLabel.replace(' PM', '')))}
@@ -90,19 +110,31 @@ export default function Confirmation() {
               {t.cashAtGate}
             </Txt>
             <Txt size={15} weight="bold" color={onVoid.primary}>
-              {money(BOOKING.deposit)}
+              {money(deposit)}
             </Txt>
           </View>
         </View>
 
         <Txt size={12} color={onVoid.faint}>
-          {t.gateNote}
+          {venue?.entryNote ?? t.gateNote}
         </Txt>
       </View>
 
       <View style={{ width: '100%', gap: 10 }}>
         {/* VEN-009: navigation deep-links out to an installed maps app. */}
-        <Button label={t.navigateToVenue} height={50} round={radius.control} size={15} onPress={() => {}} />
+        <Button
+          label={t.navigateToVenue}
+          height={50}
+          round={radius.control}
+          size={15}
+          onPress={() => {
+            // VEN-009: the deep link the venue set, or the pin as a fallback.
+            const url =
+              venue?.mapUrl ??
+              (venue?.lat != null ? `https://maps.google.com/?q=${venue.lat},${venue.lon}` : null);
+            if (url) Linking.openURL(url).catch(() => {});
+          }}
+        />
         <Button
           label={t.inviteYourSquad}
           variant="ghost"
@@ -110,7 +142,9 @@ export default function Confirmation() {
           round={radius.control}
           size={15}
           style={{ borderColor: onVoid.line }}
-          onPress={() => router.replace('/play/lobby')}
+          onPress={() =>
+            router.replace(bookingId ? `/play/lobby?booking=${bookingId}` : '/play/lobby')
+          }
         />
       </View>
     </Screen>

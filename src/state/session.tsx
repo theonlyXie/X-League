@@ -20,6 +20,12 @@ type SessionContextValue = {
   displayName: string | null;
   /** Venues this person may operate (RBAC-002). Empty for a plain player. */
   venues: StaffVenue[];
+  /**
+   * RBAC-003: the platform role, or null. Read for the same reason `venues`
+   * is — so the client can stop offering a door that will not open. It never
+   * decides who may walk through one; every console function checks for itself.
+   */
+  platformRole: 'support' | 'moderator' | 'admin' | null;
   /** True until the stored session has been read back. */
   restoring: boolean;
 
@@ -60,6 +66,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [venues, setVenues] = useState<StaffVenue[]>([]);
+  const [platformRole, setPlatformRole] =
+    useState<SessionContextValue['platformRole']>(null);
   const [restoring, setRestoring] = useState(isLive);
 
   /**
@@ -71,13 +79,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!active) {
       setDisplayName(null);
       setVenues([]);
+      setPlatformRole(null);
       return;
     }
     try {
-      const [{ data: profile }, { data: mine }] = await Promise.all([
+      const [{ data: profile }, { data: mine }, { data: role }] = await Promise.all([
         supabase().from('player_profile').select('display_name').eq('id', active.user.id).maybeSingle(),
         supabase().rpc('my_venues'),
+        supabase().rpc('my_platform_role'),
       ]);
+      setPlatformRole((role as SessionContextValue['platformRole']) ?? null);
       setDisplayName((profile as { display_name: string } | null)?.display_name ?? null);
       setVenues(
         ((mine ?? []) as { venue_id: string; name: string; role: StaffVenue['role'] }[]).map((v) => ({
@@ -90,6 +101,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // A profile we cannot read is not a reason to drop the session; the
       // booking spine checks authority on the server for every call anyway.
       setVenues([]);
+      setPlatformRole(null);
     }
   }, []);
 
@@ -141,12 +153,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signedIn: !!session,
       displayName,
       venues,
+      platformRole,
       restoring,
       requestOtp,
       verifyOtp,
       signOut,
     }),
-    [session, displayName, venues, restoring, requestOtp, verifyOtp, signOut],
+    [session, displayName, venues, platformRole, restoring, requestOtp, verifyOtp, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
