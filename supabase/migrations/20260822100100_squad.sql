@@ -772,6 +772,27 @@ alter table booking_participant enable row level security;
 
 alter function public.seed_captain_participant() set search_path = public, pg_temp;
 
+-- Close the PUBLIC default on everything this migration created before handing
+-- any of it back. The trigger function needs no grant — it runs as the owner of
+-- the table it is attached to.
+revoke execute on function public.seed_captain_participant() from public, anon, authenticated;
+revoke execute on function public.format_capacity(text)                          from public;
+revoke execute on function public.can_see_squad(uuid)                            from public, anon;
+revoke execute on function public.booking_squad(uuid)                            from public, anon;
+revoke execute on function public.squad_counts(uuid)                             from public, anon;
+revoke execute on function public.invite_to_booking(uuid, uuid, text, text, text) from public, anon;
+revoke execute on function public.respond_to_invitation(uuid, boolean)           from public, anon;
+revoke execute on function public.leave_booking(uuid)                            from public, anon;
+revoke execute on function public.remove_participant(uuid)                       from public, anon;
+revoke execute on function public.my_invitations()                               from public, anon;
+revoke execute on function public.my_squad_matches(integer)                      from public, anon;
+revoke execute on function public.find_players(text, integer)                    from public, anon;
+revoke execute on function public.create_team(text, text, integer)               from public, anon;
+revoke execute on function public.invite_to_team(uuid, uuid)                     from public, anon;
+revoke execute on function public.respond_to_team_invite(uuid, boolean)          from public, anon;
+revoke execute on function public.my_teams()                                     from public, anon;
+revoke execute on function public.team_roster(uuid)                              from public, anon;
+
 grant execute on function public.format_capacity(text)                        to anon, authenticated;
 
 grant execute on function public.can_see_squad(uuid)                          to authenticated;

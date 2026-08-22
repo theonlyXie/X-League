@@ -504,6 +504,19 @@ alter table availability_exception enable row level security;
 
 alter function public.refresh_venue_rating() set search_path = public, pg_temp;
 
+-- A function created after the earlier blanket revoke is not covered by it:
+-- Postgres grants EXECUTE to PUBLIC on every new function, so each one has to
+-- be closed explicitly before anything is handed back. The trigger function
+-- runs as the table's owner and needs no grant at all.
+revoke execute on function public.refresh_venue_rating() from public, anon, authenticated;
+revoke execute on function public.distance_km(numeric, numeric, numeric, numeric) from public;
+revoke execute on function public.search_venues(date, text, numeric, numeric, smallint, smallint, text, integer) from public;
+revoke execute on function public.venue_detail(uuid) from public;
+revoke execute on function public.venue_reviews(uuid, integer) from public;
+revoke execute on function public.submit_review(uuid, integer, text) from public, anon;
+revoke execute on function public.my_next_booking(text) from public, anon;
+revoke execute on function public.my_bookings(integer) from public, anon;
+
 grant execute on function public.distance_km(numeric, numeric, numeric, numeric) to anon, authenticated;
 grant execute on function public.search_venues(date, text, numeric, numeric, smallint, smallint, text, integer) to anon, authenticated;
 grant execute on function public.venue_detail(uuid)          to anon, authenticated;
