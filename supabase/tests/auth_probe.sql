@@ -198,6 +198,56 @@ begin
                       r.ok = false and r.reason = 'Sign in first.';
 
   -- -------------------------------------------------------------------------
+  -- Letting a locked-out person back in
+  -- -------------------------------------------------------------------------
+  -- There is no SMS and no mailbox behind these addresses, so a forgotten
+  -- password has no self-service route back. An admin reset is the fallback,
+  -- and it has to be an admin.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', '11111111-1111-1111-1111-111111111111')::text, true);
+  select * into r from admin_reset_password(v_id, 'resetbyadmin1');
+  return query select 'a player cannot reset somebody else''s password',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason = 'You do not have permission to do that.';
+
+  insert into platform_role (user_id, role)
+  values ('11111111-1111-1111-1111-111111111111', 'admin')
+  on conflict (user_id) do update set role = 'admin', active = true;
+
+  select * into r from admin_reset_password(v_id, 'short');
+  return query select 'nor can an admin set one anybody could guess',
+                      coalesce(r.reason, '(allowed!)'), r.ok = false;
+
+  select * into r from admin_reset_password(
+    '00000000-0000-0000-0000-0000000000ff'::uuid, 'resetbyadmin1');
+  return query select 'and an account that does not exist says so',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason = 'No such account.';
+
+  select * into r from admin_reset_password(v_id, 'resetbyadmin1');
+  return query select 'but an admin can reset a real one',
+                      coalesce(r.reason, 'reset'), r.ok;
+
+  select encrypted_password into v_hash from auth.users where id = v_id;
+  return query select 'and the new password is what verifies afterwards',
+                      case when v_hash = extensions.crypt('resetbyadmin1', v_hash)
+                           then 'verified' else '(mismatch!)' end,
+                      v_hash = extensions.crypt('resetbyadmin1', v_hash);
+
+  -- ADM-012: an admin who can set anybody's password can become anybody.
+  select count(*)::integer into v_n
+    from audit_log where action = 'account.password_reset' and subject_id = v_id;
+  return query select 'every reset is on the record', v_n::text, v_n = 1;
+
+  -- Reachable by a signed-in client and gated inside, like every other admin_*
+  -- function — but never by a signed-out one, which is the line that matters.
+  return query select 'the reset needs a session, and is never anonymous',
+    case when has_function_privilege('anon', 'admin_reset_password(uuid,text)', 'execute')
+         then '(anon can reach it!)' else 'closed to anon' end,
+    has_function_privilege('authenticated', 'admin_reset_password(uuid,text)', 'execute')
+    and not has_function_privilege('anon', 'admin_reset_password(uuid,text)', 'execute');
+
+  -- -------------------------------------------------------------------------
   -- What a signed-out client may reach
   -- -------------------------------------------------------------------------
   return query select 'sign_up is callable before there is a session',

@@ -176,7 +176,8 @@ begin
     'admin_settings()',
     'admin_set_setting(text, integer)',
     'admin_audit(integer, uuid)',
-    'admin_venues()'
+    'admin_venues()',
+    'admin_reset_password(uuid, text)'
   ] loop
     execute format('grant execute on function public.%s to authenticated', fn);
   end loop;
