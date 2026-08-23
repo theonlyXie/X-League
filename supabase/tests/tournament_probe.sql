@@ -291,6 +291,20 @@ begin
     return query select 'and it is not yet reported or spoken for',
                         r.reported::text, r.reported = false and r.fixture_id is null;
 
+    -- A maintenance block holds the hour in the booking table so nobody can
+    -- sell it. It is not a fixture slot, and must not be offered as one.
+    insert into booking (pitch_id, during, state, source, captain_name, captain_id,
+                         price_egp, deposit_egp)
+    values (v_pitch, tstzrange(v_slot + interval '2 hours',
+                               v_slot + interval '3 hours', '[)'),
+            'confirmed', 'block', 'Blocked · watering', null, 0, 0);
+
+    select count(*)::integer into v_n
+      from tournament_bookings(v_trn, (v_slot at time zone 'Africa/Cairo')::date)
+     where captain_name = 'Blocked · watering';
+    return query select 'a maintenance block is not offered as a fixture slot',
+                        v_n::text, v_n = 0;
+
     perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
     begin
       perform count(*) from tournament_bookings(v_trn, null);

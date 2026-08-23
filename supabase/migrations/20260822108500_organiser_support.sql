@@ -94,6 +94,10 @@ begin
    where p.venue_id = v_venue
      and (lower(b.during) at time zone p_tz)::date = v_day
      and b.state in ('confirmed', 'checked_in', 'completed')
+     -- A maintenance block occupies the hour in the same table as a booking,
+     -- because that is how the exclusion constraint keeps anyone from selling
+     -- it. It is not somewhere a fixture can be played, so it is not offered.
+     and b.source is distinct from 'block'
    order by lower(b.during), p.label;
 end;
 $$;
