@@ -37,10 +37,11 @@ admits a venue's manager or a platform admin. Somebody who bypassed the
 sign-in screen would get "You do not manage that tournament." from the
 database rather than a cup.
 
-Sign-in is the same phone OTP the app uses (AUTH-001) — one account per person,
-whichever surface they open. The dashboard then asks `my_platform_role` and
-says plainly when the answer is nothing, rather than showing a wall of
-refusals.
+Staff sign in with a **username and password** — they are not players, and the
+account is not tied to a handset. The username maps to the same kind of lookup
+address every account carries (`xie` becomes `xie@xleague.app`); typing the full
+address works too. The dashboard then asks `my_platform_role` and says plainly
+when the answer is nothing, rather than showing a wall of refusals.
 
 A platform role is granted in the database, not from any screen:
 
@@ -49,6 +50,18 @@ insert into platform_role (user_id, role)
 values ('<the user id from auth.users>', 'admin')
 on conflict (user_id) do update set role = 'admin', active = true;
 ```
+
+To create a staff account, or reset one's password:
+
+```sql
+-- Replace the two literals. Run once; it is idempotent.
+select public.sign_up('<phone>', '<password>', '<display name>');
+-- then grant the role with the insert above.
+```
+
+Staff accounts created by hand (rather than through `sign_up`) need an
+`auth.identities` row alongside the `auth.users` one, or the account looks
+half-made to everything that reads it.
 
 ## Deploying
 

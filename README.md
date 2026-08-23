@@ -162,9 +162,11 @@ AC-05 work — staff enter a phone booking and it disappears from player search.
 
 ### Identity and staff scoping
 
-AUTH-001: sign-in is a verified mobile number plus a one-time password.
-AUTH-005: one identity carries the player role and any venue roles, which is
-what makes the workspace switch in §3.1 possible without a second account.
+AUTH-001 asks for a verified mobile number plus a one-time password, and that
+is still where this is going. Until there is an SMS provider it is a mobile
+number plus a password the person chooses — see below. AUTH-005: one identity
+carries the player role and any venue roles, which is what makes the workspace
+switch in §3.1 possible without a second account.
 
 `venue_staff` is the RBAC-002 answer — a person is staff *at named venues*,
 stored as a row rather than a claim in a token, so revoking access takes effect
@@ -176,11 +178,39 @@ forgeable, which made ADM-012's audit trail worthless; the actor is now derived
 from the session by `current_actor()`. A hold also belongs to whoever took it,
 so confirming or releasing someone else's is refused.
 
-**SMS is not configured yet.** `auth/v1/otp` answers `phone_provider_disabled`
-until an SMS provider is set up under Authentication → Providers → Phone in the
-Supabase dashboard (Twilio, MessageBird, Vonage or Textlocal). The sign-in
-screen says so in plain language rather than leaking the provider's error. Until
-then, `supabase/seed_identities.sql` creates three test identities directly.
+**Sign-up is a password, not an OTP, until there is SMS.** Supabase answers
+`phone_provider_disabled` to any phone signup while no SMS provider is
+configured, which meant nobody could create an account at all. So `sign_up`
+(in `20260822108600_password_auth.sql`) creates the account itself: a phone
+number, a password, and a display name.
+
+GoTrue authenticates on an email address, so each account carries a derived one
+— `201000000042@xleague.app` — that exists only as a lookup key. It is never
+shown, never sent to, and never asked for. `auth_email_for_phone` is the single
+place that mapping lives, so moving to real phone OTP later means deleting one
+function rather than unpicking a convention spread across two clients.
+
+Why the account row is written directly rather than through GoTrue's signup:
+that path sends a confirmation mail, is rate-limited to a couple an hour on the
+built-in SMTP, and rejects domains with no MX record — all three wrong for an
+address nobody will ever read. Sign-in through the normal password grant then
+works unchanged, because GoTrue verifies the bcrypt hash this writes.
+
+Numbers are normalised before anything else: `+201000000042`, `00201000000042`
+and `01000000042` are one Egyptian mobile written three ways people actually
+write it, and left alone they became three accounts with three cards. The
+local-trunk rule is Egypt-specific, which is right while the product is
+Egypt-only and is the line to revisit when it is not.
+
+`sign_up` is the only anon-callable function in the schema that writes anything
+real. What makes that acceptable is what it cannot write: it never touches
+`platform_role`, so no sequence of calls produces an administrator.
+`auth_probe.sql` asserts that directly.
+
+**Signing up as a venue owner** creates the venue pending verification, makes
+the caller its owner, and gives it one pitch so it can be booked at all. It
+lands in the same admin verification queue as any other venue (VEN-006 /
+ADM-008). It is not a second account — the same identity carries both roles.
 
 ### The player card
 
@@ -360,10 +390,10 @@ the one named in `.env`, so search returns a list of one real pitch dressed in
 fixture venues. The card's form and rater tiles read empty for a real account,
 because peer ratings, XP and levels have no tables behind them yet.
 
-**Blocked on an SMS provider.** Phone OTP is built and the schema is live, but
-Supabase has no SMS provider configured, so `requestOtp` cannot deliver a code
-to a real handset. This is the one item that needs an account decision rather
-than code.
+**Phone OTP, when there is an SMS provider.** The password path above is what
+runs today and needs no provider. Switching to OTP later is a provider account,
+an SMS provider under Authentication → Providers → Phone, and deleting the
+derived-address mapping — the rest of the identity model is unchanged.
 
 **Partial.** Arabic covers the player surface; Owner Mode and admin are wired
 to the database but untranslated. Cancellation and refunds are copy on the

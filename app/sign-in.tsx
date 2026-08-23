@@ -9,6 +9,7 @@ import { VoidMark } from '@/components/VoidMark';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { face } from '@/theme/typography';
 import { useSession } from '@/state/session';
+import { useI18n } from '@/i18n';
 import { myCard } from '@/data/api';
 
 /**
@@ -31,6 +32,7 @@ export default function SignIn() {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string }>();
   const { signIn, signUp } = useSession();
+  const { t } = useI18n();
 
   const [mode, setMode] = useState<Mode>('in');
   const [role, setRole] = useState<Role>('player');
@@ -120,23 +122,21 @@ export default function SignIn() {
 
       <View style={{ gap: 8 }}>
         <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
-          {mode === 'in' ? 'Enter the league' : 'Join the league'}
+          {mode === 'in' ? t.authEnter : t.authJoin}
         </Txt>
         <Txt size={13} lh={1.6} color={onVoid.muted}>
-          {mode === 'in'
-            ? 'Your number and your password. The number stays private — venues and other players never see it.'
-            : 'Your number is how you sign in, and it stays private. Venues and other players never see it.'}
+          {mode === 'in' ? t.authEnterBlurb : t.authJoinBlurb}
         </Txt>
       </View>
 
       {/* Joining as a player or as somewhere to play. One account either way. */}
       {mode === 'join' ? (
         <View style={{ gap: 10 }}>
-          <Eyebrow>I am</Eyebrow>
+          <Eyebrow>{t.authIAm}</Eyebrow>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Choice label="A player" on={role === 'player'} onPress={() => setRole('player')} />
+            <Choice label={t.authAsPlayer} on={role === 'player'} onPress={() => setRole('player')} />
             <Choice
-              label="A venue owner"
+              label={t.authAsOwner}
               on={role === 'venue_owner'}
               onPress={() => setRole('venue_owner')}
             />
@@ -147,7 +147,7 @@ export default function SignIn() {
       <View style={{ gap: 16 }}>
         {mode === 'join' ? (
           <Field
-            label="Your name"
+            label={t.authYourName}
             value={name}
             onChangeText={setName}
             placeholder="Basel Elsayed"
@@ -156,7 +156,7 @@ export default function SignIn() {
         ) : null}
 
         <Field
-          label="Mobile number"
+          label={t.authMobile}
           value={phone}
           onChangeText={setPhone}
           placeholder="+20 100 000 0000"
@@ -165,10 +165,10 @@ export default function SignIn() {
         />
 
         <Field
-          label="Password"
+          label={t.authPassword}
           value={password}
           onChangeText={setPassword}
-          placeholder="At least 8 characters"
+          placeholder={t.authPasswordHint}
           secureTextEntry
           autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
         />
@@ -176,21 +176,20 @@ export default function SignIn() {
         {mode === 'join' && role === 'venue_owner' ? (
           <>
             <Field
-              label="Venue name"
+              label={t.authVenueName}
               value={venueName}
               onChangeText={setVenueName}
               placeholder="Stadium One"
             />
             <Field
-              label="Area"
+              label={t.authVenueArea}
               value={venueArea}
               onChangeText={setVenueArea}
               placeholder="Nasr City"
             />
             {/* VEN-006: said here rather than discovered later. */}
             <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-              Your venue is listed as unverified until X League checks it. You can
-              set your pitches, hours and prices straight away.
+              {t.authVenuePending}
             </Txt>
           </>
         ) : null}
@@ -199,7 +198,7 @@ export default function SignIn() {
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       <Button
-        label={busy ? 'One moment…' : mode === 'in' ? 'Sign in' : 'Create my account'}
+        label={busy ? t.authWorking : mode === 'in' ? t.authSignIn : t.authCreate}
         height={52}
         round={radius.control}
         size={15}
@@ -209,7 +208,7 @@ export default function SignIn() {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={mode === 'in' ? 'Create an account' : 'I already have an account'}
+        accessibilityLabel={mode === 'in' ? t.authToJoin : t.authToSignIn}
         hitSlop={10}
         onPress={() => {
           setMode(mode === 'in' ? 'join' : 'in');
@@ -217,15 +216,14 @@ export default function SignIn() {
         }}
       >
         <Txt size={12.5} weight="semibold" color={gold.base} align="center">
-          {mode === 'in' ? 'New here? Create an account' : 'I already have an account'}
+          {mode === 'in' ? t.authToJoin : t.authToSignIn}
         </Txt>
       </Pressable>
 
       {/* AUTH-004: acceptance is recorded against a version. */}
       {mode === 'join' ? (
         <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-          By continuing you accept the X League terms and privacy notice. You must
-          be 18 or over to play.
+          {t.authTerms}
         </Txt>
       ) : null}
 
