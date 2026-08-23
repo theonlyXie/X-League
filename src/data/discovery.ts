@@ -221,6 +221,14 @@ export type PastBooking = {
   pitchLabel: string;
   priceEgp: number;
   reviewed: boolean;
+  /** The match, once a result was reported. Null until then. */
+  matchId: string | null;
+  /**
+   * Checked in, finished, and no result reported yet — the server's own answer
+   * rather than the client re-deriving it, so the button never appears where
+   * `complete_match` would refuse.
+   */
+  awaitingResult: boolean;
 };
 
 export async function myBookings(limit = 20): Promise<PastBooking[]> {
@@ -236,6 +244,8 @@ export async function myBookings(limit = 20): Promise<PastBooking[]> {
     pitchLabel: r.pitch_label,
     priceEgp: r.price_egp,
     reviewed: r.reviewed,
+    matchId: r.match_id,
+    awaitingResult: r.awaiting_result,
   }));
 }
 

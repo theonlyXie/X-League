@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as api from '@/data/api';
 import { myCardEvidence, myMatchEvidence, type CardEvidence, type MatchEvidence } from '@/data/progress';
+import { myBookings, type PastBooking } from '@/data/discovery';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 
@@ -21,6 +22,12 @@ type CardContextValue = {
   evidence: CardEvidence | null;
   /** The matches themselves, for P-09's list and the rating prompt. */
   matches: MatchEvidence[];
+  /**
+   * Bookings this player captained that were played and never reported. They
+   * are not evidence yet and never will be until somebody says how it ended,
+   * which is why the card screen asks rather than leaving them invisible.
+   */
+  awaitingResult: PastBooking[];
   loading: boolean;
   /** True when the card shown is the design's fixture rather than this player's. */
   isFixture: boolean;
@@ -34,6 +41,7 @@ export function CardProvider({ children }: { children: ReactNode }) {
   const [card, setCard] = useState<api.Card | null>(null);
   const [evidence, setEvidence] = useState<CardEvidence | null>(null);
   const [matches, setMatches] = useState<MatchEvidence[]>([]);
+  const [awaitingResult, setAwaitingResult] = useState<PastBooking[]>([]);
   const [loading, setLoading] = useState(false);
 
   const reload = useCallback(async () => {
@@ -41,24 +49,28 @@ export function CardProvider({ children }: { children: ReactNode }) {
       setCard(null);
       setEvidence(null);
       setMatches([]);
+      setAwaitingResult([]);
       return;
     }
     setLoading(true);
     try {
       // The card and its evidence are fetched together: a screen that showed
       // one without the other would be exactly the half-truth §5.1 objects to.
-      const [c, e, m] = await Promise.all([
+      const [c, e, m, past] = await Promise.all([
         api.myCard(),
         myCardEvidence().catch(() => null),
         myMatchEvidence(20).catch(() => [] as MatchEvidence[]),
+        myBookings(20).catch(() => [] as PastBooking[]),
       ]);
       setCard(c);
       setEvidence(e);
       setMatches(m);
+      setAwaitingResult(past.filter((b) => b.awaitingResult));
     } catch {
       setCard(null);
       setEvidence(null);
       setMatches([]);
+      setAwaitingResult([]);
     } finally {
       setLoading(false);
     }
@@ -69,8 +81,16 @@ export function CardProvider({ children }: { children: ReactNode }) {
   }, [reload]);
 
   const value = useMemo<CardContextValue>(
-    () => ({ card, evidence, matches, loading, isFixture: !isLive || !signedIn, reload }),
-    [card, evidence, matches, loading, signedIn, reload],
+    () => ({
+      card,
+      evidence,
+      matches,
+      awaitingResult,
+      loading,
+      isFixture: !isLive || !signedIn,
+      reload,
+    }),
+    [card, evidence, matches, awaitingResult, loading, signedIn, reload],
   );
 
   return <CardContext.Provider value={value}>{children}</CardContext.Provider>;

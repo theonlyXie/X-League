@@ -26,7 +26,7 @@ import { isLive } from '@/lib/supabase';
 export default function Me() {
   const router = useRouter();
   const { signedIn, displayName, venues, platformRole, signOut } = useSession();
-  const { card, evidence, matches, loading } = useCard();
+  const { card, evidence, matches, awaitingResult, loading } = useCard();
   const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
   // Signed in with a real card: show theirs. Otherwise the design's fixture,
@@ -82,6 +82,46 @@ export default function Me() {
         <StatTile label={t.verifiedMatches} value={t.matches(num(evidenceCount))} />
         <StatTile label={t.raters} value={num(live ? (evidence?.raterCount ?? 0) : CARD.raters)} />
       </View>
+
+      {/* Matches that were played and never reported. They are not evidence
+          and cannot become evidence until somebody says how they ended, so
+          they sit above the evidence list rather than inside it. */}
+      {live && awaitingResult.length > 0 ? (
+        <View style={{ width: '100%', gap: 8 }}>
+          <Eyebrow>{t.resultAwaiting}</Eyebrow>
+          {awaitingResult.map((b) => (
+            <Pressable
+              key={b.bookingId}
+              accessibilityRole="button"
+              accessibilityLabel={`${t.resultGoTo} — ${b.venueName}`}
+              onPress={() => router.push(`/play/result?booking=${b.bookingId}`)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                paddingVertical: 13,
+                paddingHorizontal: 14,
+                borderRadius: radius.control,
+                backgroundColor: void_.surface,
+                borderWidth: 1,
+                borderColor: goldAlpha.edgeSoft,
+              }}
+            >
+              <View style={{ gap: 2, flex: 1 }}>
+                <Txt size={13} weight="semibold" color={onVoid.primary}>
+                  {b.venueName}
+                </Txt>
+                <Txt size={11} color={onVoid.faint}>
+                  {b.pitchLabel}
+                </Txt>
+              </View>
+              <Txt size={12} weight="semibold" color={gold.base}>
+                {t.resultGoTo}
+              </Txt>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       {/* PRO-007: the evidence itself, not just its count. */}
       {live ? <MatchEvidenceList matches={matches} onRate={(id) => router.push(`/play/rate?match=${id}`)} /> : null}

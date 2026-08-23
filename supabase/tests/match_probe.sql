@@ -62,6 +62,21 @@ begin
   -- -------------------------------------------------------------------------
   -- Reporting the result
   -- -------------------------------------------------------------------------
+
+  -- What the app reads to decide whether to offer the result screen at all.
+  -- It has to agree with complete_match's own precondition, or the button
+  -- appears where the server will refuse it.
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  select awaiting_result, match_id into r from my_bookings(50) where booking_id = v_bk;
+  return query select 'a finished checked-in booking is awaiting its result',
+                      r.awaiting_result::text, r.awaiting_result and r.match_id is null;
+
+  -- The same list, seen by somebody who played but did not book it: my_bookings
+  -- is the captain's list, and only the captain may report.
+  perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);
+  select count(*)::integer into v_n from my_bookings(50) where booking_id = v_bk;
+  return query select 'and it is not in a squad member''s list', v_n::text, v_n = 0;
+
   perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);
   select * into r from complete_match(v_bk, 3, 2);
   return query select 'a squad member who is not the captain cannot report it',
@@ -77,6 +92,11 @@ begin
 
   select count(*)::integer into v_n from match_participant where match_id = v_match;
   return query select 'the team sheet is the accepted squad', v_n::text, v_n = 3;
+
+  select awaiting_result, match_id into r from my_bookings(50) where booking_id = v_bk;
+  return query select 'once reported it stops asking, and points at the match',
+                      coalesce(r.match_id::text, '(none)'),
+                      r.awaiting_result = false and r.match_id = v_match;
 
   -- -------------------------------------------------------------------------
   -- PTS-001 — the ledger pays once

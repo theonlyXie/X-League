@@ -259,6 +259,38 @@ export default function Home() {
         </View>
       </View>
 
+      {/* MCH-001: a played match with no result reported credits nobody, so
+          this is the one thing Home asks for rather than merely offers. */}
+      {home.awaitingResult ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.resultAwaiting}
+          onPress={() => router.push(`/play/result?booking=${home.awaitingResult!.bookingId}`)}
+          style={{
+            padding: 16,
+            borderRadius: radius.cardInner,
+            backgroundColor: void_.surface,
+            borderWidth: 1,
+            borderColor: goldAlpha.edgeSoft,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <View style={{ gap: 3, flex: 1 }}>
+            <Txt size={13.5} weight="semibold" color={onVoid.primary}>
+              {t.resultAwaiting}
+            </Txt>
+            <Txt size={11.5} color={onVoid.faint}>
+              {home.awaitingResult.venueName} · {hour(home.awaitingResult.startsAt)}
+            </Txt>
+          </View>
+          <Txt size={12} weight="semibold" color={gold.base}>
+            {t.resultGoTo}
+          </Txt>
+        </Pressable>
+      ) : null}
+
       {/* §5.5: a structured invitation carries the match facts, not just text. */}
       {home.invitations.length > 0 ? (
         <View style={{ gap: 12 }}>

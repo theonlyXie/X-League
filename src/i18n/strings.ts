@@ -215,6 +215,18 @@ export const STRINGS = {
     goalDiff: 'GD',
     points: 'Pts',
 
+    // Reporting the result (MCH-001)
+    resultTitle: 'How did it end?',
+    resultBlurb: 'The score is what turns a booking into evidence. Everyone who played is credited.',
+    resultHome: 'Your side',
+    resultAway: 'Them',
+    resultSubmit: 'Report the result',
+    resultSkipScore: 'Report without a score',
+    resultDone: 'Result recorded',
+    resultAwaiting: 'Report your result',
+    resultAwaitingBlurb: 'A match you played is waiting on a score.',
+    resultGoTo: 'Report it',
+
     // Rating (P-09)
     rateTitle: 'Rate your match',
     rateBlurb: 'Six sliders each. Ratings close a week after the match.',
@@ -435,6 +447,17 @@ export const STRINGS = {
     lost: 'خسارة',
     goalDiff: 'الفارق',
     points: 'نقاط',
+
+    resultTitle: 'المباراة خلصت بكام؟',
+    resultBlurb: 'النتيجة هي اللي بتحوّل الحجز إلى دليل. كل من لعب يُحتسب له.',
+    resultHome: 'فريقك',
+    resultAway: 'الفريق الآخر',
+    resultSubmit: 'سجّل النتيجة',
+    resultSkipScore: 'سجّلها بدون نتيجة',
+    resultDone: 'تم تسجيل النتيجة',
+    resultAwaiting: 'سجّل نتيجتك',
+    resultAwaitingBlurb: 'في مباراة لعبتها ناقصها النتيجة.',
+    resultGoTo: 'سجّلها',
 
     rateTitle: 'قيّم مباراتك',
     rateBlurb: 'ست خانات لكل لاعب. التقييم يُغلق بعد أسبوع من المباراة.',
