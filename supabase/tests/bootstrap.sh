@@ -33,6 +33,12 @@ echo "==> auth shim"
 psql_ -q <<'SQL'
 create schema auth;
 
+-- Supabase puts pgcrypto in `extensions`, and the sign-up path hashes
+-- passwords with it. Same schema, same function names, so the migration reads
+-- identically here and on the hosted project.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+
 -- Enough of auth.users for foreign keys and the identity seed to be honest.
 create table auth.users (
   id                 uuid primary key,
@@ -45,7 +51,32 @@ create table auth.users (
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now(),
   raw_app_meta_data  jsonb not null default '{}',
-  raw_user_meta_data jsonb not null default '{}'
+  raw_user_meta_data jsonb not null default '{}',
+  -- Written by sign_up. GoTrue reads this column to verify a password, so a
+  -- shim that omitted it would let the suites pass on a schema the real
+  -- sign-in could never work against.
+  encrypted_password text,
+  email_confirmed_at timestamptz,
+  confirmation_token text,
+  recovery_token     text,
+  email_change       text,
+  email_change_token_new text
+);
+
+create unique index on auth.users (email);
+
+-- GoTrue keeps one row per login method. sign_up writes it, so the shim has to
+-- accept it.
+create table auth.identities (
+  id              uuid primary key,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  identity_data   jsonb not null,
+  provider        text not null,
+  provider_id     text not null,
+  last_sign_in_at timestamptz,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  unique (provider, provider_id)
 );
 
 -- Exactly how the real one reads: the claim PostgREST puts on the session.

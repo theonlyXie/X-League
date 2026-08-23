@@ -44,6 +44,14 @@ grant execute on function public.venue_reviews(uuid, integer)                   
 grant execute on function public.list_tournaments(integer)                        to anon, authenticated;
 grant execute on function public.tournament_detail(uuid)                          to anon, authenticated;
 
+-- Creating an account, which by definition happens before there is a session.
+-- `sign_up` is the only anon-callable function in the schema that writes
+-- anything real, and what makes that acceptable is what it cannot write: it
+-- never touches platform_role, so no sequence of calls produces an
+-- administrator. auth_probe asserts that directly.
+grant execute on function public.sign_up(text, text, text, text, text, text) to anon, authenticated;
+grant execute on function public.auth_email_for_sign_in(text)                 to anon, authenticated;
+
 -- The one write-shaped function anon may reach, and only so it can answer
 -- "Sign in to hold a slot" in the player's own language instead of a bare
 -- 42501. It writes nothing without auth.uid() — proved by the spine suite.
@@ -112,6 +120,9 @@ begin
     -- Tournaments
     'my_tournaments()',
     'register_team(uuid, uuid)',
+
+    -- Changing your own password, which needs a session by definition.
+    'change_password(text, text)',
 
     -- Which workspaces this person may open. Each returns nothing rather than
     -- raising for somebody with no role, so the client can hide a door without

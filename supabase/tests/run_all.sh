@@ -19,7 +19,7 @@ bold() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 total_pass=0; total_fail=0
 
-for probe in access_probe rbac_probe card_probe squad_probe match_probe \
+for probe in access_probe rbac_probe auth_probe card_probe squad_probe match_probe \
              cancellation_probe messaging_probe tournament_probe owner_admin_probe; do
   bold "$probe"
   out="$(psql -h "$PGHOST" -p "$PORT" -U "$USER" -q -f "$HERE/$probe.sql" 2>&1)"

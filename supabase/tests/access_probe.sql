@@ -15,9 +15,14 @@ returns table (case_name text, result text, passed boolean)
 language plpgsql as $$
 declare
   v_anon text[];
+  -- Browsing, plus the two a person needs before they have a session at all.
+  -- `sign_up` is the only anon-callable function in the schema that writes, and
+  -- what makes that acceptable is what it cannot write: it never touches
+  -- platform_role, which auth_probe asserts directly.
   v_want text[] := array[
-    'hold_slot', 'list_tournaments', 'nearest_alternatives', 'search_availability',
-    'search_venues', 'tournament_detail', 'venue_detail', 'venue_reviews'
+    'auth_email_for_sign_in', 'hold_slot', 'list_tournaments', 'nearest_alternatives',
+    'search_availability', 'search_venues', 'sign_up', 'tournament_detail',
+    'venue_detail', 'venue_reviews'
   ];
   v_open text;
   v_n    integer;
