@@ -31,9 +31,11 @@
 --     `pg_stat_user_indexes` counts scans, and nobody has run the queries these
 --     serve yet. Revisit once there is real usage to read.
 --
---   * `auth_leaked_password_protection`. A project setting rather than schema,
---     and not reachable from a migration. Worth turning on in the dashboard
---     (Authentication -> Providers -> Email) before real accounts exist.
+--   * `auth_leaked_password_protection`. Moot as the app stands: sign-in is
+--     phone OTP only (AUTH-001), so there is no password to check against a
+--     breach corpus. It is also a project setting rather than schema and so
+--     unreachable from a migration. If email/password is ever enabled, turn
+--     this on first, in Authentication -> Providers.
 
 -- ---------------------------------------------------------------------------
 -- Evaluate the caller once per query, not once per row
