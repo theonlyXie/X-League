@@ -5,13 +5,35 @@ import { isLive, supabase } from '@/lib/supabase';
 /**
  * Who is signed in, and what they are allowed to operate.
  *
- * AUTH-001: registration and sign-in are a verified mobile number plus a
- * one-time password. AUTH-005: the same identity carries the player role and
- * any venue roles — there is no second account for Owner Mode, which is what
- * makes the workspace switch in §3.1 possible.
+ * AUTH-001 asks for a verified mobile number and a one-time password, and that
+ * is still where this is going. Until there is an SMS provider it is a mobile
+ * number and a password the person chooses: Supabase refuses phone signups with
+ * no SMS configured, so OTP would mean nobody could create an account at all.
+ *
+ * GoTrue authenticates on an email address, so `sign_up` derives one from the
+ * number and hands it back. It is a lookup key, never shown and never sent to,
+ * and the server owns the mapping — the client asks for the address rather than
+ * building it, so there is one definition of it rather than three.
+ *
+ * AUTH-005: the same identity carries the player role and any venue roles —
+ * there is no second account for Owner Mode, which is what makes the workspace
+ * switch in §3.1 possible.
  */
 
 export type StaffVenue = { venueId: string; name: string; role: 'staff' | 'manager' | 'owner' };
+
+/**
+ * Joining as a player, or as somebody with a pitch to fill. The venue fields
+ * are read only for the second, and the server refuses the second without them.
+ */
+export type SignUpInput = {
+  phone: string;
+  password: string;
+  displayName: string;
+  role: 'player' | 'venue_owner';
+  venueName?: string;
+  venueArea?: string;
+};
 
 type SessionContextValue = {
   /** Null when signed out, or always in demo mode. */
@@ -29,10 +51,13 @@ type SessionContextValue = {
   /** True until the stored session has been read back. */
   restoring: boolean;
 
-  /** Sends the one-time password. Resolves to an error message, or null. */
-  requestOtp: (phone: string) => Promise<string | null>;
-  /** Verifies it. Resolves to an error message, or null on success. */
-  verifyOtp: (phone: string, token: string) => Promise<string | null>;
+  /** Signs in with a number and password. Resolves to an error, or null. */
+  signIn: (phone: string, password: string) => Promise<string | null>;
+  /**
+   * Creates the account and signs straight into it, because a person who has
+   * just chosen a password should not then be asked for it.
+   */
+  signUp: (input: SignUpInput) => Promise<string | null>;
   signOut: () => Promise<void>;
 };
 
@@ -49,16 +74,15 @@ function explain(error: { message: string; code?: string }): string {
   const hay = `${error.code ?? ''} ${error.message}`.toLowerCase();
   const has = (...needles: string[]) => needles.some((n) => hay.includes(n));
 
-  if (has('phone_provider_disabled', 'unsupported phone provider'))
-    return 'SMS sign-in is not switched on for this deployment yet. An SMS provider has to be configured before codes can be sent.';
-  if (has('otp_expired', 'expired')) return 'That code has expired. Ask for a new one.';
-  if (has('invalid_credentials', 'token has expired or is invalid', 'invalid token'))
-    return "That code didn't match. Check it and try again.";
+  if (has('invalid_credentials', 'invalid login'))
+    return 'That number and password do not match. Check them and try again.';
+  if (has('email_not_confirmed'))
+    return 'That account is not usable yet. Ask an administrator to check it.';
   // MSG-006: rate limits are real; the player should wait rather than retry.
-  if (has('rate limit', 'over_sms_send_rate_limit', 'over_request_rate_limit'))
-    return 'Too many codes requested. Wait a minute before trying again.';
-  if (has('validation_failed', 'invalid phone'))
-    return 'That does not look like a valid mobile number. Include the country code.';
+  if (has('rate limit', 'over_request_rate_limit'))
+    return 'Too many attempts. Wait a minute before trying again.';
+  if (has('user_already_exists', 'already registered'))
+    return 'That number already has an account. Sign in instead.';
   return error.message;
 }
 
@@ -130,16 +154,68 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [loadIdentity]);
 
-  const requestOtp = useCallback(async (phone: string) => {
-    if (!isLive) return 'No database configured.';
-    const { error } = await supabase().auth.signInWithOtp({ phone });
-    return error ? explain(error) : null;
+  /**
+   * The address GoTrue knows this number by. Asked for rather than derived,
+   * because the normalisation rules — a leading 00, a local trunk 0 — live in
+   * one place on the server and a second copy here would drift out of step and
+   * quietly lock people out of their own accounts.
+   */
+  const addressFor = useCallback(async (phone: string) => {
+    const { data, error } = await supabase().rpc('auth_email_for_sign_in', { p_phone: phone });
+    if (error) throw error;
+    const row = (data as { auth_email: string; exists_already: boolean }[])[0];
+    return row ?? null;
   }, []);
 
-  const verifyOtp = useCallback(async (phone: string, token: string) => {
+  const signIn = useCallback(
+    async (phone: string, password: string) => {
+      if (!isLive) return 'No database configured.';
+      try {
+        const found = await addressFor(phone);
+        if (!found) return 'That does not look like a valid mobile number.';
+        // Said before asking GoTrue, because "no account" and "wrong password"
+        // are different problems and only one of them is fixed by trying again.
+        if (!found.exists_already)
+          return 'No account for that number yet. Create one below.';
+
+        const { error } = await supabase().auth.signInWithPassword({
+          email: found.auth_email,
+          password,
+        });
+        return error ? explain(error) : null;
+      } catch (e) {
+        return explain(e as { message: string; code?: string });
+      }
+    },
+    [addressFor],
+  );
+
+  const signUp = useCallback(async (input: SignUpInput) => {
     if (!isLive) return 'No database configured.';
-    const { error } = await supabase().auth.verifyOtp({ phone, token, type: 'sms' });
-    return error ? explain(error) : null;
+    try {
+      const { data, error } = await supabase().rpc('sign_up', {
+        p_phone: input.phone,
+        p_password: input.password,
+        p_display_name: input.displayName,
+        p_role: input.role,
+        p_venue_name: input.venueName ?? null,
+        p_venue_area: input.venueArea ?? null,
+      });
+      if (error) return explain(error);
+
+      const row = (data as { ok: boolean; auth_email: string | null; reason: string | null }[])[0];
+      // Every rule about what makes an account valid is the server's, so this
+      // shows the reason it gave rather than pre-judging any of them.
+      if (!row?.ok) return row?.reason ?? 'That did not work.';
+
+      const { error: signInError } = await supabase().auth.signInWithPassword({
+        email: row.auth_email!,
+        password: input.password,
+      });
+      return signInError ? explain(signInError) : null;
+    } catch (e) {
+      return explain(e as { message: string; code?: string });
+    }
   }, []);
 
   const signOut = useCallback(async () => {
@@ -155,11 +231,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       venues,
       platformRole,
       restoring,
-      requestOtp,
-      verifyOtp,
+      signIn,
+      signUp,
       signOut,
     }),
-    [session, displayName, venues, platformRole, restoring, requestOtp, verifyOtp, signOut],
+    [session, displayName, venues, platformRole, restoring, signIn, signUp, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

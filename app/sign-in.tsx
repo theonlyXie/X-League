@@ -7,53 +7,60 @@ import { Button, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { VoidMark } from '@/components/VoidMark';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { face, mono } from '@/theme/typography';
+import { face } from '@/theme/typography';
 import { useSession } from '@/state/session';
 import { myCard } from '@/data/api';
 
 /**
- * P-01 Onboarding, the sign-in step.
+ * P-01 Onboarding — signing in, and joining.
  *
- * AUTH-001: a verified mobile number and a one-time password. This is the gate
- * everything privileged sits behind; a verified number with no card yet
- * continues into the anchored assessment on `/onboarding`.
+ * AUTH-001 asks for a number and a one-time password, and that is still where
+ * this is going. Until there is an SMS provider it is a number and a password
+ * the person chooses: Supabase refuses phone signups with no SMS configured,
+ * so an OTP screen here would mean nobody could create an account at all.
+ *
+ * Two roles join through the same form, because AUTH-005 says one person is one
+ * account. Somebody with a pitch to fill answers two more questions and their
+ * venue goes into the verification queue; nothing about them is a second login.
  */
+
+type Mode = 'in' | 'join';
+type Role = 'player' | 'venue_owner';
+
 export default function SignIn() {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string }>();
-  const { requestOtp, verifyOtp } = useSession();
+  const { signIn, signUp } = useSession();
 
-  const [step, setStep] = useState<'phone' | 'code'>('phone');
+  const [mode, setMode] = useState<Mode>('in');
+  const [role, setRole] = useState<Role>('player');
   const [phone, setPhone] = useState('+20');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [venueName, setVenueName] = useState('');
+  const [venueArea, setVenueArea] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const phoneLooksUsable = /^\+\d{9,15}$/.test(phone.replace(/\s/g, ''));
+  const phoneUsable = phone.replace(/\D/g, '').length >= 8;
+  const ready =
+    mode === 'in'
+      ? phoneUsable && password.length >= 8
+      : phoneUsable &&
+        password.length >= 8 &&
+        name.trim().length >= 2 &&
+        (role === 'player' || (venueName.trim().length >= 2 && venueArea.trim().length >= 2));
 
-  const send = async () => {
-    setBusy(true);
-    setError(null);
-    const problem = await requestOtp(phone.replace(/\s/g, ''));
-    setBusy(false);
-    if (problem) {
-      setError(problem);
+  /**
+   * Where somebody lands once they are in. A venue owner goes to their console;
+   * a player with no card yet has unfinished onboarding, and dropping them on a
+   * home screen that shows no identity would look broken rather than new.
+   */
+  const land = async () => {
+    if (mode === 'join' && role === 'venue_owner') {
+      router.replace('/owner');
       return;
     }
-    setStep('code');
-  };
-
-  const verify = async () => {
-    setBusy(true);
-    setError(null);
-    const problem = await verifyOtp(phone.replace(/\s/g, ''), code.trim());
-    setBusy(false);
-    if (problem) {
-      setError(problem);
-      return;
-    }
-    // A verified number with no card yet means onboarding is unfinished, so
-    // finish it rather than dropping them somewhere that shows no identity.
     const card = await myCard().catch(() => null);
     if (!card) {
       router.replace('/onboarding');
@@ -63,14 +70,36 @@ export default function SignIn() {
     else router.replace('/');
   };
 
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    const problem =
+      mode === 'in'
+        ? await signIn(phone, password)
+        : await signUp({
+            phone,
+            password,
+            displayName: name,
+            role,
+            venueName: role === 'venue_owner' ? venueName : undefined,
+            venueArea: role === 'venue_owner' ? venueArea : undefined,
+          });
+    setBusy(false);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    await land();
+  };
+
   return (
-    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 24 }}>
+    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 22 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={10}
-          onPress={() => (step === 'code' ? setStep('phone') : router.back())}
+          onPress={() => router.back()}
           style={{
             width: 34,
             height: 34,
@@ -85,127 +114,176 @@ export default function SignIn() {
         </Pressable>
       </View>
 
-      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-        <VoidMark size={132} rings={2} />
+      <View style={{ alignItems: 'center', paddingVertical: 4 }}>
+        <VoidMark size={116} rings={2} />
       </View>
 
-      {step === 'phone' ? (
-        <View style={{ gap: 20 }}>
-          <View style={{ gap: 8 }}>
-            <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
-              Enter the league
-            </Txt>
-            <Txt size={13} lh={1.6} color={onVoid.muted}>
-              We'll text you a six-digit code. Your number stays private — venues
-              and other players never see it.
-            </Txt>
-          </View>
+      <View style={{ gap: 8 }}>
+        <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
+          {mode === 'in' ? 'Enter the league' : 'Join the league'}
+        </Txt>
+        <Txt size={13} lh={1.6} color={onVoid.muted}>
+          {mode === 'in'
+            ? 'Your number and your password. The number stays private — venues and other players never see it.'
+            : 'Your number is how you sign in, and it stays private. Venues and other players never see it.'}
+        </Txt>
+      </View>
 
-          <View style={{ gap: 10 }}>
-            <Eyebrow>Mobile number</Eyebrow>
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+20 100 000 0000"
-              placeholderTextColor="rgba(243,238,229,.25)"
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              textContentType="telephoneNumber"
-              accessibilityLabel="Mobile number"
-              style={{
-                height: 54,
-                borderRadius: radius.control,
-                borderWidth: 1,
-                borderColor: goldAlpha.edge,
-                backgroundColor: void_.surface,
-                paddingHorizontal: 16,
-                color: onVoid.primary,
-                fontFamily: face.semibold,
-                fontSize: 17,
-                letterSpacing: 0.5,
-              }}
+      {/* Joining as a player or as somewhere to play. One account either way. */}
+      {mode === 'join' ? (
+        <View style={{ gap: 10 }}>
+          <Eyebrow>I am</Eyebrow>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Choice label="A player" on={role === 'player'} onPress={() => setRole('player')} />
+            <Choice
+              label="A venue owner"
+              on={role === 'venue_owner'}
+              onPress={() => setRole('venue_owner')}
             />
           </View>
-
-          {error ? <ErrorNote>{error}</ErrorNote> : null}
-
-          <Button
-            label={busy ? 'Sending…' : 'Send code'}
-            height={52}
-            round={radius.control}
-            size={15}
-            disabled={!phoneLooksUsable || busy}
-            onPress={send}
-          />
-
-          {/* AUTH-004: acceptance is recorded against a version. */}
-          <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-            By continuing you accept the X League terms and privacy notice. You
-            must be 18 or over to play.
-          </Txt>
         </View>
-      ) : (
-        <View style={{ gap: 20 }}>
-          <View style={{ gap: 8 }}>
-            <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
-              Check your messages
-            </Txt>
-            <Txt size={13} lh={1.6} color={onVoid.muted}>
-              We sent a code to {phone}.{' '}
-              <Txt size={13} weight="semibold" color={gold.base} onPress={() => setStep('phone')}>
-                Change number
-              </Txt>
-            </Txt>
-          </View>
+      ) : null}
 
-          <View style={{ gap: 10 }}>
-            <Eyebrow>Six-digit code</Eyebrow>
-            <TextInput
-              value={code}
-              onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-              placeholderTextColor="rgba(243,238,229,.2)"
-              keyboardType="number-pad"
-              autoComplete="sms-otp"
-              textContentType="oneTimeCode"
-              accessibilityLabel="Six-digit code"
-              style={{
-                height: 60,
-                borderRadius: radius.control,
-                borderWidth: 1,
-                borderColor: code.length === 6 ? gold.base : goldAlpha.edge,
-                backgroundColor: void_.surface,
-                paddingHorizontal: 16,
-                color: gold.base,
-                fontFamily: mono,
-                fontSize: 26,
-                letterSpacing: 10,
-                textAlign: 'center',
-              }}
+      <View style={{ gap: 16 }}>
+        {mode === 'join' ? (
+          <Field
+            label="Your name"
+            value={name}
+            onChangeText={setName}
+            placeholder="Basel Elsayed"
+            autoComplete="name"
+          />
+        ) : null}
+
+        <Field
+          label="Mobile number"
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="+20 100 000 0000"
+          keyboardType="phone-pad"
+          autoComplete="tel"
+        />
+
+        <Field
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="At least 8 characters"
+          secureTextEntry
+          autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+        />
+
+        {mode === 'join' && role === 'venue_owner' ? (
+          <>
+            <Field
+              label="Venue name"
+              value={venueName}
+              onChangeText={setVenueName}
+              placeholder="Stadium One"
             />
-          </View>
-
-          {error ? <ErrorNote>{error}</ErrorNote> : null}
-
-          <Button
-            label={busy ? 'Verifying…' : 'Verify and continue'}
-            height={52}
-            round={radius.control}
-            size={15}
-            disabled={code.length !== 6 || busy}
-            onPress={verify}
-          />
-
-          <Pressable accessibilityRole="button" accessibilityLabel="Send the code again" onPress={send} hitSlop={10}>
-            <Txt size={12.5} weight="semibold" color={onVoid.faint} align="center">
-              Didn't get it? Send again
+            <Field
+              label="Area"
+              value={venueArea}
+              onChangeText={setVenueArea}
+              placeholder="Nasr City"
+            />
+            {/* VEN-006: said here rather than discovered later. */}
+            <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
+              Your venue is listed as unverified until X League checks it. You can
+              set your pitches, hours and prices straight away.
             </Txt>
-          </Pressable>
-        </View>
-      )}
+          </>
+        ) : null}
+      </View>
+
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
+
+      <Button
+        label={busy ? 'One moment…' : mode === 'in' ? 'Sign in' : 'Create my account'}
+        height={52}
+        round={radius.control}
+        size={15}
+        disabled={!ready || busy}
+        onPress={submit}
+      />
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={mode === 'in' ? 'Create an account' : 'I already have an account'}
+        hitSlop={10}
+        onPress={() => {
+          setMode(mode === 'in' ? 'join' : 'in');
+          setError(null);
+        }}
+      >
+        <Txt size={12.5} weight="semibold" color={gold.base} align="center">
+          {mode === 'in' ? 'New here? Create an account' : 'I already have an account'}
+        </Txt>
+      </Pressable>
+
+      {/* AUTH-004: acceptance is recorded against a version. */}
+      {mode === 'join' ? (
+        <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
+          By continuing you accept the X League terms and privacy notice. You must
+          be 18 or over to play.
+        </Txt>
+      ) : null}
 
       {busy ? <ActivityIndicator color={gold.base} /> : null}
     </Screen>
+  );
+}
+
+function Field({
+  label,
+  ...input
+}: { label: string } & React.ComponentProps<typeof TextInput>) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Eyebrow>{label}</Eyebrow>
+      <TextInput
+        placeholderTextColor="rgba(243,238,229,.25)"
+        autoCapitalize="none"
+        accessibilityLabel={label}
+        {...input}
+        style={{
+          height: 52,
+          borderRadius: radius.control,
+          borderWidth: 1,
+          borderColor: goldAlpha.edge,
+          backgroundColor: void_.surface,
+          paddingHorizontal: 16,
+          color: onVoid.primary,
+          fontFamily: face.semibold,
+          fontSize: 16,
+        }}
+      />
+    </View>
+  );
+}
+
+function Choice({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={{
+        flex: 1,
+        height: 46,
+        borderRadius: radius.control,
+        borderWidth: 1,
+        borderColor: on ? gold.base : goldAlpha.edge,
+        backgroundColor: on ? 'rgba(198,163,75,.14)' : void_.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Txt size={13.5} weight="semibold" color={on ? gold.base : onVoid.secondary}>
+        {label}
+      </Txt>
+    </Pressable>
   );
 }
 

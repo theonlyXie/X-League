@@ -38,7 +38,7 @@ export function Gate({ children }: { children: ReactNode }) {
       <Centre>
         <h1>Not an admin account</h1>
         <p className="muted">
-          You are signed in, but this number has no platform role. Cups are run by X League staff.
+          You are signed in, but this account has no platform role. Cups are run by X League staff.
         </p>
         <div style={{ marginTop: 18 }}>
           <button onClick={() => void signOut()}>Sign out</button>
@@ -64,30 +64,19 @@ function Centre({ children }: { children: ReactNode }) {
 }
 
 function SignIn() {
-  const { requestOtp, verifyOtp } = useSession();
-  const [phone, setPhone] = useState('');
-  const [token, setToken] = useState('');
-  const [sent, setSent] = useState(false);
+  const { signIn } = useSession();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const send = async () => {
+  const submit = async () => {
     setBusy(true);
-    const err = await requestOtp(phone.trim());
+    setError(await signIn(username, password));
     setBusy(false);
-    if (err) setError(err);
-    else {
-      setError(null);
-      setSent(true);
-    }
   };
 
-  const verify = async () => {
-    setBusy(true);
-    const err = await verifyOtp(phone.trim(), token.trim());
-    setBusy(false);
-    setError(err);
-  };
+  const ready = username.trim().length >= 2 && password.length >= 8;
 
   return (
     <Centre>
@@ -98,59 +87,43 @@ function SignIn() {
 
       {error ? <div className="notice error">{error}</div> : null}
 
-      {/* The same phone-OTP identity the app uses (AUTH-001). One account, one
-          person, whichever surface they open. */}
-      {!sent ? (
-        <>
-          <label htmlFor="phone">Phone number</label>
-          <input
-            id="phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="+20 100 000 0000"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && phone.trim() && void send()}
-          />
-          <div style={{ marginTop: 16 }}>
-            <button
-              className="primary"
-              style={{ width: '100%' }}
-              disabled={busy || phone.trim().length < 6}
-              onClick={() => void send()}
-            >
-              {busy ? 'Sending…' : 'Send code'}
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <label htmlFor="code">Code sent to {phone}</label>
-          <input
-            id="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="000000"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && token.trim() && void verify()}
-          />
-          <div style={{ marginTop: 16 }} className="row">
-            <button
-              className="primary"
-              style={{ flex: 1 }}
-              disabled={busy || token.trim().length < 4}
-              onClick={() => void verify()}
-            >
-              {busy ? 'Checking…' : 'Sign in'}
-            </button>
-            <button onClick={() => setSent(false)} disabled={busy}>
-              Back
-            </button>
-          </div>
-        </>
-      )}
+      <label htmlFor="username">Username</label>
+      <input
+        id="username"
+        autoComplete="username"
+        autoCapitalize="none"
+        autoFocus
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && ready && void submit()}
+      />
+
+      <div style={{ marginTop: 14 }}>
+        <label htmlFor="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && ready && void submit()}
+        />
+      </div>
+
+      <div style={{ marginTop: 18 }}>
+        <button
+          className="primary"
+          style={{ width: '100%' }}
+          disabled={busy || !ready}
+          onClick={() => void submit()}
+        >
+          {busy ? 'Signing in…' : 'Sign in'}
+        </button>
+      </div>
+
+      <p className="faint" style={{ marginTop: 16, marginBottom: 0 }}>
+        Staff accounts only. Players use the app.
+      </p>
     </Centre>
   );
 }

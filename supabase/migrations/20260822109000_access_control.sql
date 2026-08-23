@@ -158,6 +158,7 @@ begin
     'generate_fixtures(uuid)',
     'schedule_fixture(uuid, uuid)',
     'record_fixture_result(uuid)',
+    'tournaments_i_run(integer)',
     -- The organiser's two lookups: somewhere to hold a cup, and the bookings
     -- to schedule its fixtures against.
     'tournament_bookings(uuid, date, text)',

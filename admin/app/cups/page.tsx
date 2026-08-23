@@ -62,13 +62,27 @@ function Cups() {
         </div>
         <span className="spacer" />
         {canAct(role) ? (
-          <button className="primary" onClick={() => setCreating((c) => !c)}>
-            {creating ? 'Cancel' : 'New cup'}
+          // Not offered until there is somewhere to hold a cup. Opening the
+          // form onto an empty venue picker looks broken and reads as a bug.
+          <button
+            className="primary"
+            disabled={loading || venues.length === 0}
+            title={venues.length === 0 && !loading ? 'No venues to hold a cup at yet' : undefined}
+            onClick={() => setCreating((c) => !c)}
+          >
+            {creating ? 'Cancel' : loading ? 'Loading…' : 'New cup'}
           </button>
         ) : null}
       </div>
 
       <Notice text={error} />
+
+      {!loading && venues.length === 0 && canAct(role) ? (
+        <div className="notice error">
+          No venues yet, so there is nowhere to hold a cup. A venue appears here as
+          soon as somebody registers one from the app.
+        </div>
+      ) : null}
 
       {creating ? (
         <CreateCup
@@ -129,13 +143,12 @@ function Cups() {
         )}
       </div>
 
-      {/* `list_tournaments` hides drafts from players by design, and this list
-          is that same function — so a cup you have created but not opened will
-          not appear here until it is opened. Said plainly rather than left to
-          be discovered. */}
+      {/* This is the organiser's list, so drafts are here. Players see only
+          what has been opened, which is worth saying out loud — otherwise a
+          draft looks live to the person who made it. */}
       <p className="faint">
-        Drafts are not listed publicly until you open them for entries. Open a cup from its own page
-        after creating it.
+        Drafts are visible here but not to players. Open a cup from its own page when it is ready
+        to take entries.
       </p>
     </>
   );

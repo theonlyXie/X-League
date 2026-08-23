@@ -52,14 +52,14 @@ export type TournamentSummary = {
 };
 
 /**
- * `list_tournaments` is the public list, and it deliberately hides drafts — a
- * cup nobody has opened yet is not news. The organiser needs to see their own
- * drafts, so this asks for both and merges: the public list, plus every
- * tournament this admin can run, which `my_tournaments` does not cover either
- * (that is the list a *player's* teams are entered in).
+ * The organiser's own list — every cup this person may run, drafts included.
+ *
+ * Not `list_tournaments`: that is the public list and hides drafts, which is
+ * right for players and useless here. A cup created from this dashboard starts
+ * as a draft, so the public list is precisely the one place it does not appear.
  */
 export async function listForOrganiser(): Promise<TournamentSummary[]> {
-  const { data, error } = await supabase().rpc('list_tournaments', { p_limit: 100 });
+  const { data, error } = await supabase().rpc('tournaments_i_run', { p_limit: 100 });
   if (error) throw error;
   return (data as Array<Record<string, unknown>>).map((r) => ({
     tournamentId: r.tournament_id as string,

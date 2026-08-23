@@ -25,12 +25,29 @@ type SessionValue = {
    */
   role: PlatformRole | null;
   roleLoading: boolean;
-  requestOtp: (phone: string) => Promise<string | null>;
-  verifyOtp: (phone: string, token: string) => Promise<string | null>;
+  /**
+   * Staff sign in with a username rather than a phone number — they are not
+   * players, and the account is not tied to a handset. The username maps to
+   * the same kind of lookup address every account has.
+   */
+  signIn: (username: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 };
 
 const Ctx = createContext<SessionValue | null>(null);
+
+/**
+ * Staff usernames are addresses under the same domain player accounts use.
+ *
+ * GoTrue needs an email to authenticate, and the whole product gives it one
+ * that is a lookup key rather than a mailbox: a player's is derived from their
+ * number, a staff member's from their username. Someone who types the full
+ * address gets it through unchanged, so both work.
+ */
+export function staffAddress(username: string): string {
+  const u = username.trim().toLowerCase();
+  return u.includes('@') ? u : `${u}@xleague.app`;
+}
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -78,14 +95,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [session]);
 
-  const requestOtp = useCallback(async (phone: string) => {
-    const { error } = await supabase().auth.signInWithOtp({ phone });
-    return error?.message ?? null;
-  }, []);
-
-  const verifyOtp = useCallback(async (phone: string, token: string) => {
-    const { error } = await supabase().auth.verifyOtp({ phone, token, type: 'sms' });
-    return error?.message ?? null;
+  const signIn = useCallback(async (username: string, password: string) => {
+    const { error } = await supabase().auth.signInWithPassword({
+      email: staffAddress(username),
+      password,
+    });
+    if (!error) return null;
+    // A provider code at a sign-in box helps nobody.
+    return /invalid.login|invalid_credentials/i.test(`${error.code ?? ''} ${error.message}`)
+      ? 'That username and password do not match.'
+      : error.message;
   }, []);
 
   const signOut = useCallback(async () => {
@@ -94,8 +113,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<SessionValue>(
-    () => ({ session, restoring, role, roleLoading, requestOtp, verifyOtp, signOut }),
-    [session, restoring, role, roleLoading, requestOtp, verifyOtp, signOut],
+    () => ({ session, restoring, role, roleLoading, signIn, signOut }),
+    [session, restoring, role, roleLoading, signIn, signOut],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -61,15 +61,21 @@ function Cup() {
     void load();
   }, [load]);
 
-  /** Every action reports the server's reason and then re-reads the cup. */
+  /**
+   * Every action reports the server's reason and then re-reads the cup.
+   *
+   * The reload happens *before* the message is set, not after: `load` clears
+   * `error` when the cup comes back fine, so setting the reason first meant the
+   * reload wiped it and a refused action looked like nothing happening at all.
+   */
   const run = async (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => {
     setBusy(true);
     setNote(null);
     setError(null);
     const res = await fn();
+    await load();
     if (!res.ok) setError(res.reason ?? 'That was refused.');
     else setNote(said);
-    await load();
     setBusy(false);
   };
 

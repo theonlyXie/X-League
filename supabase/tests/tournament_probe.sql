@@ -91,6 +91,24 @@ begin
   select count(*)::integer into v_n from list_tournaments();
   return query select 'a draft cup is not listed publicly', v_n::text, v_n = 0;
 
+  -- But the person who made it has to be able to reach it, or "create, then
+  -- open for entries" is a state the product can enter and never leave.
+  select count(*)::integer into v_n from tournament_detail(v_trn);
+  return query select 'the organiser can still open their own draft',
+                      v_n::text, v_n = 1;
+
+  select count(*)::integer into v_n from tournaments_i_run() where tournament_id = v_trn;
+  return query select 'and find it again in their own list', v_n::text, v_n = 1;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  select count(*)::integer into v_n from tournament_detail(v_trn);
+  return query select 'while a player still cannot see a draft', v_n::text, v_n = 0;
+
+  select count(*)::integer into v_n from tournaments_i_run();
+  return query select 'nor does a player run any cups', v_n::text, v_n = 0;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+
   -- Cups are run from the admin dashboard, and a platform admin is staff at no
   -- venue at all — so the person whose job this is has to qualify without
   -- being on any venue's payroll.
