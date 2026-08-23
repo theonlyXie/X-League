@@ -16,8 +16,10 @@ declare
   SALMA uuid := '22222222-2222-2222-2222-222222222222';  -- manager, Stadium One
   KARIM uuid := '33333333-3333-3333-3333-333333333333';  -- staff, The Box
   BASEL uuid := '11111111-1111-1111-1111-111111111111';
+  ADMIN uuid := '99999999-9999-9999-9999-999999999999';  -- platform admin, no venue
   v_venue uuid;
   v_trn   uuid;
+  v_admin_trn uuid;
   v_teams uuid[] := '{}';
   v_cap   uuid;
   v_pid   uuid;
@@ -78,6 +80,45 @@ begin
 
   select count(*)::integer into v_n from list_tournaments();
   return query select 'a draft cup is not listed publicly', v_n::text, v_n = 0;
+
+  -- Cups are run from the admin dashboard, and a platform admin is staff at no
+  -- venue at all — so the person whose job this is has to qualify without
+  -- being on any venue's payroll.
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  select * into r from create_tournament(v_venue, 'Platform Cup', 'league', 4);
+  return query select 'a platform admin can create a cup at any venue',
+                      coalesce(r.reason, 'created'), r.ok;
+  v_admin_trn := r.tournament_id;
+
+  return query select 'and may run the one the venue manager created',
+                      can_run_tournament(v_trn)::text, can_run_tournament(v_trn);
+
+  -- ADM-012: reach beyond what you own leaves a trace.
+  select count(*)::integer into v_n
+    from audit_log where action = 'tournament.create' and subject_id = v_admin_trn;
+  return query select 'creating it as an admin is audited', v_n::text, v_n = 1;
+
+  -- The venue manager's own cup is not audited: the tournament row already
+  -- records who created it, and this is their venue.
+  select count(*)::integer into v_n
+    from audit_log where action = 'tournament.create' and subject_id = v_trn;
+  return query select 'the venue manager''s own cup is not', v_n::text, v_n = 0;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  return query select 'a player still cannot run one',
+                      can_run_tournament(v_trn)::text, not can_run_tournament(v_trn);
+
+  select * into r from create_tournament(v_venue, 'Nowhere Cup');
+  return query select 'nor create one', coalesce(r.reason, '(allowed!)'), r.ok = false;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  select * into r from create_tournament(
+    '00000000-0000-0000-0000-0000000000ff'::uuid, 'Cup At Nowhere');
+  return query select 'a venue that does not exist is named as such',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason = 'That venue does not exist.';
+
+  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
 
   -- -------------------------------------------------------------------------
   -- Entering
