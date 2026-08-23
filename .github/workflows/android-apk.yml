@@ -48,8 +48,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Typecheck
-        run: npx tsc --noEmit
+      # Typecheck, plus the check that catches what a typecheck cannot: a
+      # string present in one language and missing from the other renders
+      # `undefined` and never fails to compile.
+      - name: Check
+        run: npm run check
 
       # The native project is generated rather than committed, so app.json stays
       # the single source of Android configuration.
