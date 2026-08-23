@@ -147,6 +147,9 @@ begin
     'generate_fixtures(uuid)',
     'schedule_fixture(uuid, uuid)',
     'record_fixture_result(uuid)',
+    -- The organiser's two lookups: somewhere to hold a cup, and the bookings
+    -- to schedule its fixtures against.
+    'tournament_bookings(uuid, date, text)',
 
     -- Platform operations, scoped inside the function by platform_role
     -- (RBAC-003).
@@ -160,7 +163,8 @@ begin
     'admin_ledger(integer)',
     'admin_settings()',
     'admin_set_setting(text, integer)',
-    'admin_audit(integer, uuid)'
+    'admin_audit(integer, uuid)',
+    'admin_venues()'
   ] loop
     execute format('grant execute on function public.%s to authenticated', fn);
   end loop;

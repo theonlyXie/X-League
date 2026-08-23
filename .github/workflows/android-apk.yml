@@ -20,7 +20,9 @@ on:
           - 'arm64-v8a,armeabi-v7a,x86,x86_64'
   push:
     branches: [main, 'claude/**']
-    paths-ignore: ['**.md', 'supabase/**']
+    # The admin dashboard is a separate deployment with its own workflow;
+    # a change there cannot affect the APK, so it should not rebuild one.
+    paths-ignore: ['**.md', 'supabase/**', 'admin/**']
 
 concurrency:
   group: apk-${{ github.ref }}

@@ -72,6 +72,16 @@ begin
   return query select 'nor can staff at a different venue',
                       coalesce(r.reason, '(allowed!)'), r.ok = false;
 
+  -- The organiser's two lookups.
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  select count(*)::integer into v_n from admin_venues();
+  return query select 'an admin can see every venue to hold a cup at',
+                      v_n::text, v_n >= 3;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  select count(*)::integer into v_n from admin_venues();
+  return query select 'a player sees none', v_n::text, v_n = 0;
+
   perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
   select * into r from create_tournament(v_venue, 'Nasr City Cup', 'league', 4,
                                          current_date + 7, current_date + 28, 500);
@@ -266,10 +276,39 @@ begin
     v_bk := test_past_booking(v_pitch, v_slot, v_cap);
     perform set_config('request.jwt.claims', json_build_object('sub', v_cap)::text, true);
 
+    -- The list the dashboard schedules from: this is where the organiser finds
+    -- the booking id that schedule_fixture wants.
+    perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+    select count(*)::integer into v_n
+      from tournament_bookings(v_trn, (v_slot at time zone 'Africa/Cairo')::date)
+     where booking_id = v_bk;
+    return query select 'the organiser can find that booking to schedule it',
+                        v_n::text, v_n = 1;
+
+    select reported, fixture_id into r
+      from tournament_bookings(v_trn, (v_slot at time zone 'Africa/Cairo')::date)
+     where booking_id = v_bk;
+    return query select 'and it is not yet reported or spoken for',
+                        r.reported::text, r.reported = false and r.fixture_id is null;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+    begin
+      perform count(*) from tournament_bookings(v_trn, null);
+      return query select 'a player cannot list a cup''s bookings', '(allowed!)', false;
+    exception when insufficient_privilege then
+      return query select 'a player cannot list a cup''s bookings', 'refused', true;
+    end;
+
     perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
     select * into r from schedule_fixture(v_fix, v_bk);
     return query select 'the fixture is put on a real pitch-hour',
                         coalesce(r.reason, 'scheduled'), r.ok;
+
+    select fixture_id into r
+      from tournament_bookings(v_trn, (v_slot at time zone 'Africa/Cairo')::date)
+     where booking_id = v_bk;
+    return query select 'after which the hour reads as spoken for',
+                        coalesce(r.fixture_id::text, '(free)'), r.fixture_id = v_fix;
 
     select * into r from record_fixture_result(v_fix);
     return query select 'and has no result until the match is played',
