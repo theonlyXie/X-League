@@ -1,15 +1,33 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useSession } from '@/lib/session';
 
+/**
+ * The sections, in the order somebody running the platform works through them:
+ * what is happening, then what needs a decision, then the record.
+ */
+const NAV = [
+  { href: '/', label: 'Overview' },
+  { href: '/venues', label: 'Venues' },
+  { href: '/people', label: 'People' },
+  { href: '/reports', label: 'Reports' },
+  { href: '/cups', label: 'Cups' },
+  { href: '/money', label: 'Money' },
+  { href: '/settings', label: 'Settings' },
+  { href: '/audit', label: 'Audit' },
+] as const;
+
 export function Shell({ children }: { children: ReactNode }) {
   const { role, signOut } = useSession();
+  const path = usePathname();
+
   return (
     <div className="shell">
       <div className="topbar">
-        <Link href="/cups" className="brand">
+        <Link href="/" className="brand">
           <span className="brand-mark">X</span>
           <span>X League — Admin</span>
         </Link>
@@ -19,6 +37,20 @@ export function Shell({ children }: { children: ReactNode }) {
           Sign out
         </button>
       </div>
+
+      <nav className="nav">
+        {NAV.map((n) => {
+          // `/` only matches exactly; everything else matches its subtree, so
+          // a cup's own page keeps Cups lit.
+          const on = n.href === '/' ? path === '/' : path.startsWith(n.href);
+          return (
+            <Link key={n.href} href={n.href} className={on ? 'nav-on' : undefined}>
+              {n.label}
+            </Link>
+          );
+        })}
+      </nav>
+
       {children}
     </div>
   );
