@@ -308,11 +308,33 @@ XP is an append-only ledger rather than a counter, so a total is explainable
 line by line, and a unique index rather than careful code is what stops a match
 paying twice.
 
+### Paying: nothing up front
+
+There is no deposit. A player books, turns up, and settles the whole price at
+the venue on the day.
+
+The spine was built the other way — a price rule carried a deposit, a booking
+inherited it, a trigger raised an obligation for it, a late cancellation
+forfeited it — and all of that reads from one source, `price_rule.deposit_egp`.
+So `20260822108900_no_deposit.sql` changes the source rather than performing
+surgery across nine migrations: with no deposit on any rule the machinery
+downstream is inert rather than removed, and every existing case still passes
+because each already handled a zero deposit correctly. The columns stay, so
+reinstating a deposit later is a migration rather than a rewrite; what is gone
+is any way to set one, because `set_price_rule` no longer takes the argument.
+
+The money is still owed, and still recorded. Removing the deposit removed the
+only thing a venue could mark collected, which would have left `venue_payouts`
+and `admin_ledger` reading zero forever — not "no down payment" but "no
+accounting". A confirmed booking now raises its whole price as a `balance`
+obligation instead: same table, same states, same `record_payment`, due at the
+venue rather than up front.
+
 ### Cancellation, and the policy P-05 states
 
 The checkout screen tells players in both languages that cancellation is free
-until 3 PM and that two unexcused no-shows in a season restrict cash-deposit
-booking. Both are now enforced. The cutoff and the limit are rows in
+until the cutoff and that two unexcused no-shows in a season restrict booking.
+Both are enforced. The cutoff and the limit are rows in
 `policy_setting` rather than constants, so the admin console moves them without
 a deploy, and the restriction is checked in `hold_slot` because that is the only
 place inventory is claimed and therefore the only place the promise can be kept.
