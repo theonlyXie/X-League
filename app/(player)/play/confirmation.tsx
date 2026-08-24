@@ -22,7 +22,7 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Confirmation() {
   const router = useRouter();
-  const { slot, slotLabel, slotEndLabel, code, bookingId, venueId, pitchId, slotDeposits } =
+  const { slot, slotLabel, slotEndLabel, code, bookingId, venueId, pitchId, slotPrices } =
     useBooking();
   const { t, money, pm } = useI18n();
 
@@ -40,7 +40,8 @@ export default function Confirmation() {
   }, [venueId]);
 
   const pitchLabel = venue?.pitches.find((p) => p.id === pitchId)?.label;
-  const deposit = slotDeposits[slot] ?? BOOKING.deposit;
+  // Nothing was taken up front; the whole price is settled at the venue.
+  const total = (slotPrices[slot] ?? BOOKING.hourly) + BOOKING.bookingFee;
 
   return (
     <Screen
@@ -110,7 +111,7 @@ export default function Confirmation() {
               {t.cashAtGate}
             </Txt>
             <Txt size={15} weight="bold" color={onVoid.primary}>
-              {money(deposit)}
+              {money(total)}
             </Txt>
           </View>
         </View>

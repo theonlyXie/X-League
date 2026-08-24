@@ -142,7 +142,7 @@ begin
     'owner_day(uuid, date, text)',
     'owner_arrivals(uuid, date, text)',
     'owner_summary(uuid, date, text)',
-    'set_price_rule(uuid, integer, integer, integer, integer, date)',
+    'set_price_rule(uuid, integer, integer, integer, date)',
     'venue_price_rules(uuid)',
     'close_slot(uuid, timestamptz, integer, text, text)',
     'reopen_slot(uuid)',

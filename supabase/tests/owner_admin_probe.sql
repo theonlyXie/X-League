@@ -35,31 +35,36 @@ begin
   -- O-03 Pricing
   -- =========================================================================
   perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
-  select * into r from set_price_rule(v_pitch, 18, 20, 400, 150);
+  select * into r from set_price_rule(v_pitch, 18, 20, 400);
   return query select 'a player cannot change a price',
                       coalesce(r.reason, '(allowed!)'),
                       r.ok = false and r.reason = 'You do not manage that venue.';
 
   perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);
-  select * into r from set_price_rule(v_pitch, 18, 20, 400, 150);
+  select * into r from set_price_rule(v_pitch, 18, 20, 400);
   return query select 'nor can staff at another venue',
                       coalesce(r.reason, '(allowed!)'), r.ok = false;
 
   perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
-  select * into r from set_price_rule(v_pitch, 20, 18, 400, 150);
+  select * into r from set_price_rule(v_pitch, 20, 18, 400);
   return query select 'an inverted hour range is refused',
                       coalesce(r.reason, '(allowed!)'), r.ok = false;
 
-  select * into r from set_price_rule(v_pitch, 18, 20, 400, 500);
-  return query select 'a deposit larger than the price is refused',
+  select * into r from set_price_rule(v_pitch, 18, 20, -1);
+  return query select 'a negative price is refused',
                       coalesce(r.reason, '(allowed!)'),
-                      r.ok = false and r.reason = 'The deposit cannot be more than the price.';
+                      r.ok = false and r.reason = 'A price cannot be negative.';
 
-  select * into r from set_price_rule(v_pitch, 18, 20, 400, 150);
+  select * into r from set_price_rule(v_pitch, 18, 20, 400);
   return query select 'the manager can set a price', coalesce(r.reason, 'set'), r.ok;
 
   select price_egp into v_n from search_availability(v_pitch, current_date) where hour = 18;
   return query select 'and the new price reaches player search', v_n::text, v_n = 400;
+
+  -- PAY: a price is all a rule carries now. Nothing a venue can set asks a
+  -- player for money before the match.
+  select deposit_egp into v_n from search_availability(v_pitch, current_date) where hour = 18;
+  return query select 'and it asks for nothing up front', v_n::text, v_n = 0;
 
   select price_egp into v_n from search_availability(v_pitch, current_date) where hour = 21;
   return query select 'and the hours it did not cover keep their old price',

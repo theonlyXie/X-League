@@ -249,6 +249,13 @@ export const STRINGS = {
     authToSignIn: 'I already have an account',
     authTerms: 'By continuing you accept the X League terms and privacy notice. You must be 18 or over to play.',
 
+    // Paying (PAY): nothing up front, the whole price at the venue
+    payAtVenue: 'Pay at the venue',
+    payAtVenueBlurb: (total: string) => `Nothing to pay now. ${total} in cash at the venue on the day.`,
+    totalDue: 'Total at the venue',
+    nothingUpFront: 'Nothing to pay now',
+    cancellationNoteFree: 'Free cancellation up to the cutoff. Two unexcused no-shows in a season restrict booking.',
+
     // Rating (P-09)
     rateTitle: 'Rate your match',
     rateBlurb: 'Six sliders each. Ratings close a week after the match.',
@@ -501,6 +508,12 @@ export const STRINGS = {
     authToJoin: 'أول مرة؟ أنشئ حساب',
     authToSignIn: 'عندي حساب بالفعل',
     authTerms: 'باستمرارك بتوافق على شروط إكس ليج وسياسة الخصوصية. لازم يكون عندك ١٨ سنة أو أكتر.',
+
+    payAtVenue: 'الدفع في الملعب',
+    payAtVenueBlurb: (total: string) => `مفيش أي دفع دلوقتي. ${total} كاش في الملعب يوم الماتش.`,
+    totalDue: 'الإجمالي في الملعب',
+    nothingUpFront: 'مفيش دفع دلوقتي',
+    cancellationNoteFree: 'الإلغاء مجاني قبل الموعد النهائي. غيابين بدون عذر في الموسم بيقيّدوا الحجز.',
 
     rateTitle: 'قيّم مباراتك',
     rateBlurb: 'ست خانات لكل لاعب. التقييم يُغلق بعد أسبوع من المباراة.',

@@ -291,7 +291,7 @@ export default function Lobby() {
                 <Txt size={11.5} color={onVoid.faint}>
                   {lobby.terms.freeNow
                     ? t.freeUntil(hour(lobby.terms.cutoffAt))
-                    : `${t.cutoffPassed} · ${money(lobby.terms.depositEgp)}`}
+                    : t.cutoffPassed}
                 </Txt>
               ) : null}
 

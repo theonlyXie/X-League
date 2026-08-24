@@ -48,10 +48,12 @@ select p.id, d, 18, 24, 60 from p, generate_series(0, 6) as d;
 
 -- OWN-007: EGP 300 through the evening, EGP 260 for the late hour. Valid from
 -- well before today so a quote can be reproduced against it whenever this runs.
+-- No deposit on anything: nothing is taken up front, and the whole price is
+-- settled at the venue on the day.
 insert into price_rule (pitch_id, valid_from, start_hour, end_hour, price_egp, deposit_egp)
-select id, current_date - 365, 18, 23, 300, 100 from pitch
+select id, current_date - 365, 18, 23, 300, 0 from pitch
 union all
-select id, current_date - 365, 23, 24, 260, 100 from pitch;
+select id, current_date - 365, 23, 24, 260, 0 from pitch;
 
 -- VEN-007: the media set P-04 shows. Placeholders, named as such — the pitch
 -- page marks the photo frame as a placeholder rather than faking a photograph.
@@ -92,7 +94,7 @@ select
   x.captain,
   generate_booking_code(),
   case when s.h = 23 then 260 else 300 end,
-  100
+  0
 from slot s
 join (values
   ('Pitch A', 18, 'walk_in', 'Walk-in'),

@@ -37,14 +37,27 @@ begin
   perform confirm_booking(v_bk);
 
   -- -------------------------------------------------------------------------
-  -- BKG-007 — the deposit is an obligation, not a number on a screen
+  -- PAY — nothing is owed before the match
   -- -------------------------------------------------------------------------
+  -- No price rule carries a deposit any more, so nothing is raised to collect
+  -- before the match.
   select count(*)::integer into v_n
-    from payment_reference where booking_id = v_bk and kind = 'cash_deposit' and state = 'due';
-  return query select 'confirming creates the deposit owed at the gate', v_n::text, v_n = 1;
+    from payment_reference where booking_id = v_bk and kind = 'cash_deposit';
+  return query select 'confirming asks for nothing up front', v_n::text, v_n = 0;
 
-  select deposit_state into v_txt from booking_terms(v_bk);
-  return query select 'and checkout can read its state', v_txt, v_txt = 'due';
+  -- The money is still owed, just at the venue on the day — otherwise the
+  -- ledger would read zero collected forever, which is not "no deposit" but
+  -- "no accounting".
+  select amount_egp into v_n
+    from payment_reference where booking_id = v_bk and kind = 'balance' and state = 'due';
+  return query select 'but the whole price is owed at the venue', v_n::text,
+                      v_n = (select price_egp from booking where id = v_bk);
+
+  select deposit_egp, balance_egp into r from booking_terms(v_bk);
+  return query select 'and the whole price is due at the venue',
+                      r.balance_egp::text,
+                      r.deposit_egp = 0
+                      and r.balance_egp = (select price_egp from booking where id = v_bk);
 
   select free_now into v_bool from booking_terms(v_bk);
   return query select 'cancelling is free before the cutoff', v_bool::text, v_bool;
@@ -76,8 +89,8 @@ begin
     from search_availability(v_pitch, (v_slot at time zone 'Africa/Cairo')::date) where hour = 21;
   return query select 'the hour is saleable again immediately', v_bool::text, v_bool;
 
-  select state into v_txt from payment_reference where booking_id = v_bk and kind = 'cash_deposit';
-  return query select 'a free cancellation waives the deposit', v_txt, v_txt = 'waived';
+  select state into v_txt from payment_reference where booking_id = v_bk and kind = 'balance';
+  return query select 'a free cancellation waives what was owed', v_txt, v_txt = 'waived';
 
   select count(*)::integer into v_n
     from booking_participant where booking_id = v_bk and state in ('invited', 'accepted');
@@ -108,8 +121,10 @@ begin
   return query select 'it is still allowed', coalesce(r.reason, 'cancelled'), r.ok;
   return query select 'but recorded as late', r.free::text, r.free = false;
 
-  select state into v_txt from payment_reference where booking_id = v_bk and kind = 'cash_deposit';
-  return query select 'and the deposit is forfeited', v_txt, v_txt = 'forfeited';
+  -- The cutoff still matters: it is what the no-show rule and the venue's
+  -- ability to resell the hour hang on.
+  select state into v_txt from payment_reference where booking_id = v_bk and kind = 'balance';
+  return query select 'and a late one forfeits it', v_txt, v_txt = 'forfeited';
   update policy_setting set value = 15 where key = 'cancellation_cutoff_hour';
 
   -- -------------------------------------------------------------------------
@@ -212,20 +227,20 @@ begin
   v_bk := h.booking_id;
   perform confirm_booking(v_bk);
 
-  select * into r from record_payment(v_bk, 'cash_deposit', 'book 4 p12');
+  select * into r from record_payment(v_bk, 'balance', 'book 4 p12');
   return query select 'a player cannot mark their own deposit collected',
                       coalesce(r.reason, '(allowed!)'),
                       r.ok = false and r.reason = 'You do not have access to that venue.';
 
   perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
-  select * into r from record_payment(v_bk, 'cash_deposit', 'book 4 p12');
+  select * into r from record_payment(v_bk, 'balance', 'book 4 p12');
   return query select 'the gate can', coalesce(r.reason, 'collected'), r.ok;
 
-  select state into v_txt from payment_reference where booking_id = v_bk and kind = 'cash_deposit';
+  select state into v_txt from payment_reference where booking_id = v_bk and kind = 'balance';
   return query select 'and it is recorded against the venue''s own reference',
                       v_txt, v_txt = 'collected';
 
-  select * into r from record_payment(v_bk, 'cash_deposit');
+  select * into r from record_payment(v_bk, 'balance');
   return query select 'collecting twice is refused',
                       coalesce(r.reason, '(allowed!)'), r.ok = false;
 end;

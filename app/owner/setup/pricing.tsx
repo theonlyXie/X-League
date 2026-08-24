@@ -42,7 +42,6 @@ export default function Pricing() {
   const [from, setFrom] = useState('18');
   const [to, setTo] = useState('23');
   const [price, setPrice] = useState('300');
-  const [deposit, setDeposit] = useState('100');
 
   const load = useCallback(async () => {
     if (!isLive || !venue) {
@@ -79,7 +78,6 @@ export default function Pricing() {
       Number(from),
       Number(to),
       Number(price),
-      Number(deposit),
     );
     if (res.ok) {
       setNotice(null);
@@ -149,7 +147,6 @@ export default function Pricing() {
               <View style={{ alignItems: 'flex-end', gap: 2 }}>
                 <OpMono>{r.priceEgp}</OpMono>
                 <Txt size={10} color="rgba(20,18,16,.42)">
-                  {r.depositEgp} deposit
                 </Txt>
               </View>
             </OpRow>
@@ -170,7 +167,6 @@ export default function Pricing() {
           <OpField label="From" value={from} onChangeText={setFrom} keyboardType="number-pad" width={72} />
           <OpField label="To" value={to} onChangeText={setTo} keyboardType="number-pad" width={72} />
           <OpField label="Price" value={price} onChangeText={setPrice} keyboardType="number-pad" width={92} />
-          <OpField label="Deposit" value={deposit} onChangeText={setDeposit} keyboardType="number-pad" width={92} />
         </View>
         <OpButton label="Save price" onPress={save} disabled={!pitchId} />
       </OpSection>

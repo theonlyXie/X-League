@@ -53,14 +53,12 @@ export async function setPriceRule(
   startHour: number,
   endHour: number,
   priceEgp: number,
-  depositEgp: number,
 ): Promise<{ ok: boolean; reason?: string }> {
   const { data, error } = await supabase().rpc('set_price_rule', {
     p_pitch_id: pitchId,
     p_start_hour: startHour,
     p_end_hour: endHour,
     p_price_egp: priceEgp,
-    p_deposit_egp: depositEgp,
     p_valid_from: null,
   });
   if (error) throw error;
@@ -269,7 +267,7 @@ export async function recordPayment(
 ): Promise<{ ok: boolean; reason?: string }> {
   const { data, error } = await supabase().rpc('record_payment', {
     p_booking_id: bookingId,
-    p_kind: 'cash_deposit',
+    p_kind: 'balance',
     p_reference: reference ?? null,
   });
   if (error) throw error;

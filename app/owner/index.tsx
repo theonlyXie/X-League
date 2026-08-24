@@ -278,7 +278,7 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
               })}
             >
               <Txt size={12.5} weight="semibold" color={operative.bg}>
-                {busy ? 'Checking in…' : checkedIn ? 'Checked in' : `Check in · collect ${arrival.depositEgp ?? 100}`}
+                {busy ? 'Checking in…' : checkedIn ? 'Checked in' : 'Check in'}
               </Txt>
               {checkedIn ? <Check size={13} color={gold.base} /> : null}
             </Pressable>

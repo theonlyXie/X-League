@@ -1,7 +1,7 @@
 /**
  * Fixture data for the player surface, carried over verbatim from
  * `XL Player.dc.html`. The booking spine is one real evening: Basel Elsayed
- * holds the 9 PM slot on Pitch A at Stadium One, cash deposit at the gate.
+ * holds the 9 PM slot on Pitch A at Stadium One, paid in cash at the venue.
  */
 
 export type SlotTime = '6:00' | '7:00' | '8:00' | '9:00' | '10:00' | '11:00';
@@ -25,8 +25,6 @@ export const BOOKING = {
   date: 'Tue 18 Aug 2026',
   format: '5-a-side · 5 + 2 subs',
   hourly: 300,
-  deposit: 100,
-  balance: 200,
   bookingFee: 0,
   gateNote: 'Gate 2 · ask for Pitch A · arrive 10 minutes early',
   cancellation: 'Free cancellation until 3:00 PM today.',

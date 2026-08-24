@@ -17,7 +17,7 @@ import { isLive } from '@/lib/supabase';
 /**
  * P-05 Checkout — reserve without ambiguity (§4.2).
  *
- * BKG-004: the complete price, deposit, balance, cancellation deadline and
+ * BKG-004: the complete price, cancellation deadline and
  * refund rule are all shown before confirmation, and the quote is the one
  * snapshotted when the hold was taken (§5.4).
  */
@@ -32,7 +32,6 @@ export default function Checkout() {
     releaseHold,
     confirmBooking,
     slotPrices,
-    slotDeposits,
     pitchId,
     venueId,
     date,
@@ -49,8 +48,9 @@ export default function Checkout() {
   // The quote is the one the hold snapshotted (§5.4), so the price shown here
   // is the hour's own price rather than the venue's headline rate.
   const price = slotPrices[slot] ?? BOOKING.hourly;
-  const deposit = slotDeposits[slot] ?? BOOKING.deposit;
-  const balance = Math.max(0, price - deposit);
+  // PAY: nothing is taken up front any more, so there is no deposit to split
+  // the price by. The whole amount is settled at the venue on the day.
+  const total = price + BOOKING.bookingFee;
 
   useEffect(() => {
     if (!isLive || !venueId) return;
@@ -155,7 +155,8 @@ export default function Checkout() {
 
       <View style={{ gap: 10 }}>
         <Eyebrow>{t.payment}</Eyebrow>
-        {/* The deposit is cash at the gate — a first-class method, not a fallback. */}
+        {/* Cash at the venue is the method, not a fallback — and now the only
+            moment money changes hands. */}
         <View
           accessibilityRole="radio"
           accessibilityState={{ selected: true }}
@@ -185,10 +186,10 @@ export default function Checkout() {
           </View>
           <View style={{ flex: 1, gap: 5 }}>
             <Txt size={14} weight="semibold" color={onVoid.primary}>
-              {t.cashAtVenue}
+              {t.payAtVenue}
             </Txt>
             <Txt size={12} lh={1.55} color={onVoid.muted}>
-              {t.cashExplainer(money(deposit), money(balance))}
+              {t.payAtVenueBlurb(money(total))}
             </Txt>
           </View>
         </View>
@@ -209,17 +210,16 @@ export default function Checkout() {
         <Divider />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <Txt size={13} weight="semibold" color={gold.base}>
-            {t.cashAtGate}
+            {t.totalDue}
           </Txt>
           <Txt size={16} weight="bold" color={gold.base}>
-            {money(deposit)}
+            {money(total)}
           </Txt>
         </View>
-        <PriceRow label={t.balanceAfter} value={money(balance)} />
       </View>
 
       <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-        {t.cancellationNote}
+        {t.cancellationNoteFree}
       </Txt>
 
       {/* BKG-010: a restriction the player can see is one they can fix. It is
