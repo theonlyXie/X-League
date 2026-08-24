@@ -67,17 +67,11 @@ export const STRINGS = {
     format: 'Format',
     fiveASide: '5-a-side · 5 + 2 subs',
     payment: 'Payment',
-    cashAtVenue: 'Cash deposit at the venue',
-    cashExplainer: (deposit: string, balance: string) =>
-      `Pay ${deposit} at the gate to hold the pitch. The remaining ${balance} is settled at the venue after the match.`,
     pitchHour: 'Pitch hour',
     bookingFee: 'Booking fee',
-    cashAtGate: 'Cash at gate',
-    balanceAfter: 'Balance after match',
+    cashAtGate: 'Due at the venue',
     confirmBooking: 'Confirm booking',
     findAnotherSlot: 'Find another slot',
-    cancellationNote:
-      'Free cancellation until 3:00 PM today. Two unexcused no-shows in a season restrict cash-deposit bookings.',
 
     // Confirmation (P-06)
     yourePlaying: "You're playing",
@@ -163,10 +157,10 @@ export const STRINGS = {
     cancelNow: 'Cancel booking',
     cancelConfirm: 'Cancel this booking?',
     cancelFreeNote: 'The slot goes straight back on sale and nothing is owed.',
-    cancelLateNote: 'The cutoff has passed, so the deposit is forfeited.',
+    cancelLateNote: 'The cutoff has passed, so the full price is still owed to the venue.',
     keepBooking: 'Keep it',
     cancelled: 'Booking cancelled',
-    restricted: 'Cash-deposit booking is restricted',
+    restricted: 'Booking is restricted',
     restrictedBlurb: (n: string) => `${n} no-shows on record. Speak to the venue to book.`,
 
     // Chat (P-12 / P-14)
@@ -436,17 +430,11 @@ export const STRINGS = {
     format: 'النظام',
     fiveASide: 'خماسي · ٥ + ٢ بدلاء',
     payment: 'الدفع',
-    cashAtVenue: 'تأمين نقدي في الملعب',
-    cashExplainer: (deposit: string, balance: string) =>
-      `ادفع ${deposit} عند البوابة لتثبيت الحجز. الباقي ${balance} يُدفع في الملعب بعد المباراة.`,
     pitchHour: 'ساعة الملعب',
     bookingFee: 'رسوم الحجز',
-    cashAtGate: 'نقداً عند البوابة',
-    balanceAfter: 'الباقي بعد المباراة',
+    cashAtGate: 'مستحق في الملعب',
     confirmBooking: 'تأكيد الحجز',
     findAnotherSlot: 'ابحث عن موعد آخر',
-    cancellationNote:
-      'إلغاء مجاني حتى ٣:٠٠ م اليوم. الغياب مرتين بدون عذر في الموسم يقيّد الحجز بالتأمين النقدي.',
 
     yourePlaying: 'أنت تلعب',
     tonightAtTime: (time: string) => `الليلة، ${time}`,
@@ -526,10 +514,10 @@ export const STRINGS = {
     cancelNow: 'إلغاء الحجز',
     cancelConfirm: 'إلغاء هذا الحجز؟',
     cancelFreeNote: 'الموعد يرجع للبيع فوراً ولا يوجد أي مستحقات.',
-    cancelLateNote: 'انتهت المهلة، لذلك يُخصم التأمين.',
+    cancelLateNote: 'انتهت المهلة، وبالتالي السعر كامل لسه مستحق للملعب.',
     keepBooking: 'الاحتفاظ به',
     cancelled: 'تم إلغاء الحجز',
-    restricted: 'الحجز بالتأمين النقدي مقيّد',
+    restricted: 'الحجز مقيّد',
     restrictedBlurb: (n: string) => `${n} حالات غياب مسجّلة. كلّم الملعب للحجز.`,
 
     chatTitle: 'الرسائل',

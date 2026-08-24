@@ -166,3 +166,98 @@ select b.id, 'balance', b.price_egp, 'due'
    and b.price_egp > 0
    and not exists (select 1 from payment_reference pr
                     where pr.booking_id = b.id and pr.kind = 'balance');
+
+-- ---------------------------------------------------------------------------
+-- What the no-show restriction is called
+-- ---------------------------------------------------------------------------
+
+-- BKG-010's restriction message still named a deposit that no longer exists,
+-- so somebody who had been restricted was told to fix a thing the product
+-- stopped doing. The rule is unchanged — repeated no-shows restrict booking —
+-- only what it is called.
+--
+-- Restated verbatim from 20260822100700 with that one string changed, because
+-- CREATE OR REPLACE resets security and search_path, and because rewriting a
+-- working function from memory to change a sentence is how `source`, the
+-- captain-name lookup and the right standing column quietly go missing.
+create or replace function hold_slot(
+  p_pitch_id     uuid,
+  p_starts_at    timestamptz,
+  p_minutes      integer default 60,
+  p_captain_name text default null,
+  p_hold_seconds integer default 292
+)
+returns hold_outcome
+language plpgsql security definer
+set search_path = public, pg_temp as $$
+declare
+  v_during  tstzrange := tstzrange(p_starts_at, p_starts_at + make_interval(mins => p_minutes), '[)');
+  v_hour    smallint  := extract(hour from p_starts_at at time zone 'Africa/Cairo')::smallint;
+  v_date    date      := (p_starts_at at time zone 'Africa/Cairo')::date;
+  v_uid     uuid      := auth.uid();
+  v_price   integer;
+  v_deposit integer;
+  v_id      uuid;
+  v_name    text;
+  v_expires timestamptz := now() + make_interval(secs => p_hold_seconds);
+  v_allowed boolean;
+  v_out     hold_outcome;
+begin
+  -- AUTH-001: booking is for signed-in people. Browsing is not.
+  if v_uid is null then
+    v_out := (false, null, null, null, null, 'Sign in to hold a slot.')::hold_outcome;
+    return v_out;
+  end if;
+
+  -- An hour that has already started cannot be sold.
+  if p_starts_at <= now() then
+    v_out := (false, null, null, null, null, 'That slot has already started.')::hold_outcome;
+    return v_out;
+  end if;
+
+  -- BKG-010: the restriction P-05 states.
+  select cash_allowed into v_allowed from player_standing(v_uid);
+  if v_allowed is false then
+    v_out := (false, null, null, null, null,
+              'Booking is restricted after repeated no-shows. Speak to the venue.'
+             )::hold_outcome;
+    return v_out;
+  end if;
+
+  perform expire_stale_holds(p_pitch_id);
+
+  select pr.price_egp, pr.deposit_egp into v_price, v_deposit
+    from price_rule pr
+   where pr.pitch_id = p_pitch_id
+     and v_hour >= pr.start_hour and v_hour < pr.end_hour
+     and pr.valid_from <= v_date
+     and (pr.valid_to is null or pr.valid_to > v_date)
+   limit 1;
+
+  select coalesce(p_captain_name, pp.display_name) into v_name
+    from player_profile pp where pp.id = v_uid;
+
+  begin
+    insert into booking (pitch_id, during, state, source, captain_id, captain_name,
+                         price_egp, deposit_egp, expires_at)
+    values (p_pitch_id, v_during, 'held', 'app', v_uid, coalesce(v_name, p_captain_name),
+            coalesce(v_price, 0), coalesce(v_deposit, 0), v_expires)
+    returning id into v_id;
+  exception
+    when exclusion_violation then
+      v_out := (false, null, null, null, null,
+                'That slot was taken while you were deciding.')::hold_outcome;
+      return v_out;
+  end;
+
+  insert into booking_event (booking_id, event, actor, to_state, detail)
+  values (v_id, 'Slot held', current_actor(), 'held',
+          jsonb_build_object('hold_seconds', p_hold_seconds));
+
+  v_out := (true, v_id, v_expires, coalesce(v_price, 0), coalesce(v_deposit, 0), null)::hold_outcome;
+  return v_out;
+end;
+$$;
+
+revoke execute on function public.hold_slot(uuid, timestamptz, integer, text, integer)
+  from public, anon, authenticated;

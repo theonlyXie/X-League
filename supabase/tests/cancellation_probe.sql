@@ -195,7 +195,7 @@ begin
   return query select 'and the next hold is refused, on the server',
                       coalesce(h.reason, '(allowed!)'),
                       h.ok = false
-                      and h.reason like 'Cash-deposit booking is restricted%';
+                      and h.reason like 'Booking is restricted%';
 
   select count(*)::integer into v_n
     from booking where pitch_id = v_pitch and during && tstzrange(v_slot, v_slot + interval '1 hour');
