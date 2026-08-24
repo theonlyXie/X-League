@@ -15,6 +15,7 @@ import { updateVenueProfile } from '@/data/manage';
 import { venueDetail, type VenueDetail } from '@/data/discovery';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
 
 /**
  * O-07 — what players see.
@@ -24,6 +25,7 @@ import { isLive } from '@/lib/supabase';
  * reports the answer.
  */
 export default function VenueProfile() {
+  const { t } = useI18n();
   const router = useRouter();
   const { venues } = useSession();
   const venue = venues[0] ?? null;
@@ -57,7 +59,7 @@ export default function VenueProfile() {
       setAmenities((d?.amenities ?? []).join(', '));
       setNotice(null);
     } catch {
-      setNotice('Could not read this venue.');
+      setNotice(t.ownVenueUnreadable);
     } finally {
       setLoading(false);
     }
@@ -69,7 +71,7 @@ export default function VenueProfile() {
 
   return (
     <OpScreen>
-      <OpHeader title="Venue profile" onBack={() => router.back()} />
+      <OpHeader title={t.ownProfile} onBack={() => router.back()} />
       <OpNotice text={notice} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
@@ -88,33 +90,33 @@ export default function VenueProfile() {
         >
           <Txt size={11.5} color={detail.verification === 'verified' ? gold.ink : onOperative.dim}>
             {detail.verification === 'verified'
-              ? 'Verified by X League'
+              ? t.ownVerifiedByX
               : `Verification: ${detail.verification}. Set by the platform, not here.`}
           </Txt>
         </View>
       ) : null}
 
-      <OpSection title="Details">
-        <OpField label="Name" value={name} onChangeText={setName} />
-        <OpField label="Area" value={area} onChangeText={setArea} />
-        <OpField label="Phone" value={phone} onChangeText={setPhone} />
+      <OpSection title={t.ownDetails}>
+        <OpField label={t.ownName} value={name} onChangeText={setName} />
+        <OpField label={t.ownArea} value={area} onChangeText={setArea} />
+        <OpField label={t.ownPhone} value={phone} onChangeText={setPhone} />
       </OpSection>
 
-      <OpSection title="At the gate" hint="What the confirmation screen tells a player when they arrive.">
-        <OpField label="Entry note" value={entryNote} onChangeText={setEntryNote} placeholder="Gate 2 · ask for Pitch A" />
+      <OpSection title={t.ownAtGateSection} hint={t.ownEntryNoteHint}>
+        <OpField label={t.ownEntryNote} value={entryNote} onChangeText={setEntryNote} placeholder={t.ownEgEntryNote} />
       </OpSection>
 
-      <OpSection title="House rules">
-        <OpField label="Rules" value={houseRules} onChangeText={setHouseRules} />
+      <OpSection title={t.ownHouseRules}>
+        <OpField label={t.ownRules} value={houseRules} onChangeText={setHouseRules} />
       </OpSection>
 
-      <OpSection title="Facilities" hint="Comma separated. These become the chips on the pitch page.">
-        <OpField label="Amenities" value={amenities} onChangeText={setAmenities} placeholder="Floodlights, Parking" />
+      <OpSection title={t.ownFacilities} hint={t.ownAmenitiesHint}>
+        <OpField label={t.ownAmenities} value={amenities} onChangeText={setAmenities} placeholder={t.ownEgAmenities} />
       </OpSection>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <OpButton
-          label="Save"
+          label={t.ownSave}
           onPress={async () => {
             if (!venue) return;
             const res = await updateVenueProfile(venue.venueId, {

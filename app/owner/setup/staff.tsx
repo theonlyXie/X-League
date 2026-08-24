@@ -8,6 +8,7 @@ import { setVenueStaff, venueStaffList, type StaffMember, type VenueRole } from 
 import { findPlayers, type FoundPlayer } from '@/data/squad';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
 
 const ROLES: VenueRole[] = ['staff', 'manager', 'owner'];
 
@@ -23,6 +24,7 @@ const ROLES: VenueRole[] = ['staff', 'manager', 'owner'];
  * former staff member stays on the list, inactive.
  */
 export default function Staff() {
+  const { t } = useI18n();
   const router = useRouter();
   const { venues } = useSession();
   const venue = venues[0] ?? null;
@@ -44,7 +46,7 @@ export default function Staff() {
       setRows(await venueStaffList(venue.venueId));
       setNotice(null);
     } catch {
-      setNotice('Only a manager can see the staff list for this venue.');
+      setNotice(t.ownStaffManagerOnly);
     } finally {
       setLoading(false);
     }
@@ -84,11 +86,11 @@ export default function Staff() {
 
   return (
     <OpScreen>
-      <OpHeader title="Staff" onBack={() => router.back()} />
+      <OpHeader title={t.ownStaff} onBack={() => router.back()} />
       <OpNotice text={notice} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title="Working here">
+      <OpSection title={t.ownWorkingHere}>
         <View style={{ gap: 8 }}>
           {rows.map((m) => (
             <OpRow key={m.userId} style={m.active ? undefined : { opacity: 0.55 }}>
@@ -122,7 +124,7 @@ export default function Staff() {
                   </Pressable>
                 ))}
                 <OpButton
-                  label={m.active ? 'Suspend' : 'Restore'}
+                  label={m.active ? t.ownSuspend : t.ownRestore}
                   tone={m.active ? 'danger' : 'quiet'}
                   onPress={() => set(m.userId, m.role, !m.active)}
                 />
@@ -137,11 +139,11 @@ export default function Staff() {
         </View>
       </OpSection>
 
-      <OpSection title="Add somebody" hint="They need an X League account first — this grants a role, it does not create a person.">
+      <OpSection title={t.ownAddSomebody} hint="They need an X League account first — this grants a role, it does not create a person.">
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search by name"
+          placeholder={t.ownSearchByName}
           placeholderTextColor="rgba(20,18,16,.32)"
           autoCapitalize="none"
           style={{
@@ -163,7 +165,7 @@ export default function Staff() {
                 <Txt size={13} weight="semibold" color={ink} style={{ flex: 1 }}>
                   {p.displayName}
                 </Txt>
-                <OpButton label="Add as staff" onPress={() => set(p.playerId, 'staff', true)} />
+                <OpButton label={t.ownAddStaff} onPress={() => set(p.playerId, 'staff', true)} />
               </OpRow>
             ))}
         </View>

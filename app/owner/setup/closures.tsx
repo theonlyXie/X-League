@@ -18,6 +18,7 @@ import { searchAvailability, type Slot } from '@/data/api';
 import { today } from '@/data/venue';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
 
 const KINDS: Closure['kind'][] = ['maintenance', 'private', 'holiday', 'closure'];
 
@@ -30,6 +31,7 @@ const KINDS: Closure['kind'][] = ['maintenance', 'private', 'holiday', 'closure'
  * the server: the venue has to speak to them, and cancelling is the honest way.
  */
 export default function Closures() {
+  const { t } = useI18n();
   const router = useRouter();
   const { venues } = useSession();
   const venue = venues[0] ?? null;
@@ -60,7 +62,7 @@ export default function Closures() {
       setPitchId((current) => current ?? detail?.pitches[0]?.id ?? null);
       setNotice(null);
     } catch {
-      setNotice('Could not read closures for this venue.');
+      setNotice(t.ownClosuresUnreadable);
     } finally {
       setLoading(false);
     }
@@ -87,12 +89,12 @@ export default function Closures() {
 
   return (
     <OpScreen>
-      <OpHeader title="Closures" onBack={() => router.back()} />
+      <OpHeader title={t.ownClosures} onBack={() => router.back()} />
 
       <OpNotice text={notice} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title="Booked off">
+      <OpSection title={t.ownBookedOff}>
         {rows.length === 0 && !loading ? (
           <Txt size={12.5} color={onOperative.dim}>
             Nothing closed from today onwards.
@@ -117,7 +119,7 @@ export default function Closures() {
                 </Txt>
               </View>
               <OpButton
-                label="Reopen"
+                label={t.ownReopen}
                 tone="quiet"
                 onPress={async () => {
                   const res = await reopenSlot(c.exceptionId);
@@ -130,7 +132,7 @@ export default function Closures() {
         </View>
       </OpSection>
 
-      <OpSection title="Close an hour" hint="Pick from the same grid a player sees. An hour somebody has already booked cannot be closed — cancel the booking first.">
+      <OpSection title={t.ownCloseHour} hint="Pick from the same grid a player sees. An hour somebody has already booked cannot be closed — cancel the booking first.">
         {pitches.length > 1 ? (
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {pitches.map((p) => {
@@ -160,7 +162,7 @@ export default function Closures() {
           </View>
         ) : null}
 
-        <OpField label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" width={140} />
+        <OpField label={t.ownDate} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" width={140} />
 
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {KINDS.map((k) => {
@@ -188,7 +190,7 @@ export default function Closures() {
           })}
         </View>
 
-        <OpField label="Note" value={note} onChangeText={setNote} placeholder="Floodlight repair" />
+        <OpField label={t.ownNote} value={note} onChangeText={setNote} placeholder={t.ownEgExample} />
 
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {slots.map((s) => (

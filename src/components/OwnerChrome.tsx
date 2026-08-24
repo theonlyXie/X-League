@@ -5,6 +5,7 @@ import { Txt } from './Txt';
 import { gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { VENUE } from '@/data/owner';
 import type { TabBarProps } from './tabBarTypes';
+import { useI18n } from '@/i18n';
 
 /**
  * Owner mode runs in Operative: bone surfaces, denser type, 8–12 px corners.
@@ -73,6 +74,7 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
  * — RBAC-005: more than one role under one identity, no sign-out.
  */
 export function OwnerHeader() {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -100,7 +102,7 @@ export function OwnerHeader() {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Owner workspace. Switch back to player mode"
+          accessibilityLabel={t.ownSwitchBack}
           hitSlop={12}
           onPress={() => router.replace('/')}
           style={{

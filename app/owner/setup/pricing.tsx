@@ -17,6 +17,7 @@ import { setPriceRule, venuePriceRules, type PriceRule } from '@/data/manage';
 import { venueDetail, type VenuePitch } from '@/data/discovery';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
 
 /**
  * O-03 — what each hour sells for.
@@ -28,6 +29,7 @@ import { isLive } from '@/lib/supabase';
  * closes the old one rather than replacing it.
  */
 export default function Pricing() {
+  const { t } = useI18n();
   const router = useRouter();
   const { venues } = useSession();
   const venue = venues[0] ?? null;
@@ -59,7 +61,7 @@ export default function Pricing() {
       setPitchId((current) => current ?? detail?.pitches[0]?.id ?? null);
       setNotice(null);
     } catch {
-      setNotice('Could not read pricing for this venue.');
+      setNotice(t.ownPricingUnreadable);
     } finally {
       setLoading(false);
     }
@@ -89,7 +91,7 @@ export default function Pricing() {
 
   return (
     <OpScreen>
-      <OpHeader title="Pricing" onBack={() => router.back()} />
+      <OpHeader title={t.ownPricing} onBack={() => router.back()} />
 
       {pitches.length > 1 ? (
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
@@ -124,11 +126,11 @@ export default function Pricing() {
       {loading ? <ActivityIndicator color={ink} /> : null}
 
       <OpSection
-        title="In force"
+        title={t.ownInForce}
         action={
           <Pressable accessibilityRole="button" hitSlop={10} onPress={() => setShowHistory((s) => !s)}>
             <Txt size={11} weight="semibold" color={ink}>
-              {showHistory ? 'Hide history' : 'Show history'}
+              {showHistory ? t.ownHideHistory : t.ownShowHistory}
             </Txt>
           </Pressable>
         }
@@ -160,15 +162,15 @@ export default function Pricing() {
       </OpSection>
 
       <OpSection
-        title="Set a price"
+        title={t.ownSetPrice}
         hint="Applies from today. Any rule it overlaps is closed, and the hours it does not cover keep their old price."
       >
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          <OpField label="From" value={from} onChangeText={setFrom} keyboardType="number-pad" width={72} />
-          <OpField label="To" value={to} onChangeText={setTo} keyboardType="number-pad" width={72} />
-          <OpField label="Price" value={price} onChangeText={setPrice} keyboardType="number-pad" width={92} />
+          <OpField label={t.ownFrom} value={from} onChangeText={setFrom} keyboardType="number-pad" width={72} />
+          <OpField label={t.ownTo} value={to} onChangeText={setTo} keyboardType="number-pad" width={72} />
+          <OpField label={t.ownPrice} value={price} onChangeText={setPrice} keyboardType="number-pad" width={92} />
         </View>
-        <OpButton label="Save price" onPress={save} disabled={!pitchId} />
+        <OpButton label={t.ownSavePrice} onPress={save} disabled={!pitchId} />
       </OpSection>
     </OpScreen>
   );

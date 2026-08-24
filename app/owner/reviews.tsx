@@ -8,6 +8,7 @@ import { venueReviewSummary, type ReviewSummary } from '@/data/manage';
 import { venueReviews, type Review } from '@/data/discovery';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
 
 /**
  * O-08 — what players said.
@@ -17,6 +18,7 @@ import { isLive } from '@/lib/supabase';
  * problem to fix.
  */
 export default function OwnerReviews() {
+  const { t } = useI18n();
   const { venues } = useSession();
   const venue = venues[0] ?? null;
 
@@ -40,7 +42,7 @@ export default function OwnerReviews() {
       setReviews(r);
       setError(null);
     } catch {
-      setError('Could not read reviews for this venue.');
+      setError(t.ownReviewsUnreadable);
     } finally {
       setLoading(false);
     }
@@ -56,18 +58,18 @@ export default function OwnerReviews() {
     <OpScreen>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <OpTile
-          label="RATING"
+          label={t.ownRating}
           value={summary?.ratingAvg != null ? summary.ratingAvg.toFixed(2) : '—'}
           sub={`${summary?.ratingCount ?? 0} reviews`}
           accent
         />
         <OpTile
-          label="FIVE STAR"
+          label={t.ownFiveStar}
           value={`${summary?.histogram.find((h) => h.stars === 5)?.count ?? 0}`}
           sub="of all reviews"
         />
         <OpTile
-          label="ONE STAR"
+          label={t.ownOneStar}
           value={`${summary?.histogram.find((h) => h.stars === 1)?.count ?? 0}`}
           sub="worth reading"
         />
@@ -76,7 +78,7 @@ export default function OwnerReviews() {
       <OpNotice text={error} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title="Spread">
+      <OpSection title={t.ownSpread}>
         <View style={{ gap: 6 }}>
           {(summary?.histogram ?? []).map((h) => (
             <View key={h.stars} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -108,7 +110,7 @@ export default function OwnerReviews() {
         </View>
       </OpSection>
 
-      <OpSection title="Recent">
+      <OpSection title={t.ownRecent}>
         {reviews.length === 0 && !loading ? (
           <Txt size={12.5} color={onOperative.dim}>
             No reviews yet. Only players who checked in can leave one.

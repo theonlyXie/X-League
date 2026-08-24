@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from '@/components/icons';
 import { burgundy, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { BookingSource, CALENDAR_LEGEND, Cell, VENUE } from '@/data/owner';
 import { useOwnerDay } from '@/state/ownerDay';
+import { useI18n } from '@/i18n';
 
 /**
  * O-02 Calendar — control inventory (§4.5).
@@ -23,7 +24,8 @@ const SOURCE: Record<BookingSource, { bg: string; border: string; dashed: boolea
 };
 
 export default function OwnerCalendar() {
-  const [range, setRange] = useState<'Day' | 'Week'>('Day');
+  const { t } = useI18n();
+  const [range, setRange] = useState<'day' | 'week'>('day');
   const { rows, live, loading, error, venueName } = useOwnerDay();
 
   return (
@@ -34,14 +36,14 @@ export default function OwnerCalendar() {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', gap: 6 }}>
-          {(['Day', 'Week'] as const).map((r) => {
+          {(['day', 'week'] as const).map((r) => {
             const on = r === range;
             return (
               <Pressable
                 key={r}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`${r} view`}
+                accessibilityLabel={r === 'day' ? t.ownDay : t.ownWeek}
                 onPress={() => setRange(r)}
                 hitSlop={hitSlopTo44(28)}
                 style={{
@@ -52,7 +54,7 @@ export default function OwnerCalendar() {
                 }}
               >
                 <Txt size={11.5} weight="semibold" color={on ? operative.bg : onOperative.secondary}>
-                  {r}
+                  {r === 'day' ? t.ownDay : t.ownWeek}
                 </Txt>
               </Pressable>
             );
@@ -60,13 +62,13 @@ export default function OwnerCalendar() {
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Previous day" hitSlop={12}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t.ownPrevDay} hitSlop={12}>
             <ChevronLeft size={16} color={onOperative.faint} />
           </Pressable>
           <Txt size={12} weight="semibold" color={ink}>
             Tue 18 Aug
           </Txt>
-          <Pressable accessibilityRole="button" accessibilityLabel="Next day" hitSlop={12}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t.ownNextDay} hitSlop={12}>
             <ChevronRight size={16} color={onOperative.faint} />
           </Pressable>
         </View>
@@ -136,12 +138,12 @@ export default function OwnerCalendar() {
           this evening's real occupancy (§4.7). */}
       <Txt size={11} color={error ? burgundy.ink : onOperative.faint}>
         {loading
-          ? 'Reading the venue calendar…'
+          ? t.ownReadingCalendar
           : error
             ? error
             : live
               ? `Live from ${venueName}'s calendar`
-              : 'Sample day — sign in as venue staff to see live occupancy'}
+              : t.ownSampleDay}
       </Txt>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
@@ -170,8 +172,8 @@ export default function OwnerCalendar() {
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {/* OWN-003 / OWN-005: staff enter every channel here, and block inventory. */}
-        <OwnerAction label="Add booking" filled />
-        <OwnerAction label="Block slot" />
+        <OwnerAction label={t.ownAddBooking} filled />
+        <OwnerAction label={t.ownBlockSlot} />
       </View>
     </ScrollView>
   );

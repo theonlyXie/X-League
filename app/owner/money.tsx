@@ -6,6 +6,7 @@ import { gold, ink, onOperative } from '@/theme/tokens';
 import { venuePayouts, type PayoutRow } from '@/data/manage';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
 
 /**
  * O-06 — what the venue is owed.
@@ -15,6 +16,7 @@ import { isLive } from '@/lib/supabase';
  * the number a venue reconciles against at the end of a week is the second one.
  */
 export default function OwnerMoney() {
+  const { t } = useI18n();
   const { venues } = useSession();
   const venue = venues[0] ?? null;
 
@@ -32,7 +34,7 @@ export default function OwnerMoney() {
       setRows(await venuePayouts(venue.venueId));
       setError(null);
     } catch {
-      setError('Could not read the payout ledger for this venue.');
+      setError(t.ownLedgerUnreadable);
     } finally {
       setLoading(false);
     }
@@ -54,16 +56,16 @@ export default function OwnerMoney() {
   return (
     <OpScreen>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <OpTile label="COLLECTED" value={`${total.collected}`} sub="EGP · 30 days" accent />
-        <OpTile label="OUTSTANDING" value={`${total.outstanding}`} sub="EGP at the gate" />
-        <OpTile label="FORFEITED" value={`${total.forfeited}`} sub="late or no-show" />
+        <OpTile label={t.ownCollected} value={`${total.collected}`} sub="EGP · 30 days" accent />
+        <OpTile label={t.ownOutstanding} value={`${total.outstanding}`} sub="EGP at the gate" />
+        <OpTile label={t.ownForfeited} value={`${total.forfeited}`} sub="late or no-show" />
       </View>
 
       <OpNotice text={error} />
 
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title="By evening" hint="Gross is what the pitch-hours were sold for. Collected is what the gate actually took.">
+      <OpSection title={t.ownByEvening} hint="Gross is what the pitch-hours were sold for. Collected is what the gate actually took.">
         {rows.length === 0 && !loading ? (
           <Txt size={12.5} color={onOperative.dim}>
             Nothing booked in this window yet.

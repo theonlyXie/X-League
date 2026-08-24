@@ -5,6 +5,7 @@ import { OpRow, OpScreen, OpSection } from '@/components/operative';
 import { ChevronRight } from '@/components/icons';
 import { ink, onOperative } from '@/theme/tokens';
 import { useSession } from '@/state/session';
+import { useI18n } from '@/i18n';
 
 /**
  * The venue's own configuration.
@@ -21,13 +22,14 @@ const ITEMS = [
 ];
 
 export default function OwnerSetup() {
+  const { t } = useI18n();
   const router = useRouter();
   const { venues } = useSession();
   const venue = venues[0] ?? null;
 
   return (
     <OpScreen>
-      <OpSection title={venue?.name ?? 'Setup'} hint={venue ? `Signed in as ${venue.role}` : undefined}>
+      <OpSection title={venue?.name ?? t.ownSetup} hint={venue ? `Signed in as ${venue.role}` : undefined}>
         <View style={{ gap: 8 }}>
           {ITEMS.map((item) => (
             <OpRow key={item.label} onPress={() => router.push(item.route as never)}>

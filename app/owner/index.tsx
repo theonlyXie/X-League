@@ -9,6 +9,7 @@ import { Arrival, ARRIVALS, OPEN_TONIGHT, OWNER_KPIS } from '@/data/owner';
 import { useOwnerToday } from '@/state/ownerToday';
 import * as api from '@/data/api';
 import { useBooking } from '@/state/booking';
+import { useI18n } from '@/i18n';
 
 /**
  * O-01 Today — run the current shift (§4.5).
@@ -18,6 +19,7 @@ import { useBooking } from '@/state/booking';
  * arrival needs what, not reconciling three sources.
  */
 export default function OwnerToday() {
+  const { t } = useI18n();
   const { arrivals, summary, loading, error, live, venueName, reload } = useOwnerToday();
 
   // The tiles and the arrival list come from the same timeline as the calendar;
@@ -31,7 +33,7 @@ export default function OwnerToday() {
       ]
     : OWNER_KPIS;
 
-  const rows: Arrival[] = arrivals ? arrivals.map(toArrival) : ARRIVALS;
+  const rows: Arrival[] = arrivals ? arrivals.map((a) => toArrival(a, t.ownWalkIn)) : ARRIVALS;
 
   return (
     <ScrollView
@@ -82,12 +84,12 @@ export default function OwnerToday() {
 
         <Txt size={11} color={error ? burgundy.ink : onOperative.faint}>
           {loading
-            ? 'Reading the venue calendar…'
+            ? t.ownReadingCalendar
             : error
               ? error
               : live
                 ? `Live from ${venueName}'s calendar`
-                : 'Sample shift — sign in as venue staff to see tonight'}
+                : t.ownSampleShift}
         </Txt>
       </View>
 
@@ -114,7 +116,7 @@ export default function OwnerToday() {
         {/* OWN-007: a price lever the owner can pull without phoning captains. */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Discount the open slots"
+          accessibilityLabel={t.ownDiscountOpen}
           hitSlop={hitSlopTo44(34)}
           style={({ pressed }) => ({
             height: 34,
@@ -136,6 +138,7 @@ export default function OwnerToday() {
 }
 
 function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () => void }) {
+  const { t } = useI18n();
   const { checkedIn: demoCheckedIn, toggleCheckIn } = useBooking();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -152,9 +155,9 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
     }
     setBusy(true);
     setFailed(null);
-    const result = await api.checkInBooking(arrival.bookingId).catch(() => ({ ok: false, reason: 'Could not reach the venue calendar.' }));
+    const result = await api.checkInBooking(arrival.bookingId).catch(() => ({ ok: false, reason: t.ownCalendarUnreachable }));
     setBusy(false);
-    if (!result.ok) setFailed(result.reason ?? 'Check-in was refused.');
+    if (!result.ok) setFailed(result.reason ?? t.ownCheckInRefused);
     else onChanged?.();
   };
 
@@ -261,7 +264,7 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ checked: checkedIn }}
-              accessibilityLabel={checkedIn ? 'Checked in' : 'Check in and collect EGP 100'}
+              accessibilityLabel={checkedIn ? t.ownCheckedIn : 'Check in and collect EGP 100'}
               onPress={check}
               disabled={busy}
               hitSlop={hitSlopTo44(38)}
@@ -278,12 +281,12 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
               })}
             >
               <Txt size={12.5} weight="semibold" color={operative.bg}>
-                {busy ? 'Checking in…' : checkedIn ? 'Checked in' : 'Check in'}
+                {busy ? t.ownCheckingIn : checkedIn ? t.ownCheckedIn : t.ownCheckIn}
               </Txt>
               {checkedIn ? <Check size={13} color={gold.base} /> : null}
             </Pressable>
-            <OwnerGhostButton label="Move" width={80} />
-            <OwnerGhostButton label="More actions" width={44} icon />
+            <OwnerGhostButton label={t.ownMove} width={80} />
+            <OwnerGhostButton label={t.ownMoreActions} width={44} icon />
           </View>
         ) : null}
       </View>
@@ -320,13 +323,13 @@ function OwnerGhostButton({ label, width, icon }: { label: string; width: number
 }
 
 /** Turn a live arrival into the row shape this screen already draws. */
-function toArrival(a: api.Arrival): Arrival {
+function toArrival(a: api.Arrival, walkIn: string): Arrival {
   const hour12 = a.hour > 12 ? a.hour - 12 : a.hour;
   const app = a.source === 'app';
   return {
     time: `${hour12}:00`,
     meridiem: a.hour >= 12 ? 'PM' : 'AM',
-    title: `${a.captainName ?? 'Walk-in'} · ${a.pitchLabel}`,
+    title: `${a.captainName ?? walkIn} · ${a.pitchLabel}`,
     source: a.source === 'walk_in' ? 'walk' : a.source === 'block' ? 'block' : app ? 'app' : 'phone',
     badge: app ? undefined : a.source === 'walk_in' ? 'DESK' : a.source.toUpperCase(),
     detail: '5-a-side · 5 + 2 subs · 60 min',
