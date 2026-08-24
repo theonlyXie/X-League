@@ -65,20 +65,24 @@ half-made to everything that reads it.
 
 ## Deploying
 
-Vercel, with **Root Directory** set to `admin`. Everything else is defaults —
-Next.js is detected, `npm run build` is the build command.
+Vercel → **Add New → Project** → import this repository → set **Root
+Directory** to `admin`. Nothing else needs setting: `vercel.json` pins the
+framework and the build command, and `.env.production` is committed, so the
+build is configured without anybody remembering two variables.
 
-Two environment variables, both of which are publishable by design and ship
-inside any client build:
+Both of those values are publishable by design and already inlined into every
+APK — `NEXT_PUBLIC_*` reaches the browser bundle regardless, so treating either
+as a secret would be theatre. There is no service-role key here or anywhere
+else in this repository. Override them in the Vercel project to point a
+deployment at a different database.
 
-| Variable | Value |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | the same project URL the app uses |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the publishable key |
+The dashboard is `noindex`, `DENY`-framed and `no-referrer` by header: an
+operations tool has no business being indexed or embedded.
 
-There is no service-role key here, or anywhere else in this repository. A
-deployment missing both variables says so on the first screen instead of
-failing at the first click.
+**Which branch.** The work lives on a feature branch, and `main` has no
+`admin/` directory — so a project pointed at `main` builds nothing. Either
+merge first, or set the project's production branch to the feature branch.
+Vercel builds a preview for every branch push either way.
 
 ## Locally
 
