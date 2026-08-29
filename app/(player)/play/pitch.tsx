@@ -9,7 +9,7 @@ import { Star } from '@/components/icons';
 import { SlotGrid } from '@/components/SlotGrid';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { HOUSE_RULES, PITCH_AMENITIES, SLOT_TIMES } from '@/data/player';
+import { HOUSE_RULES, PITCH_AMENITIES } from '@/data/player';
 import { DEMO_VENUE_ID, today } from '@/data/venue';
 import { venueDetail, venueReviews, type Review, type VenueDetail } from '@/data/discovery';
 import { useBooking } from '@/state/booking';
@@ -39,6 +39,7 @@ export default function PitchDetail() {
     slotLabel,
     beginHold,
     taken,
+    times,
     loading,
     unreachable,
     conflict,
@@ -85,8 +86,14 @@ export default function PitchDetail() {
   }, [venueId, date, setTarget]);
 
   const name = venue?.name ?? '';
-  const amenities = venue?.amenities.length ? venue.amenities : PITCH_AMENITIES;
-  const rules = venue?.houseRules ?? HOUSE_RULES;
+  // A real venue that has configured no amenities has none. Showing the
+  // design's five made the screen fabricate the facilities it exists to build
+  // confidence about — and the fixture house rules were worse: they named a
+  // cash deposit the product no longer takes, a six-hour cancellation window
+  // that is not the policy, and another venue's gate.
+  const showcase = !isLive || !venueId;
+  const amenities = venue?.amenities.length ? venue.amenities : showcase ? PITCH_AMENITIES : [];
+  const rules = venue?.houseRules ?? (showcase ? HOUSE_RULES : null);
   const verified = venue?.verification === 'verified';
   const activePitch = venue?.pitches.find((p) => p.id === pitchId) ?? venue?.pitches[0];
 
@@ -183,7 +190,7 @@ export default function PitchDetail() {
                 {activePitch?.label ?? ''}
               </Txt>
             </View>
-            <SlotGrid times={SLOT_TIMES} taken={taken} selected={slot} onSelect={selectSlot} />
+            <SlotGrid times={times} taken={taken} selected={slot} onSelect={selectSlot} />
 
             {/* BKG-011: losing the slot is a real outcome, so it gets said. */}
             {conflict ? (
@@ -218,14 +225,17 @@ export default function PitchDetail() {
             </Txt>
           </View>
 
-          <Divider />
-
-          <View style={{ gap: 10 }}>
-            <Eyebrow>{t.houseRules}</Eyebrow>
-            <Txt size={12.5} lh={1.6} color="rgba(243,238,229,.55)">
-              {rules}
-            </Txt>
-          </View>
+          {rules ? (
+            <>
+              <Divider />
+              <View style={{ gap: 10 }}>
+                <Eyebrow>{t.houseRules}</Eyebrow>
+                <Txt size={12.5} lh={1.6} color={onVoid.muted}>
+                  {rules}
+                </Txt>
+              </View>
+            </>
+          ) : null}
 
           {/* VEN-008: the reviews sit under the rating they produced. */}
           {reviews.length ? (

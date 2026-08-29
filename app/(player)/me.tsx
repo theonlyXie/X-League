@@ -26,7 +26,7 @@ import { isLive } from '@/lib/supabase';
 export default function Me() {
   const router = useRouter();
   const { signedIn, displayName, venues, platformRole, signOut } = useSession();
-  const { card, evidence, matches, awaitingResult, loading, isFixture } = useCard();
+  const { card, evidence, matches, awaitingResult, loading, unreachable, isFixture } = useCard();
   const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
   // Three states, not two, and conflating them was the worst bug in the app.
@@ -42,7 +42,11 @@ export default function Me() {
   // Nothing to show yet: an account, no card. Tiles and provenance are hidden
   // rather than filled with zeros, because a panel headed "where 84 PAS comes
   // from" has nothing to say about an attribute that does not exist.
-  const blank = !showcase && !live;
+  // And a fourth thing that is none of the three: an account whose card could
+  // not be read. Offering "Build my card" there invites a player with forty
+  // verified matches to overwrite their self-assessment because of a dropped
+  // connection.
+  const blank = !showcase && !live && !unreachable;
   const name = live ? card.displayName || displayName || CARD.name : CARD.name;
   const ovr = live ? card.ovr : CARD.ovr;
   const positionCode = live ? card.position : CARD.position;
@@ -67,6 +71,8 @@ export default function Me() {
 
       {blank && !loading ? (
         <NoCardYet onStart={() => router.push('/onboarding')} />
+      ) : unreachable && !loading ? (
+        <CardUnreachable />
       ) : (
         <VoidCard
           name={name}
@@ -75,7 +81,7 @@ export default function Me() {
           confidence={confidence}
           attributes={attributes}
           explained={explained.key}
-          level={CARD.level}
+          level={live ? (evidence?.level ?? 1) : CARD.level}
         />
       )}
 
@@ -84,7 +90,7 @@ export default function Me() {
           numbers are somebody else's. `-` in the form strip still means a real
           card whose matches were never scored, which the strip must be able
           to say. */}
-      {blank ? null : (
+      {blank || unreachable ? null : (
         <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
           <StatTile
             label={t.form}
@@ -605,6 +611,42 @@ function WorkspaceRow({ title, detail, onPress }: { title: string; detail: strin
  * A signed-in player who has not done the assessment yet has no card. Showing
  * the design's fixture here would be showing them somebody else's rating.
  */
+/**
+ * An account whose card could not be read. Deliberately not `NoCardYet`: that
+ * one offers "Build my card", which for an established player would overwrite
+ * a real self-assessment because the network dropped for a second.
+ */
+function CardUnreachable() {
+  const { t } = useI18n();
+  return (
+    <View
+      style={{
+        width: 262,
+        height: 372,
+        borderRadius: radius.card,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: onVoid.line,
+        backgroundColor: void_.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 26,
+        gap: 14,
+      }}
+    >
+      <VoidMark size={96} rings={2} />
+      <View style={{ gap: 8, alignItems: 'center' }}>
+        <Txt size={17} weight="bold" align="center" color={onVoid.primary}>
+          {t.cardUnreachable}
+        </Txt>
+        <Txt size={12.5} lh={1.5} align="center" color={onVoid.faint}>
+          {t.cardUnreachableBlurb}
+        </Txt>
+      </View>
+    </View>
+  );
+}
+
 function NoCardYet({ onStart }: { onStart: () => void }) {
   const { t } = useI18n();
   return (

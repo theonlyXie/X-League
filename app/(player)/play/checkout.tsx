@@ -10,7 +10,7 @@ import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens
 import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
 import { useBooking } from '@/state/booking';
-import { venueDetail, myStanding, type Standing } from '@/data/discovery';
+import { venueDetail, myStanding, bookingTerms, type Standing } from '@/data/discovery';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 
@@ -35,19 +35,27 @@ export default function Checkout() {
     pitchId,
     venueId,
     date,
+    bookingId,
   } = useBooking();
   const { t, money, clock, num, longDate } = useI18n();
   const expired = hold === 'expired';
 
   const [venueLine, setVenueLine] = useState<string | null>(null);
   const [standing, setStanding] = useState<Standing | null>(null);
+  const [cutoff, setCutoff] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  // A signed-out visitor and the demo build are shown the design's booking.
+  // A real player is never quoted a fixture price or sent to a fixture venue.
+  const showcase = !isLive || !venueId;
 
   // AC-03: leaving checkout without confirming returns the slot to inventory.
   useEffect(() => () => releaseHold(), [releaseHold]);
 
   // The quote is the one the hold snapshotted (§5.4), so the price shown here
   // is the hour's own price rather than the venue's headline rate.
-  const price = slotPrices[slot] ?? BOOKING.hourly;
+  const price = slotPrices[slot] ?? (showcase ? BOOKING.hourly : 0);
   // PAY: nothing is taken up front any more, so there is no deposit to split
   // the price by. The whole amount is settled at the venue on the day.
   const total = price + BOOKING.bookingFee;
@@ -66,14 +74,21 @@ export default function Checkout() {
         }
         const st = await myStanding().catch(() => null);
         if (!cancelled) setStanding(st);
+        // BKG-004 asks for the cancellation deadline before confirmation.
+        // `booking_terms` exists for exactly this and had one caller, in the
+        // lobby — which is after the decision rather than before it.
+        if (bookingId) {
+          const terms = await bookingTerms(bookingId).catch(() => null);
+          if (!cancelled && terms) setCutoff(terms.cutoffAt);
+        }
       } catch {
-        /* the fixture line stands in */
+        /* the panel below says what could not be read */
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [venueId, pitchId]);
+  }, [venueId, pitchId, bookingId]);
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
@@ -147,7 +162,10 @@ export default function Checkout() {
           gap: 14,
         }}
       >
-        <DetailRow label={t.venue} value={venueLine ?? `${BOOKING.venue} · ${BOOKING.pitch}`} />
+        <DetailRow
+          label={t.venue}
+          value={venueLine ?? (showcase ? `${BOOKING.venue} · ${BOOKING.pitch}` : '—')}
+        />
         <DetailRow label={t.date} value={longDate(`${date}T18:00:00Z`)} />
         <DetailRow label={t.time} value={`${slotLabel} – ${slotEndLabel}`} />
         <DetailRow label={t.format} value={t.fiveASide} />
@@ -218,8 +236,8 @@ export default function Checkout() {
         </View>
       </View>
 
-      <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-        {t.cancellationNoteFree}
+      <Txt size={11.5} lh={1.6} color={onVoid.faint}>
+        {cutoff ? t.cancelFreeUntil(longDate(cutoff)) : t.cancellationNoteFree}
       </Txt>
 
       {/* BKG-010: a restriction the player can see is one they can fix. It is
@@ -242,16 +260,32 @@ export default function Checkout() {
           onPress={() => router.back()}
         />
       ) : (
-        <Button
-          label={t.confirmBooking}
-          height={52}
-          round={radius.control}
-          size={15}
-          onPress={async () => {
-            await confirmBooking();
-            router.push('/play/confirmation');
-          }}
-        />
+        <>
+          {failed ? (
+            <Txt size={12} weight="semibold" color={burgundy.action}>
+              {failed}
+            </Txt>
+          ) : null}
+          {/* Navigation is conditional on the booking having been made. It
+              used to be unconditional, so a failed confirm still showed the
+              full confirmation ceremony — VoidMark, "YOU'RE PLAYING", a
+              booking code — for a booking that does not exist. */}
+          <Button
+            label={busy ? t.confirming : t.confirmBooking}
+            height={52}
+            round={radius.control}
+            size={15}
+            disabled={busy}
+            onPress={async () => {
+              setBusy(true);
+              setFailed(null);
+              const made = await confirmBooking();
+              setBusy(false);
+              if (made) router.push('/play/confirmation');
+              else setFailed(t.confirmFailed);
+            }}
+          />
+        </>
       )}
     </Screen>
   );

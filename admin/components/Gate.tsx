@@ -50,9 +50,15 @@ export function Gate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** What the signed-in person may do, for pages that hide an action. */
+/**
+ * What the signed-in person may do, for pages that hide an action.
+ *
+ * `support` is read-only; a moderator moderates, which is most of this console.
+ * The server checks for itself either way — this only decides whether to offer
+ * a control that would refuse.
+ */
 export function canAct(role: PlatformRole | null): boolean {
-  return role === 'admin' || role === 'owner';
+  return role === 'admin' || role === 'moderator';
 }
 
 function Centre({ children }: { children: ReactNode }) {

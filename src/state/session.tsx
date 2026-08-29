@@ -50,6 +50,13 @@ type SessionContextValue = {
   platformRole: 'support' | 'moderator' | 'admin' | null;
   /** True until the stored session has been read back. */
   restoring: boolean;
+  /**
+   * True when this person's profile, venues or platform role could not be
+   * read. It matters beyond the greeting: an empty `venues` and a null
+   * `platformRole` silently remove Owner Mode and the admin console from the
+   * account screen, so a failure here looks exactly like a demotion.
+   */
+  identityFailed: boolean;
 
   /** Signs in with a number and password. Resolves to an error, or null. */
   signIn: (phone: string, password: string) => Promise<string | null>;
@@ -93,6 +100,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [platformRole, setPlatformRole] =
     useState<SessionContextValue['platformRole']>(null);
   const [restoring, setRestoring] = useState(isLive);
+  const [identityFailed, setIdentityFailed] = useState(false);
 
   /**
    * The staff list is read from the server on every session change rather than
@@ -104,6 +112,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setDisplayName(null);
       setVenues([]);
       setPlatformRole(null);
+      setIdentityFailed(false);
       return;
     }
     try {
@@ -111,11 +120,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // directly answered 403 on every sign-in — RLS is on and no table has
       // grants — and the catch below swallowed it, so `displayName` stayed
       // null and the screens fell back to the design fixture's name.
-      const [{ data: profile }, { data: mine }, { data: role }] = await Promise.all([
+      //
+      // The errors are checked rather than caught. `supabase().rpc()` resolves
+      // with `{ data: null, error }` — it does not reject — so the try/catch
+      // around this could never fire for an RPC failure in the first place.
+      // That is the mechanism that hid the 403: not that the failure was
+      // caught, but that nothing ever looked at it.
+      const [profileRes, venuesRes, roleRes] = await Promise.all([
         supabase().rpc('my_profile'),
         supabase().rpc('my_venues'),
         supabase().rpc('my_platform_role'),
       ]);
+      const failure = profileRes.error ?? venuesRes.error ?? roleRes.error;
+      if (failure) {
+        if (__DEV__) console.warn('[session] could not load identity:', failure.message);
+        setIdentityFailed(true);
+      } else {
+        setIdentityFailed(false);
+      }
+      const { data: profile } = profileRes;
+      const { data: mine } = venuesRes;
+      const { data: role } = roleRes;
       setPlatformRole((role as SessionContextValue['platformRole']) ?? null);
       setDisplayName(
         ((profile ?? []) as { display_name: string }[])[0]?.display_name ?? null,
@@ -133,6 +158,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // It is a reason to say so, though — a swallowed failure here is how a
       // 403 turned into the app confidently greeting people by the wrong name.
       if (__DEV__) console.warn('[session] could not load identity');
+      setIdentityFailed(true);
       setVenues([]);
       setPlatformRole(null);
     }
@@ -240,11 +266,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       venues,
       platformRole,
       restoring,
+      identityFailed,
       signIn,
       signUp,
       signOut,
     }),
-    [session, displayName, venues, platformRole, restoring, signIn, signUp, signOut],
+    [session, displayName, venues, platformRole, restoring, identityFailed, signIn, signUp, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

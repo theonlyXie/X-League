@@ -4,9 +4,17 @@
  * holds the 9 PM slot on Pitch A at Stadium One, paid in cash at the venue.
  */
 
-export type SlotTime = '6:00' | '7:00' | '8:00' | '9:00' | '10:00' | '11:00';
+/**
+ * An hour label as the grid draws it — `'9:00'`, `'14:00'`.
+ *
+ * This used to be a union of the design's six evening hours. That made the
+ * type a claim about every venue in Egypt: a pitch selling 2 PM to 6 PM had no
+ * representable slots, and the grid drew the six evening hours regardless, so
+ * it advertised hours the venue does not sell and hid the ones it does.
+ */
+export type SlotTime = string;
 
-/** Every hour the venue calendar exposes tonight. */
+/** The design's evening, for the demo build and the signed-out visitor. */
 export const SLOT_TIMES: SlotTime[] = ['6:00', '7:00', '8:00', '9:00', '10:00', '11:00'];
 
 /** Hours already sold — through any channel, which is the whole point. */

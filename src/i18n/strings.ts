@@ -111,6 +111,8 @@ export const STRINGS = {
     signIn: 'Sign in',
     signOut: 'Sign out',
     noCardYet: 'No card yet',
+    cardUnreachable: 'Could not read your card',
+    cardUnreachableBlurb: 'Your card is safe. Pull down to try again.',
     noCardBlurb: 'Six questions about how you actually play. It takes about a minute.',
     buildMyCard: 'Build my card',
     language: 'Language',
@@ -250,6 +252,9 @@ export const STRINGS = {
     totalDue: 'Total at the venue',
     nothingUpFront: 'Nothing to pay now',
     cancellationNoteFree: 'Free cancellation up to the cutoff. Two unexcused no-shows in a season restrict booking.',
+    cancelFreeUntil: (when: string) => `Free cancellation until ${when}. After that the full price is still owed to the venue.`,
+    confirming: 'Confirming…',
+    confirmFailed: 'That booking did not go through. Nothing has been reserved.',
 
     // Owner Mode (O-01 – O-08). Wired to the database and, until now, the one
     // surface a venue could not read in its own language.
@@ -504,6 +509,8 @@ export const STRINGS = {
     signIn: 'تسجيل الدخول',
     signOut: 'تسجيل الخروج',
     noCardYet: 'لا يوجد كارت بعد',
+    cardUnreachable: 'مش قادرين نقرأ الكارت بتاعك',
+    cardUnreachableBlurb: 'الكارت بتاعك سليم. اسحب لتحت وجرّب تاني.',
     noCardBlurb: 'ست أسئلة عن أسلوب لعبك الحقيقي. تستغرق دقيقة تقريبًا.',
     buildMyCard: 'أنشئ كارتي',
     language: 'اللغة',
@@ -633,6 +640,9 @@ export const STRINGS = {
     totalDue: 'الإجمالي في الملعب',
     nothingUpFront: 'مفيش دفع دلوقتي',
     cancellationNoteFree: 'الإلغاء مجاني قبل الموعد النهائي. غيابين بدون عذر في الموسم بيقيّدوا الحجز.',
+    cancelFreeUntil: (when: string) => `الإلغاء مجاني لحد ${when}. بعد كده السعر كامل بيفضل مستحق للملعب.`,
+    confirming: 'بنأكد…',
+    confirmFailed: 'الحجز ده مخلصش. مفيش حاجة اتحجزت.',
 
     ownTabToday: 'النهارده',
     ownTabCalendar: 'التقويم',

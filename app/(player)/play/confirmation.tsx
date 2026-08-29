@@ -22,9 +22,13 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Confirmation() {
   const router = useRouter();
-  const { slot, slotLabel, slotEndLabel, code, bookingId, venueId, pitchId, slotPrices } =
+  const { slot, slotLabel, slotEndLabel, code, bookingId, venueId, pitchId, slotPrices, date } =
     useBooking();
-  const { t, money, pm } = useI18n();
+  const { t, money, pm, shortDate } = useI18n();
+
+  // A signed-out visitor and the demo build are shown the design's booking.
+  // A real player is never quoted a fixture price or sent to a fixture gate.
+  const showcase = !isLive || !venueId;
 
   const [venue, setVenue] = useState<VenueDetail | null>(null);
 
@@ -40,8 +44,11 @@ export default function Confirmation() {
   }, [venueId]);
 
   const pitchLabel = venue?.pitches.find((p) => p.id === pitchId)?.label;
+  const mapsUrl =
+    venue?.mapUrl ??
+    (venue?.lat != null ? `https://maps.google.com/?q=${venue.lat},${venue.lon}` : null);
   // Nothing was taken up front; the whole price is settled at the venue.
-  const total = (slotPrices[slot] ?? BOOKING.hourly) + BOOKING.bookingFee;
+  const total = (slotPrices[slot] ?? (showcase ? BOOKING.hourly : 0)) + BOOKING.bookingFee;
 
   return (
     <Screen
@@ -77,10 +84,17 @@ export default function Confirmation() {
       >
         <View style={{ gap: 4 }}>
           <Txt size={17} weight="bold" color={onVoid.primary}>
-            {venue ? [venue.name, pitchLabel].filter(Boolean).join(' · ') : `${BOOKING.venue} · ${BOOKING.pitch}`}
+            {venue
+              ? [venue.name, pitchLabel].filter(Boolean).join(' · ')
+              : showcase
+                ? `${BOOKING.venue} · ${BOOKING.pitch}`
+                : ''}
           </Txt>
           <Txt size={12.5} color={onVoid.muted}>
-            {t.bookingWhen('Tue 18 Aug', pm(slot), pm(slotEndLabel.replace(' PM', '')))}
+            {/* The day this booking is actually for. This was the string
+                literal 'Tue 18 Aug' in the source, so every confirmation on
+                every date said the same Tuesday in August. */}
+            {t.bookingWhen(shortDate(`${date}T12:00:00Z`), pm(slot), pm(slotEndLabel.replace(' PM', '')))}
           </Txt>
         </View>
 
@@ -116,26 +130,34 @@ export default function Confirmation() {
           </View>
         </View>
 
-        <Txt size={12} color={onVoid.faint}>
-          {venue?.entryNote ?? t.gateNote}
-        </Txt>
+        {/* The venue's own entry note, or nothing. `t.gateNote` reads
+            "Gate 2 · ask for Pitch A · arrive 10 minutes early" — a fixture
+            that lives in the strings file rather than the fixtures file, and
+            so did not read as one. It was sending players to a gate that may
+            not exist at the venue they booked. */}
+        {venue?.entryNote ?? (showcase ? t.gateNote : null) ? (
+          <Txt size={12} color={onVoid.faint}>
+            {venue?.entryNote ?? t.gateNote}
+          </Txt>
+        ) : null}
       </View>
 
       <View style={{ width: '100%', gap: 10 }}>
-        {/* VEN-009: navigation deep-links out to an installed maps app. */}
-        <Button
-          label={t.navigateToVenue}
-          height={50}
-          round={radius.control}
-          size={15}
-          onPress={() => {
-            // VEN-009: the deep link the venue set, or the pin as a fallback.
-            const url =
-              venue?.mapUrl ??
-              (venue?.lat != null ? `https://maps.google.com/?q=${venue.lat},${venue.lon}` : null);
-            if (url) Linking.openURL(url).catch(() => {});
-          }}
-        />
+        {/* VEN-009: navigation deep-links out to an installed maps app —
+            when there is somewhere to deep-link to. The button used to be
+            drawn unconditionally and did nothing at all, silently, for any
+            venue with no pin or map link on file. */}
+        {mapsUrl ? (
+          <Button
+            label={t.navigateToVenue}
+            height={50}
+            round={radius.control}
+            size={15}
+            onPress={() => {
+              Linking.openURL(mapsUrl).catch(() => {});
+            }}
+          />
+        ) : null}
         <Button
           label={t.inviteYourSquad}
           variant="ghost"

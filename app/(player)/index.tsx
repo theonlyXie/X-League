@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useRouter } from 'expo-router';
 import { ActivityIndicator, Linking, Pressable, RefreshControl, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,9 +28,31 @@ export default function Home() {
   const { signedIn, displayName } = useSession();
   const home = useHome();
 
-  const firstName = (displayName ?? PLAYER.firstName).split(' ')[0];
-  const initials = firstName.slice(0, 2).toUpperCase();
+  // A signed-in player is greeted by their own name or not at all. The
+  // fallback used to be ungated, so any failure to read the profile — which
+  // for a while was every sign-in, on a 403 nobody could see — greeted a real
+  // person as "Basel", who is a character in the design file.
+  const firstName = (displayName ?? (signedIn ? null : PLAYER.firstName))?.split(' ')[0] ?? null;
+  const initials = firstName ? firstName.slice(0, 2).toUpperCase() : '';
   const level = home.evidence?.level ?? 1;
+
+  const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+
+  /**
+   * Accepting or declining used to discard `{ ok, reason }` entirely, so a
+   * refusal — the squad already full, the invitation already answered —
+   * re-rendered the same list with the invitation still on it and said
+   * nothing at all. The canonical "nothing happened" bug.
+   */
+  const respond = async (participantId: string, accept: boolean) => {
+    setInviteNotice(null);
+    const result = await respondToInvitation(participantId, accept).catch(() => ({
+      ok: false,
+      reason: t.offline,
+    }));
+    if (!result.ok) setInviteNotice(result.reason ?? t.offline);
+    home.reload();
+  };
 
   return (
     <Screen
@@ -49,7 +72,7 @@ export default function Home() {
         <View style={{ gap: 3 }}>
           <Eyebrow>{longDate(new Date().toISOString())}</Eyebrow>
           <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-            {t.greetingEvening}, {firstName}
+            {firstName ? `${t.greetingEvening}, ${firstName}` : t.greetingEvening}
           </Txt>
         </View>
         <Link href="/me" asChild>
@@ -339,10 +362,7 @@ export default function Home() {
                   height={38}
                   round={radius.chip}
                   size={13}
-                  onPress={async () => {
-                    await respondToInvitation(invite.participantId, true);
-                    home.reload();
-                  }}
+                  onPress={() => respond(invite.participantId, true)}
                 />
                 <Button
                   label={t.decline}
@@ -351,15 +371,18 @@ export default function Home() {
                   height={38}
                   round={radius.chip}
                   size={13}
-                  onPress={async () => {
-                    await respondToInvitation(invite.participantId, false);
-                    home.reload();
-                  }}
+                  onPress={() => respond(invite.participantId, false)}
                 />
               </View>
             </View>
           ))}
         </View>
+      ) : null}
+
+      {inviteNotice ? (
+        <Txt size={12} weight="semibold" color={burgundy.action}>
+          {inviteNotice}
+        </Txt>
       ) : null}
 
       {/* §5.3: XP and level are activity, never ability. */}

@@ -12,7 +12,17 @@ import {
 import type { Session } from '@supabase/supabase-js';
 import { isConfigured, supabase } from './supabase';
 
-export type PlatformRole = 'support' | 'admin' | 'owner';
+/**
+ * The three roles the database actually has.
+ *
+ * This used to read `'support' | 'admin' | 'owner'`. There is no `owner`
+ * platform role — ownership is a venue relationship, not a platform one — and
+ * `moderator` was missing, which is the role that runs the verification queue
+ * and the report queue. So a moderator signed in, was recognised as staff, and
+ * then found every action in the console hidden from them: `canAct` compared
+ * their role against two words, neither of which they could ever hold.
+ */
+export type PlatformRole = 'support' | 'moderator' | 'admin';
 
 type SessionValue = {
   /** Null until the stored session has been read; then a session or none. */

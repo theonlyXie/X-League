@@ -29,6 +29,8 @@ type CardContextValue = {
    */
   awaitingResult: PastBooking[];
   loading: boolean;
+  /** True when the card could not be read — which is not the same as not having one. */
+  unreachable: boolean;
   /** True when the card shown is the design's fixture rather than this player's. */
   isFixture: boolean;
   reload: () => Promise<void>;
@@ -43,6 +45,7 @@ export function CardProvider({ children }: { children: ReactNode }) {
   const [matches, setMatches] = useState<MatchEvidence[]>([]);
   const [awaitingResult, setAwaitingResult] = useState<PastBooking[]>([]);
   const [loading, setLoading] = useState(false);
+  const [unreachable, setUnreachable] = useState(false);
 
   const reload = useCallback(async () => {
     if (!isLive || !signedIn) {
@@ -66,7 +69,13 @@ export function CardProvider({ children }: { children: ReactNode }) {
       setEvidence(e);
       setMatches(m);
       setAwaitingResult(past.filter((b) => b.awaitingResult));
+      setUnreachable(false);
     } catch {
+      // "No card" and "could not read your card" are different sentences, and
+      // conflating them told an established player with forty verified matches
+      // that they had no card and should redo their self-assessment — which
+      // would genuinely have rewritten their assessment row.
+      setUnreachable(true);
       setCard(null);
       setEvidence(null);
       setMatches([]);
@@ -87,10 +96,11 @@ export function CardProvider({ children }: { children: ReactNode }) {
       matches,
       awaitingResult,
       loading,
+      unreachable,
       isFixture: !isLive || !signedIn,
       reload,
     }),
-    [card, evidence, matches, awaitingResult, loading, signedIn, reload],
+    [card, evidence, matches, awaitingResult, loading, unreachable, signedIn, reload],
   );
 
   return <CardContext.Provider value={value}>{children}</CardContext.Provider>;

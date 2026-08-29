@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { DEFAULT_SLOT, HOLD_SECONDS, SLOTS_TAKEN, SlotTime, BOOKING } from '@/data/player';
+import { DEFAULT_SLOT, HOLD_SECONDS, SLOT_TIMES, SLOTS_TAKEN, SlotTime, BOOKING } from '@/data/player';
 import { isLive } from '@/lib/supabase';
 import * as api from '@/data/api';
 import { DEMO_PITCH_ID, DEMO_VENUE_ID, today } from '@/data/venue';
@@ -37,6 +37,15 @@ type BookingContextValue = {
   /** Hours already sold, through any channel. */
   taken: SlotTime[];
   /**
+   * Every hour this pitch actually sells, from the venue calendar.
+   *
+   * The grid used to be drawn from a constant — the design's six evening
+   * hours — so a venue selling 2 PM to 6 PM was advertised as selling six
+   * hours it does not, with the ones it does nowhere on the screen. Tapping an
+   * invented hour failed honestly, but the grid had already offered it.
+   */
+  times: SlotTime[];
+  /**
    * Price per hour label. A pitch can be priced differently by hour (OWN-007),
    * so the footer quotes the hour the player actually selected rather than one
    * number for the whole evening.
@@ -61,7 +70,8 @@ type BookingContextValue = {
   /** Resolves true when the hold was taken; false when the slot had gone. */
   beginHold: () => Promise<boolean>;
   releaseHold: () => void;
-  confirmBooking: () => Promise<void>;
+  /** True when the booking was actually made. False is not a navigation. */
+  confirmBooking: () => Promise<boolean>;
 
   checkedIn: boolean;
   toggleCheckIn: () => void;
@@ -85,15 +95,29 @@ const BookingContext = createContext<BookingContextValue | null>(null);
 
 const hourOf = (t: SlotTime) => parseInt(t, 10);
 
-/** The venue sells evening hours, so a 24h hour maps onto the PM label. */
-const labelOf = (s: api.Slot) => `${s.hour - 12}:00` as SlotTime;
+/**
+ * A slot's label, in 12-hour form where that is unambiguous.
+ *
+ * This was `hour - 12`, which is only right for the evening the design drew:
+ * a venue selling 10 AM produced `-2:00`, which matched nothing in the grid,
+ * so the hour was invisible and unbookable.
+ */
+const labelOf = (s: api.Slot) => `${s.hour > 12 ? s.hour - 12 : s.hour === 0 ? 12 : s.hour}:00` as SlotTime;
+
+/** `9:00` on a slot whose hour is 21 reads PM; the same label at 9 reads AM. */
+const meridiemOf = (times: api.Slot[], label: SlotTime) =>
+  (times.find((s) => labelOf(s) === label)?.hour ?? 12) >= 12 ? 'PM' : 'AM';
 
 export function BookingProvider({ children }: { children: ReactNode }) {
   const [pitchId, setPitchId] = useState<string>(DEMO_PITCH_ID);
   const [venueId, setVenueId] = useState<string>(DEMO_VENUE_ID);
   const [date, setDate] = useState<string>(() => today());
   const [slot, setSlot] = useState<SlotTime>(DEFAULT_SLOT);
-  const [taken, setTaken] = useState<SlotTime[]>(SLOTS_TAKEN);
+  // Seeded with the design's sold hours for the showcase. Once a live
+  // calendar has been read, `refresh` replaces this wholesale — including on
+  // failure, so a fixture's struck-through hours never survive an outage and
+  // masquerade as this venue's.
+  const [taken, setTaken] = useState<SlotTime[]>(isLive ? [] : SLOTS_TAKEN);
   const [slots, setSlots] = useState<api.Slot[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -101,7 +125,9 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   const [hold, setHold] = useState<HoldState>('idle');
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
-  const [code, setCode] = useState<string>(BOOKING.code);
+  // Empty, not the fixture. Seeding it with `XL-7K42` meant a failed confirm
+  // still had a booking code to show, and the confirmation screen showed it.
+  const [code, setCode] = useState<string>('');
   const [conflict, setConflict] = useState<BookingContextValue['conflict']>(null);
   const [checkedIn, setCheckedIn] = useState(false);
 
@@ -235,22 +261,35 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     });
   }, [bookingId]);
 
-  const confirmBooking = useCallback(async () => {
+  /**
+   * BKG-006. Returns whether the booking was actually made.
+   *
+   * It used to return `void`, and checkout navigated to the confirmation
+   * screen unconditionally — so a player whose hold had expired, or whose
+   * network dropped mid-confirm, got the full ceremony: VoidMark, "YOU'RE
+   * PLAYING", a booking code and a cash amount, for a booking that does not
+   * exist. They would then turn up at a pitch quoting a code from the design
+   * fixture. The caller has to be able to tell, so this says.
+   */
+  const confirmBooking = useCallback(async (): Promise<boolean> => {
     if (!isLive || !bookingId) {
+      setCode(BOOKING.code);
       setHold('confirmed');
-      return;
+      return true;
     }
     try {
       const result = await api.confirmBooking(bookingId);
       if (!result.ok) {
         setHold('expired');
-        return;
+        return false;
       }
       setCode(result.code);
       setHold('confirmed');
+      return true;
     } catch {
       setConflict({ reason: 'Could not reach the venue calendar. Try again.', alternatives: [] });
       setUnreachable(true);
+      return false;
     }
   }, [bookingId]);
 
@@ -275,9 +314,10 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     return {
       slot,
       selectSlot,
-      slotLabel: `${slot} PM`,
-      slotEndLabel: `${hourOf(slot) + 1}:00 PM`,
+      slotLabel: `${slot} ${meridiemOf(slots, slot)}`,
+      slotEndLabel: `${hourOf(slot) + 1}:00 ${meridiemOf(slots, slot)}`,
       taken,
+      times: isLive ? slots.map(labelOf) : SLOT_TIMES,
       slotPrices: Object.fromEntries(slots.map((s) => [labelOf(s), s.priceEgp])),
       slotDeposits: Object.fromEntries(slots.map((s) => [labelOf(s), s.depositEgp])),
       loading,
