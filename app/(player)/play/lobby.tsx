@@ -67,7 +67,11 @@ export default function Lobby() {
             {t.matchLobbyTitle}
           </Txt>
           <Txt size={11.5} color={onVoid.faint}>
-            {[header?.code ?? code, header?.venueName, header?.pitchLabel]
+            {/* A squad member is not the captain, so `my_bookings` returns
+                them nothing and `header` is null — at which point this used to
+                fall back to the spine's code, which for them is whatever the
+                fixture or their own last booking left there. */}
+            {[header?.code, header?.venueName, header?.pitchLabel]
               .filter(Boolean)
               .join(' · ')}
           </Txt>
@@ -311,9 +315,22 @@ export default function Lobby() {
                       height={42}
                       onPress={async () => {
                         if (!bookingId) return;
-                        const res = await cancelBooking(bookingId);
-                        if (res.ok) router.replace('/');
-                        else setNotice(res.reason ?? null);
+                        const res = await cancelBooking(bookingId).catch(() => ({
+                          ok: false,
+                          free: false,
+                          reason: t.offline,
+                        }));
+                        if (!res.ok) {
+                          setNotice(res.reason ?? null);
+                          return;
+                        }
+                        // `free` is computed by the server and was thrown
+                        // away here. It is the difference between walking
+                        // away owing nothing and walking away owing the whole
+                        // pitch price, and the player was bounced to Home
+                        // without being told which.
+                        if (res.free) router.replace('/');
+                        else setNotice(t.cancelLateNote);
                       }}
                     />
                     <Button

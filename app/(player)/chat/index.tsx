@@ -25,6 +25,8 @@ export default function ChatList() {
 
   const [rooms, setRooms] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(isLive);
+  /** §4.7: a list we could not read is not an empty list. */
+  const [unreachable, setUnreachable] = useState(false);
   const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
@@ -39,9 +41,17 @@ export default function ChatList() {
       setLoading(true);
       try {
         const rows = await myConversations();
-        if (!cancelled) setRooms(rows);
+        if (!cancelled) {
+          setRooms(rows);
+          setUnreachable(false);
+        }
       } catch {
-        if (!cancelled) setRooms([]);
+        // "You have no conversations" and "we could not read them" are
+        // different sentences, and only one of them is ever true here.
+        if (!cancelled) {
+          setRooms([]);
+          setUnreachable(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -85,10 +95,10 @@ export default function ChatList() {
       {!loading && signedIn && rooms.length === 0 ? (
         <View style={{ gap: 6 }}>
           <Txt size={15} weight="semibold" color={onVoid.primary}>
-            {t.noConversations}
+            {unreachable ? t.listUnreachable : t.noConversations}
           </Txt>
           <Txt size={12.5} lh={1.55} color={onVoid.muted}>
-            {t.noConversationsBlurb}
+            {unreachable ? t.listUnreachableBlurb : t.noConversationsBlurb}
           </Txt>
         </View>
       ) : null}

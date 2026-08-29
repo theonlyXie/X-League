@@ -9,6 +9,89 @@ import { supabase } from '@/lib/supabase';
  */
 
 // ---------------------------------------------------------------------------
+// O-02 Hours and pitches
+// ---------------------------------------------------------------------------
+
+/**
+ * `availability_rule` is what `search_availability` builds every sellable slot
+ * from. Before `venue_hours` and `set_venue_hours` it was read in five places
+ * and written in none outside the seed, so a venue registered through the
+ * product had no hours it could change and no pitch it could add.
+ */
+export type VenueHour = {
+  pitchId: string;
+  pitchLabel: string;
+  dayOfWeek: number;
+  openHour: number | null;
+  closeHour: number | null;
+};
+
+export async function venueHours(venueId: string): Promise<VenueHour[]> {
+  const { data, error } = await supabase().rpc('venue_hours', { p_venue_id: venueId });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    pitchId: r.pitch_id,
+    pitchLabel: r.pitch_label,
+    dayOfWeek: r.day_of_week,
+    openHour: r.open_hour,
+    closeHour: r.close_hour,
+  }));
+}
+
+/** Equal hours closes the day — that is how a venue says it does not open. */
+export async function setVenueHours(
+  pitchId: string,
+  dayOfWeek: number,
+  openHour: number,
+  closeHour: number,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('set_venue_hours', {
+    p_pitch_id: pitchId,
+    p_day_of_week: dayOfWeek,
+    p_open_hour: openHour,
+    p_close_hour: closeHour,
+  });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row.ok ? { ok: true } : { ok: false, reason: row.reason ?? undefined };
+}
+
+export async function addPitch(
+  venueId: string,
+  label: string,
+  format?: string,
+): Promise<{ ok: boolean; pitchId?: string; reason?: string }> {
+  const { data, error } = await supabase().rpc('add_pitch', {
+    p_venue_id: venueId,
+    p_label: label,
+    ...(format ? { p_format: format } : null),
+  });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row.ok ? { ok: true, pitchId: row.pitch_id } : { ok: false, reason: row.reason ?? undefined };
+}
+
+/**
+ * Rename a pitch or take it out of service. Arguments left out are left alone
+ * — the SQL coalesces against the current row, and PostgREST applies a default
+ * only to a key the body omits, so omitting is not the same as sending null.
+ */
+export async function updatePitch(
+  pitchId: string,
+  changes: { label?: string; format?: string; operational?: boolean },
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('update_pitch', {
+    p_pitch_id: pitchId,
+    ...(changes.label !== undefined ? { p_label: changes.label } : null),
+    ...(changes.format !== undefined ? { p_format: changes.format } : null),
+    ...(changes.operational !== undefined ? { p_operational: changes.operational } : null),
+  });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row.ok ? { ok: true } : { ok: false, reason: row.reason ?? undefined };
+}
+
+// ---------------------------------------------------------------------------
 // O-03 Pricing
 // ---------------------------------------------------------------------------
 

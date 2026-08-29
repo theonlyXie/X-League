@@ -25,6 +25,8 @@ export default function Cups() {
   const [all, setAll] = useState<TournamentSummary[]>([]);
   const [mine, setMine] = useState<MyTournament[]>([]);
   const [loading, setLoading] = useState(isLive);
+  /** §4.7: a list we could not read is not an empty list. */
+  const [unreachable, setUnreachable] = useState(false);
   const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
@@ -44,8 +46,12 @@ export default function Cups() {
         if (cancelled) return;
         setAll(rows);
         setMine(ours);
+        setUnreachable(false);
       } catch {
-        if (!cancelled) setAll([]);
+        if (!cancelled) {
+          setAll([]);
+          setUnreachable(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -112,10 +118,10 @@ export default function Cups() {
       {!loading && all.length === 0 ? (
         <View style={{ gap: 6 }}>
           <Txt size={15} weight="semibold" color={onVoid.primary}>
-            {t.noCups}
+            {unreachable ? t.listUnreachable : t.noCups}
           </Txt>
           <Txt size={12.5} lh={1.55} color={onVoid.muted}>
-            {t.noCupsBlurb}
+            {unreachable ? t.listUnreachableBlurb : t.noCupsBlurb}
           </Txt>
         </View>
       ) : null}

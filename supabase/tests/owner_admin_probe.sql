@@ -186,6 +186,26 @@ begin
                       and r.reason = 'Somebody has already booked that hour. Cancel the booking first.';
 
   -- =========================================================================
+  -- O-03b A booking taken at the desk is worth what the hour costs
+  -- =========================================================================
+  -- record_offline_booking never set price_egp, so it defaulted to zero — and
+  -- a zero-priced booking raises no obligation, which meant every phone and
+  -- walk-in booking showed the gate nothing to collect and counted as nothing
+  -- in both money screens. For a venue taking half its business by phone, half
+  -- its money did not exist.
+  v_slot := ((current_date + 1 + interval '20 hours') at time zone 'Africa/Cairo');
+  delete from booking where pitch_id = v_pitch and during && tstzrange(v_slot, v_slot + interval '1 hour');
+  select * into r from record_offline_booking(v_pitch, v_slot, 60, 'phone', 'Hesham F.');
+  return query select 'staff can enter a phone booking', coalesce(r.reason, 'entered'), r.ok;
+
+  select price_egp into v_n from booking where id = r.booking_id;
+  return query select 'and it carries the hour''s price', v_n::text, v_n > 0;
+
+  select coalesce(sum(amount_egp), 0)::integer into v_n
+    from payment_reference where booking_id = r.booking_id and state = 'due';
+  return query select 'so the gate has something to collect', v_n::text, v_n > 0;
+
+  -- =========================================================================
   -- O-01 The gate — what is owed, and taking it
   -- =========================================================================
   -- All three of these read `booking.deposit_egp`, which no_deposit set to

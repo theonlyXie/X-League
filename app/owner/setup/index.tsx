@@ -15,6 +15,7 @@ import { useI18n } from '@/i18n';
  * venue sees the result rather than the control.
  */
 const ITEMS = [
+  { label: 'Hours and pitches', hint: 'When you open, and what you open', route: '/owner/setup/hours' },
   { label: 'Pricing', hint: 'What each hour sells for', route: '/owner/setup/pricing' },
   { label: 'Closures', hint: 'Take hours off sale', route: '/owner/setup/closures' },
   { label: 'Staff', hint: 'Who can work the gate', route: '/owner/setup/staff' },

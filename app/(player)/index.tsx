@@ -252,16 +252,23 @@ export default function Home() {
             >
               <TurfSwatch size={42} round={radius.chip} />
               <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={14.5} weight="semibold" color={onVoid.primary}>
+                <Txt size={14.5} weight="semibold" color={onVoid.primary} numberOfLines={1}>
                   {venue.name}
                 </Txt>
-                <Txt size={11.5} color={onVoid.faint}>
+                {/* No open hours means no cheapest hour, and `EGP 0/hr` beside
+                    "Fully booked tonight" reads as a price rather than as the
+                    absence of one. */}
+                <Txt size={11.5} color={onVoid.faint} numberOfLines={1}>
                   {venue.distanceKm != null
-                    ? t.venueMeta(num(venue.distanceKm), money(venue.minPriceEgp))
-                    : `${venue.area ?? ''} · ${money(venue.minPriceEgp)}/hr`}
+                    ? venue.minPriceEgp > 0
+                      ? t.venueMeta(num(venue.distanceKm), money(venue.minPriceEgp))
+                      : t.venueMetaNoPrice(num(venue.distanceKm))
+                    : [venue.area, venue.minPriceEgp > 0 ? `${money(venue.minPriceEgp)}/hr` : null]
+                        .filter(Boolean)
+                        .join(' · ')}
                 </Txt>
               </View>
-              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <View style={{ alignItems: 'flex-end', gap: 4, maxWidth: 130 }}>
                 {venue.nextSlot ? (
                   <>
                     <Txt size={11} weight="bold" color={gold.base}>

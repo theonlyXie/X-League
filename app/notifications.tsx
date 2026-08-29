@@ -27,6 +27,8 @@ export default function Notifications() {
 
   const [rows, setRows] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(isLive);
+  /** §4.7: a list we could not read is not an empty list. */
+  const [unreachable, setUnreachable] = useState(false);
   const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
@@ -40,9 +42,15 @@ export default function Notifications() {
       setLoading(true);
       try {
         const list = await myNotifications(40);
-        if (!cancelled) setRows(list);
+        if (!cancelled) {
+          setRows(list);
+          setUnreachable(false);
+        }
       } catch {
-        if (!cancelled) setRows([]);
+        if (!cancelled) {
+          setRows([]);
+          setUnreachable(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -119,7 +127,7 @@ export default function Notifications() {
 
       {!loading && rows.length === 0 ? (
         <Txt size={13} color={onVoid.muted}>
-          {t.noNotifications}
+          {unreachable ? t.listUnreachable : t.noNotifications}
         </Txt>
       ) : null}
 

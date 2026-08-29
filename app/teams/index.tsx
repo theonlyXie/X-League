@@ -22,6 +22,8 @@ export default function Teams() {
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(isLive);
+  /** §4.7: a list we could not read is not an empty list. */
+  const [unreachable, setUnreachable] = useState(false);
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -38,9 +40,15 @@ export default function Teams() {
       setLoading(true);
       try {
         const rows = await myTeams();
-        if (!cancelled) setTeams(rows);
+        if (!cancelled) {
+          setTeams(rows);
+          setUnreachable(false);
+        }
       } catch {
-        if (!cancelled) setTeams([]);
+        if (!cancelled) {
+          setTeams([]);
+          setUnreachable(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -142,10 +150,10 @@ export default function Teams() {
       {!loading && active.length === 0 ? (
         <View style={{ gap: 6 }}>
           <Txt size={15} weight="semibold" color={onVoid.primary}>
-            {t.noTeams}
+            {unreachable ? t.listUnreachable : t.noTeams}
           </Txt>
           <Txt size={12.5} lh={1.55} color={onVoid.muted}>
-            {t.noTeamsBlurb}
+            {unreachable ? t.listUnreachableBlurb : t.noTeamsBlurb}
           </Txt>
         </View>
       ) : null}

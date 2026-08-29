@@ -72,7 +72,12 @@ export function useLobby(bookingId: string | null): LobbyState {
           // The booking's own facts. `my_bookings` is the captain's list, so a
           // squad member simply gets nothing here and the header falls back to
           // what the squad call already told us.
-          myBookings(50).catch(() => [] as PastBooking[]),
+          // A swallowed failure here silently demotes the captain to a squad
+          // member: the lobby decides captain-or-member on whether this
+          // returned their booking, so a dropped connection swapped "Cancel
+          // booking" for "Leave match" and removed the invite and remove
+          // controls. Two destructive actions, quietly exchanged.
+          myBookings(50),
           bookingTerms(bookingId).catch(() => null),
         ]);
         if (cancelled) return;

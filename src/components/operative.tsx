@@ -170,8 +170,12 @@ export function OpField({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="rgba(20,18,16,.32)"
+        placeholderTextColor={onOperative.disabled}
         keyboardType={keyboardType ?? 'default'}
+        // The label above is a sibling `Txt`, which a screen reader has no way
+        // to associate with this input: every field in Owner Mode announced
+        // itself as an unlabelled text box.
+        accessibilityLabel={label}
         style={{
           height: 40,
           paddingHorizontal: 12,

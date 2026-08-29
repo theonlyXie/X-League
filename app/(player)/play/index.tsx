@@ -8,6 +8,7 @@ import { Star } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { searchVenues, type VenueSummary } from '@/data/discovery';
 import { useI18n } from '@/i18n';
+import { dateFromToday } from '@/data/venue';
 import { isLive } from '@/lib/supabase';
 
 /**
@@ -30,11 +31,15 @@ const WINDOWS: Record<WindowKey, { from: number; to: number; label: string }> = 
   late: { from: 22, to: 24, label: '10–12' },
 };
 
-const isoDate = (offset: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
-};
+/**
+ * The search date, in the venue's zone.
+ *
+ * This was `new Date(...).toISOString().slice(0, 10)` — UTC. Cairo runs two
+ * or three hours ahead, so after about 9 PM local "Tonight" resolved to
+ * *yesterday*, and the server correctly refuses to sell yesterday: the screen
+ * returned nothing for exactly the people browsing at peak booking hour.
+ */
+const isoDate = (offset: number) => dateFromToday(offset);
 
 export default function PlaySearch() {
   const router = useRouter();
@@ -51,7 +56,9 @@ export default function PlaySearch() {
   const dayLabels: Record<DayKey, string> = {
     tonight: t.tonight,
     tomorrow: t.tomorrow,
-    later: t.pickDate,
+    // Two days out, said plainly. The chip used to be labelled "Pick date",
+    // which promises a picker this screen does not have.
+    later: t.dayAfter,
   };
   const dayOffset: Record<DayKey, number> = { tonight: 0, tomorrow: 1, later: 2 };
 
