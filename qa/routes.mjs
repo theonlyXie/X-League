@@ -1,0 +1,61 @@
+/**
+ * Every route the app serves, and what may be said about it without an
+ * account.
+ *
+ * `signedOut: 'showcase'` means the design's sample data is the correct thing
+ * to draw — there is no account to show instead, and the screen says so. Those
+ * are the only three surfaces where a fixture is legitimate, and the leak
+ * check skips them when signed out and enforces them when signed in.
+ */
+
+export const ROUTES = [
+  // Player
+  { path: '/', name: 'Home', signedOut: 'showcase' },
+  { path: '/play', name: 'Play' },
+  { path: '/me', name: 'Card', signedOut: 'showcase' },
+  { path: '/points', name: 'XP ledger' },
+  { path: '/notifications', name: 'Notifications' },
+  { path: '/onboarding', name: 'Onboarding' },
+  { path: '/sign-in', name: 'Sign in' },
+  { path: '/chat', name: 'Chat' },
+  { path: '/cups', name: 'Cups' },
+  { path: '/teams', name: 'Teams' },
+
+  // The booking spine's later screens need state to be meaningful, but they
+  // must still render rather than crash when reached cold.
+  { path: '/play/pitch', name: 'Pitch' },
+  { path: '/play/checkout', name: 'Checkout' },
+  { path: '/play/confirmation', name: 'Confirmation' },
+  { path: '/play/lobby', name: 'Lobby' },
+  { path: '/play/invite', name: 'Invite' },
+  { path: '/play/rate', name: 'Rate' },
+  { path: '/play/result', name: 'Result' },
+
+  // Owner
+  { path: '/owner', name: 'Owner today', signedOut: 'showcase' },
+  { path: '/owner/calendar', name: 'Owner calendar', signedOut: 'showcase' },
+  { path: '/owner/money', name: 'Owner money' },
+  { path: '/owner/reviews', name: 'Owner reviews' },
+  { path: '/owner/setup', name: 'Owner setup' },
+  { path: '/owner/setup/hours', name: 'Hours and pitches' },
+  { path: '/owner/setup/pricing', name: 'Pricing' },
+  { path: '/owner/setup/closures', name: 'Closures' },
+  { path: '/owner/setup/staff', name: 'Staff' },
+  { path: '/owner/setup/profile', name: 'Venue profile' },
+
+  // Platform
+  { path: '/admin', name: 'Admin console' },
+];
+
+/** The surfaces a signed-in player should never see a fixture on. */
+export const PLAYER_SURFACES = ['/', '/me', '/play', '/points', '/notifications', '/chat', '/teams', '/cups'];
+
+/** The surfaces a signed-in venue owner should never see a fixture on. */
+export const OWNER_SURFACES = [
+  '/owner',
+  '/owner/calendar',
+  '/owner/money',
+  '/owner/setup',
+  '/owner/setup/hours',
+  '/owner/setup/pricing',
+];

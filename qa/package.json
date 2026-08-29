@@ -1,0 +1,15 @@
+{
+  "name": "x-league-qa",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Browser checks against the running app.",
+  "scripts": {
+    "smoke": "node smoke.mjs",
+    "leak": "node leak.mjs",
+    "spine": "node spine.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

@@ -12,6 +12,7 @@ import {
 } from '@/data/social';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
+import { useSession } from '@/state/session';
 
 /**
  * What the player has been told.
@@ -22,6 +23,7 @@ import { isLive } from '@/lib/supabase';
  * rather than just marking it read.
  */
 export default function Notifications() {
+  const { signedIn } = useSession();
   const router = useRouter();
   const { t, hour, shortDate } = useI18n();
 
@@ -33,7 +35,11 @@ export default function Notifications() {
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
-    if (!isLive) {
+    // Gated on being signed in, not only on being live. `my_notifications`
+    // needs an account, so a signed-out visitor got a 401 — which the catch
+    // below turned into "Could not reach X League", telling somebody with no
+    // account that the network was down.
+    if (!isLive || !signedIn) {
       setLoading(false);
       return;
     }
@@ -58,7 +64,7 @@ export default function Notifications() {
     return () => {
       cancelled = true;
     };
-  }, [nonce]);
+  }, [nonce, signedIn]);
 
   const open = (n: Notification) => {
     void markNotificationsRead(n.notificationId);

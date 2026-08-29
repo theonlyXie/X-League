@@ -13,6 +13,7 @@ import { useBooking } from '@/state/booking';
 import { venueDetail, myStanding, bookingTerms, type Standing } from '@/data/discovery';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
+import { useSession } from '@/state/session';
 
 /**
  * P-05 Checkout — reserve without ambiguity (§4.2).
@@ -38,6 +39,7 @@ export default function Checkout() {
     bookingId,
   } = useBooking();
   const { t, money, clock, num, longDate, hourLabel, moment } = useI18n();
+  const { signedIn } = useSession();
   const expired = hold === 'expired';
 
   const [venueLine, setVenueLine] = useState<string | null>(null);
@@ -72,6 +74,10 @@ export default function Checkout() {
         if (!cancelled && detail) {
           setVenueLine(pitch ? `${detail.name} · ${pitch.label}` : detail.name);
         }
+        // Both of these need an account. Firing them signed out produced a
+        // 401 for nothing — the standing warning and the cutoff are only
+        // meaningful to somebody who can actually book.
+        if (!signedIn) return;
         const st = await myStanding().catch(() => null);
         if (!cancelled) setStanding(st);
         // BKG-004 asks for the cancellation deadline before confirmation.
@@ -88,7 +94,7 @@ export default function Checkout() {
     return () => {
       cancelled = true;
     };
-  }, [venueId, pitchId, bookingId]);
+  }, [venueId, pitchId, bookingId, signedIn]);
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
