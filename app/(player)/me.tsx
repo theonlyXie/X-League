@@ -26,13 +26,23 @@ import { isLive } from '@/lib/supabase';
 export default function Me() {
   const router = useRouter();
   const { signedIn, displayName, venues, platformRole, signOut } = useSession();
-  const { card, evidence, matches, awaitingResult, loading } = useCard();
+  const { card, evidence, matches, awaitingResult, loading, isFixture } = useCard();
   const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
-  // Signed in with a real card: show theirs. Otherwise the design's fixture,
-  // labelled as such — showing someone else's numbers as if they were yours is
-  // the one thing §5.1 is most careful about.
+  // Three states, not two, and conflating them was the worst bug in the app.
+  //
+  // `isFixture` is a demo build or a signed-out visitor: there is no account,
+  // so the design's showcase card stands in for one and nobody is being told
+  // anything about themselves. A signed-in player who has not built a card yet
+  // is a different thing entirely — and showing them the fixture's 18 verified
+  // matches and 41 raters is exactly what §5.1 exists to prevent. It was doing
+  // that, because the only test was `card !== null`.
+  const showcase = isFixture;
   const live = card !== null;
+  // Nothing to show yet: an account, no card. Tiles and provenance are hidden
+  // rather than filled with zeros, because a panel headed "where 84 PAS comes
+  // from" has nothing to say about an attribute that does not exist.
+  const blank = !showcase && !live;
   const name = live ? card.displayName || displayName || CARD.name : CARD.name;
   const ovr = live ? card.ovr : CARD.ovr;
   const positionCode = live ? card.position : CARD.position;
@@ -55,7 +65,7 @@ export default function Me() {
         </Txt>
       </View>
 
-      {isLive && signedIn && !live && !loading ? (
+      {blank && !loading ? (
         <NoCardYet onStart={() => router.push('/onboarding')} />
       ) : (
         <VoidCard
@@ -69,19 +79,23 @@ export default function Me() {
         />
       )}
 
-      <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
-        {/* The three tiles that read empty for a real account until matches,
-            ratings and XP existed. `-` in the form strip means no score was
-            ever reported, which the strip has to be able to say. */}
-        <StatTile
-          label={t.form}
-          value={live ? (evidence?.form.length ? evidence.form.join(' ') : '—') : `${CARD.form}`}
-          gold={!live}
-          icon={!live}
-        />
-        <StatTile label={t.verifiedMatches} value={t.matches(num(evidenceCount))} />
-        <StatTile label={t.raters} value={num(live ? (evidence?.raterCount ?? 0) : CARD.raters)} />
-      </View>
+      {/* Hidden entirely while there is no card, because these tiles have no
+          honest value to show — `—`, 0 and 0 is noise, and the fixture's
+          numbers are somebody else's. `-` in the form strip still means a real
+          card whose matches were never scored, which the strip must be able
+          to say. */}
+      {blank ? null : (
+        <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
+          <StatTile
+            label={t.form}
+            value={live ? (evidence?.form.length ? evidence.form.join(' ') : '—') : `${CARD.form}`}
+            gold={!live}
+            icon={!live}
+          />
+          <StatTile label={t.verifiedMatches} value={t.matches(num(evidenceCount))} />
+          <StatTile label={t.raters} value={num(live ? (evidence?.raterCount ?? 0) : CARD.raters)} />
+        </View>
+      )}
 
       {/* Matches that were played and never reported. They are not evidence
           and cannot become evidence until somebody says how they ended, so
@@ -126,7 +140,9 @@ export default function Me() {
       {/* PRO-007: the evidence itself, not just its count. */}
       {live ? <MatchEvidenceList matches={matches} onRate={(id) => router.push(`/play/rate?match=${id}`)} /> : null}
 
-      {/* §5.1: every displayed score exposes where it came from. */}
+      {/* §5.1: every displayed score exposes where it came from — which means
+          there is nothing to render before there is a score. */}
+      {blank ? null : (
       <View
         style={{
           width: '100%',
@@ -147,11 +163,12 @@ export default function Me() {
             : 'Individual raters stay anonymous. No single match can move an attribute more than ±2.'}
         </Txt>
         {live ? (
-          <Txt size={11} color="rgba(243,238,229,.3)">
+          <Txt size={11} color={onVoid.faint}>
             Scoring rule {card.ruleVersion}
           </Txt>
         ) : null}
       </View>
+      )}
 
       {/* RBAC-005 / §3.1: hold more than one role, switch without signing out.
           Which venues appear is the server's answer (`my_venues`), not a guess

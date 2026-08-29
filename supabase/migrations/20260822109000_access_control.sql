@@ -129,6 +129,7 @@ begin
     -- deciding who may walk through it.
     'my_venues()',
     'my_platform_role()',
+    'my_profile()',
     'is_venue_staff(uuid, venue_role)',
     'is_platform(platform_role_kind)',
     'can_run_tournament(uuid)',
@@ -152,6 +153,12 @@ begin
     'venue_payouts(uuid, date, date, text)',
     'update_venue_profile(uuid, text, text, text, text, text, text[], text, numeric, numeric)',
     'venue_review_summary(uuid)',
+    -- A venue registered through the product has to be able to open: hours,
+    -- and more than the one pitch sign_up gives it.
+    'venue_hours(uuid)',
+    'set_venue_hours(uuid, integer, integer, integer)',
+    'add_pitch(uuid, text, text)',
+    'update_pitch(uuid, text, text, boolean)',
     'create_tournament(uuid, text, tournament_format, integer, date, date, integer, text)',
     'set_tournament_state(uuid, tournament_state)',
     'decide_registration(uuid, boolean)',

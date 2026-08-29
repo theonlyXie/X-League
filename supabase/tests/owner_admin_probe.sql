@@ -19,9 +19,11 @@ declare
   v_venue uuid;
   v_box   uuid;
   v_pitch uuid;
+  v_new_pitch uuid;
   v_slot  timestamptz;
   v_bk    uuid;
   v_n     integer;
+  v_price integer;
   v_txt   text;
   v_num   numeric;
   h       hold_outcome;
@@ -80,6 +82,77 @@ begin
   select count(*)::integer into v_n
     from venue_price_rules(v_venue) where pitch_id = v_pitch and start_hour = 18 and live;
   return query select 'and exactly one of them is live', v_n::text, v_n = 1;
+
+  -- =========================================================================
+  -- O-02 Hours and pitches — a venue that can open
+  -- =========================================================================
+  -- availability_rule was read in five places and written in none, so a venue
+  -- registered through the product had no sellable hours and no way to get any.
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  select * into r from set_venue_hours(v_pitch, 1, 10, 24);
+  return query select 'a player cannot set opening hours',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason = 'You do not manage that venue.';
+
+  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+  select * into r from set_venue_hours(v_pitch, 1, 20, 10);
+  return query select 'closing before opening is refused',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason like 'Closing time%';
+
+  select * into r from set_venue_hours(v_pitch, 9, 10, 24);
+  return query select 'and there is no ninth day',
+                      coalesce(r.reason, '(allowed!)'), r.ok = false;
+
+  select * into r from set_venue_hours(v_pitch, 1, 9, 23);
+  return query select 'the manager can set them', coalesce(r.reason, 'set'), r.ok;
+
+  select count(*)::integer into v_n
+    from venue_hours(v_venue) where pitch_id = v_pitch and day_of_week = 1
+      and open_hour = 9 and close_hour = 23;
+  return query select 'and read them back', v_n::text, v_n = 1;
+
+  -- Setting the same day twice replaces rather than appends: two rules for one
+  -- day would generate every hour twice in the booking grid.
+  perform set_venue_hours(v_pitch, 1, 8, 22);
+  select count(*)::integer into v_n
+    from venue_hours(v_venue) where pitch_id = v_pitch and day_of_week = 1;
+  return query select 'setting a day twice leaves one rule', v_n::text, v_n = 1;
+
+  -- Equal hours is how a venue says it does not open that day.
+  perform set_venue_hours(v_pitch, 1, 0, 0);
+  select count(*)::integer into v_n
+    from venue_hours(v_venue)
+   where pitch_id = v_pitch and day_of_week = 1 and open_hour is not null;
+  return query select 'and equal hours closes the day', v_n::text, v_n = 0;
+  perform set_venue_hours(v_pitch, 1, 18, 24);
+
+  -- Pitches: nothing could create one, so every venue was permanently a
+  -- one-pitch venue and both pitch pickers were unreachable.
+  select * into r from add_pitch(v_venue, 'Pitch A');
+  return query select 'a duplicate pitch name is refused',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason like 'There is already%';
+
+  select * into r from add_pitch(v_venue, 'Pitch Z');
+  return query select 'the manager can add a pitch', coalesce(r.reason, 'added'), r.ok;
+  v_new_pitch := r.pitch_id;
+
+  -- A pitch with no hours cannot be sold, which is the trap this closes.
+  select count(*)::integer into v_n from availability_rule where pitch_id = v_new_pitch;
+  return query select 'and it inherits the venue''s week', v_n::text, v_n > 0;
+
+  select * into r from update_pitch(v_new_pitch, 'Pitch Omega');
+  return query select 'and can be renamed', coalesce(r.reason, 'renamed'), r.ok;
+
+  select * into r from update_pitch(v_new_pitch, null, null, false);
+  return query select 'and taken out of service', coalesce(r.reason, 'retired'), r.ok;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  select * into r from add_pitch(v_venue, 'Sneaky');
+  return query select 'a player cannot add a pitch',
+                      coalesce(r.reason, '(allowed!)'), r.ok = false;
+  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
 
   -- =========================================================================
   -- O-04 Closures
@@ -145,14 +218,38 @@ begin
   -- O-06 Payouts
   -- =========================================================================
   perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
-  perform record_payment(v_bk, 'cash_deposit', 'book 1 p3');
+  -- Compared against what the day actually holds rather than a literal: an
+  -- earlier case in this probe changed the price rule for one of these hours.
+  select coalesce(sum(b.price_egp), 0)::integer into v_n
+    from booking b join pitch p on p.id = b.pitch_id
+   where p.venue_id = v_venue
+     and (lower(b.during) at time zone 'Africa/Cairo')::date = current_date + 1
+     and b.state in ('confirmed', 'checked_in', 'completed', 'no_show');
+  select price_egp into v_price from booking where id = v_bk;
 
-  -- Compared against the booking's own deposit rather than a literal: an
-  -- earlier case in this probe changed the price rule for that hour.
-  select deposit_egp into v_n from booking where id = v_bk;
+  -- Gross is what was sold. It used to be filtered on `kind = 'cash_deposit'`,
+  -- which no_deposit made unreachable, so both money screens read zero — and
+  -- admin_ledger sorted its venues by that zero.
+  select gross_egp into v_num
+    from venue_payouts(v_venue, current_date + 1, current_date + 1);
+  return query select 'the payout row states what was sold', v_num::text, v_num = v_n;
+
   select collected_egp into v_num
     from venue_payouts(v_venue, current_date + 1, current_date + 1);
-  return query select 'a collected deposit shows in the payout row',
+  return query select 'and nothing is collected until somebody collects it',
+                      v_num::text, v_num = 0;
+
+  perform record_payment(v_bk, 'balance', 'book 1 p3');
+  select collected_egp into v_num
+    from venue_payouts(v_venue, current_date + 1, current_date + 1);
+  return query select 'taking the cash at the gate moves it to collected',
+                      v_num::text, v_num = v_price;
+
+  -- Gross is unchanged by collecting: one is what was sold, the other what
+  -- came in. Counting a booking once per payment row is how the two drift.
+  select gross_egp into v_num
+    from venue_payouts(v_venue, current_date + 1, current_date + 1);
+  return query select 'while gross still counts each booking once',
                       v_num::text, v_num = v_n;
 
   perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);
@@ -195,6 +292,31 @@ begin
                       coalesce(r.reason, '(allowed!)'),
                       r.ok = false and r.reason = 'Not authorised.';
 
+  -- One vocabulary. The constraint allows verified/pending/unverified and the
+  -- function used to validate against pending/verified/rejected/suspended, so
+  -- "reject" could never succeed in either console.
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  select * into r from admin_set_verification(v_box, 'unverified');
+  return query select 'an admin can reject a venue', coalesce(r.reason, 'rejected'), r.ok;
+
+  return query select 'and the venue says so',
+                      (select verification from venue where id = v_box),
+                      (select verification from venue where id = v_box) = 'unverified';
+
+  select * into r from admin_set_verification(v_box, 'rejected');
+  return query select 'a word the venue table does not know is refused',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason = 'That is not a verification state.';
+
+  select * into r from admin_set_verification(v_box, 'verified');
+  return query select 'and verifying still works', coalesce(r.reason, 'verified'), r.ok;
+
+  -- Put it back the way the seed left it. A-02 below counts the queue, and a
+  -- probe that quietly changes the fixture for the cases after it is worse
+  -- than no probe.
+  perform admin_set_verification(v_box, 'pending');
+
+  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
   begin
     perform admin_ledger();
     return query select 'nor read the platform ledger', '(allowed!)', false;

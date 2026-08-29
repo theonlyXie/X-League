@@ -107,13 +107,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
+      // Through a function, like everything else. Reading player_profile
+      // directly answered 403 on every sign-in — RLS is on and no table has
+      // grants — and the catch below swallowed it, so `displayName` stayed
+      // null and the screens fell back to the design fixture's name.
       const [{ data: profile }, { data: mine }, { data: role }] = await Promise.all([
-        supabase().from('player_profile').select('display_name').eq('id', active.user.id).maybeSingle(),
+        supabase().rpc('my_profile'),
         supabase().rpc('my_venues'),
         supabase().rpc('my_platform_role'),
       ]);
       setPlatformRole((role as SessionContextValue['platformRole']) ?? null);
-      setDisplayName((profile as { display_name: string } | null)?.display_name ?? null);
+      setDisplayName(
+        ((profile ?? []) as { display_name: string }[])[0]?.display_name ?? null,
+      );
       setVenues(
         ((mine ?? []) as { venue_id: string; name: string; role: StaffVenue['role'] }[]).map((v) => ({
           venueId: v.venue_id,
@@ -124,6 +130,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } catch {
       // A profile we cannot read is not a reason to drop the session; the
       // booking spine checks authority on the server for every call anyway.
+      // It is a reason to say so, though — a swallowed failure here is how a
+      // 403 turned into the app confidently greeting people by the wrong name.
+      if (__DEV__) console.warn('[session] could not load identity');
       setVenues([]);
       setPlatformRole(null);
     }
