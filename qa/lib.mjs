@@ -100,19 +100,21 @@ export async function visit(page, route, { settleMs = SETTLE_MS } = {}) {
     })
     .catch(() => {});
 
-  // Order matters here, and getting it wrong is not a small mistake: it makes
-  // the console assertion silently stop working.
-  //
   // The errors worth catching arrive *after* paint, from the effects that
   // fetch — the three 401s this harness found on its first run were exactly
-  // that shape. But an effect fires a tick after the paint it follows, so
-  // asking for `networkidle` immediately gets "idle" back for the wrong
-  // reason: the request has not started yet. Verified by planting one of
-  // those 401s back in and watching the check pass.
+  // that shape. An effect fires a tick after the paint it follows, so asking
+  // for `networkidle` straight away can get "idle" back for the wrong reason:
+  // the request has not started yet.
   //
   // So: give the effects a beat to start, then wait for the network they
   // started to finish, then keep listening a little longer for whatever the
   // failure logs.
+  //
+  // Confirmed by planting a 401 back into `/teams` and watching this fail on
+  // it. That check is only meaningful against a server the browser can
+  // actually reach: run against a static export whose Supabase URL is
+  // unreachable and the requests simply hang, so no error ever arrives and
+  // every route passes for the wrong reason.
   await page.waitForTimeout(EFFECT_MS);
   await page.waitForLoadState('networkidle', { timeout: settleMs }).catch(() => {});
   await page.waitForTimeout(QUIET_MS);
