@@ -16,10 +16,16 @@
 # fork. The other two checks in `qa/` need accounts and are for a person to run
 # against a database they are happy to touch; see `qa/README.md`.
 #
-# What that costs is worth stating plainly: with no Supabase configuration the
-# app runs in demo mode, so this proves every screen mounts and stays quiet —
-# not that it says the right thing when a real database answers. Set the two
-# repository variables below and it runs against a real project instead.
+# It builds against the real project, because a check that runs in demo mode
+# proves only that every screen mounts: the three 401s this harness found on
+# its first run never fire when there is no database to answer them.
+#
+# That has a cost worth stating. `smoke` is signed out and reads only — it
+# writes nothing, ever — but every pull request now depends on that project
+# being reachable, so an outage there turns pull requests red for reasons that
+# have nothing to do with the diff. If that becomes annoying, point the
+# repository variables at a staging project rather than dropping back to demo
+# mode.
 name: Browser
 
 on:
@@ -49,15 +55,21 @@ jobs:
 
       - run: npm ci
 
-      # Both are publishable by design — they are inlined into every APK and
-      # reach the browser bundle regardless — so they are repository variables
-      # rather than secrets. Absent, the app builds in demo mode and the check
-      # still runs; see the note at the top about what that does and does not
-      # prove.
+      # Both values are publishable by design: they are inlined into every APK
+      # and reach the browser bundle regardless, so treating either as a secret
+      # would be theatre. `admin/.env.production` commits the equivalent pair
+      # for the same reason and says so in its own header. There is no
+      # service-role key here or anywhere else in this repository.
+      #
+      # Written as a default rather than a required variable so that a fresh
+      # clone gets a check that actually exercises the database. Set the
+      # repository variables to point CI at a different project — they win.
       - name: Build the web export
         env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SUPABASE_URL: >-
+            ${{ vars.EXPO_PUBLIC_SUPABASE_URL || 'https://ymuknkhapibmtqkrlmia.supabase.co' }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: >-
+            ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltdWtua2hhcGlibXRxa3JsbWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNzEwMTQsImV4cCI6MjEwMjY0NzAxNH0.AOQV2K4x1AG02JG8tTK_l9aoKH0DPpjTY2IGk6lbFoQ' }}
         run: npm run build:web
 
       - name: Install the checks
