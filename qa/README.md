@@ -43,6 +43,8 @@ npm run spine               # needs accounts, MAKES A REAL BOOKING
 | `QA_OWNER_PHONE` / `QA_OWNER_PASSWORD` | `leak` — an account on a venue's staff |
 | `QA_VENUE` | `spine` — the venue to book at, as it appears in search |
 | `QA_SLOT` | `spine`, optional — e.g. `8:00 PM` |
+| `QA_SETTLE_MS` | How long a route may take to paint before it counts as blank. A ceiling, not a wait — default 5000, and CI raises it because a hosted runner is slower. |
+| `QA_QUIET_MS` | How long after first paint to keep listening for console errors. Default 900. Lowering it turns the console assertion into a coin flip. |
 
 ## The three checks
 

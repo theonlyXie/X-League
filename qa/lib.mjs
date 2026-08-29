@@ -56,17 +56,51 @@ export async function newPage(browser) {
 }
 
 /**
- * Go to a route and wait for it to settle.
+ * How long a route may take to put something on screen. A ceiling, not a cost.
  *
- * Expo's web build renders after hydration, so a `load` event means the
- * bundle arrived rather than that anything is on screen. The settle time is
- * generous on purpose: a check that races the app reports failures that are
- * its own.
+ * This was a flat `waitForTimeout`, which meant 28 routes cost 28 × 5s whether
+ * the app rendered in 200ms or not at all — three minutes on a laptop and
+ * eleven on a CI runner, against a fifteen-minute job timeout. Waiting for the
+ * render itself is both faster and stricter: a screen that never paints now
+ * fails on its own terms rather than being judged by whatever happened to be
+ * in the DOM when the clock ran out.
  */
-export async function visit(page, route, { settleMs = 5000 } = {}) {
+export const SETTLE_MS = Number(process.env.QA_SETTLE_MS ?? 5000);
+
+/**
+ * Long enough after first paint for a late console error to arrive.
+ *
+ * Errors thrown during an effect land a tick or two after the text does, and
+ * dropping this would quietly turn the console assertion into a coin flip.
+ */
+const QUIET_MS = Number(process.env.QA_QUIET_MS ?? 900);
+
+/**
+ * Go to a route and wait for it to render.
+ *
+ * Expo's web build paints after hydration, so a `load` event means the bundle
+ * arrived rather than that anything is on screen.
+ */
+export async function visit(page, route, { settleMs = SETTLE_MS } = {}) {
   const before = page.errors.length;
   await page.goto(BASE + route, { waitUntil: 'load' });
-  await page.waitForTimeout(settleMs);
+
+  // Resolves the moment the screen has content. A timeout here is not an
+  // error to swallow — it is the finding, and the empty text below reports it.
+  await page
+    .waitForFunction(() => (document.body?.innerText ?? '').trim().length > 20, null, {
+      timeout: settleMs,
+    })
+    .catch(() => {});
+
+  // The errors that matter most arrive *after* paint, from the effects that
+  // fetch. Waiting for the network to go quiet targets that directly; a fixed
+  // sleep only guesses at it, and guessing short is how a console assertion
+  // silently becomes a coin flip. The three 401s this harness found on its
+  // first run were exactly this shape.
+  await page.waitForLoadState('networkidle', { timeout: settleMs }).catch(() => {});
+  await page.waitForTimeout(QUIET_MS);
+
   return {
     route,
     text: (await page.innerText('body')).replace(/\s*\n+\s*/g, ' | ').trim(),

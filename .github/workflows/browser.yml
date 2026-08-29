@@ -78,8 +78,15 @@ jobs:
           done
           curl -sf -o /dev/null http://localhost:8081/ || { echo "static server never came up"; cat /tmp/serve.log; exit 1; }
 
+      # The ceiling a route gets to paint, not a cost per route: `visit` waits
+      # for the render and moves on. It is *larger* than the local default
+      # because a hosted runner is three to four times slower, and a ceiling
+      # that is too tight fails screens that were only ever slow.
       - name: Smoke
         working-directory: qa
+        env:
+          QA_SETTLE_MS: 20000
+          QA_QUIET_MS: 1200
         run: npm run smoke
 
       # The run's own output names the failing route; the screenshots are for
