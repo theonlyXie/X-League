@@ -1,0 +1,96 @@
+# Loads every screen in a real browser and fails if any of them breaks.
+#
+# The SQL suites prove the database keeps its promises. They cannot say whether
+# a screen renders at all — and the defects this project actually shipped were
+# never crashes in SQL, they were screens that rendered the wrong thing or
+# threw on mount. Both are invisible to `tsc` and to `psql`, and obvious to a
+# browser.
+#
+# It runs against the static web export rather than the dev server: `expo
+# export` is closer to what ships, starts in seconds rather than after a
+# bundle, and cannot half-start. The export is a single-page app, so the
+# server has to fall back to index.html for every route — `serve -s` does.
+#
+# Deliberately no credentials. `smoke` signs into nothing and writes nothing,
+# so this needs no secrets and can run on every pull request, including from a
+# fork. The other two checks in `qa/` need accounts and are for a person to run
+# against a database they are happy to touch; see `qa/README.md`.
+#
+# What that costs is worth stating plainly: with no Supabase configuration the
+# app runs in demo mode, so this proves every screen mounts and stays quiet —
+# not that it says the right thing when a real database answers. Set the two
+# repository variables below and it runs against a real project instead.
+name: Browser
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['app/**', 'src/**', 'qa/**', 'package.json', '.github/workflows/browser.yml']
+  pull_request:
+    paths: ['app/**', 'src/**', 'qa/**', 'package.json', '.github/workflows/browser.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Both are publishable by design — they are inlined into every APK and
+      # reach the browser bundle regardless — so they are repository variables
+      # rather than secrets. Absent, the app builds in demo mode and the check
+      # still runs; see the note at the top about what that does and does not
+      # prove.
+      - name: Build the web export
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run build:web
+
+      - name: Install the checks
+        working-directory: qa
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      # `serve -s` rewrites every unmatched path to index.html, which is what
+      # an expo-router single-page export needs; without it every route but `/`
+      # answers 404 and the whole run fails for a reason that is not the app's.
+      - name: Serve it
+        run: |
+          npx --yes serve -s dist -l 8081 > /tmp/serve.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:8081/ && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://localhost:8081/ || { echo "static server never came up"; cat /tmp/serve.log; exit 1; }
+
+      - name: Smoke
+        working-directory: qa
+        run: npm run smoke
+
+      # The run's own output names the failing route; the screenshots are for
+      # the ones where the text does not make it obvious.
+      - name: Keep whatever it captured
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure
+          path: |
+            qa/*.png
+            /tmp/serve.log
+          if-no-files-found: ignore
+          retention-days: 7
