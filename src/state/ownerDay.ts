@@ -26,8 +26,8 @@ export type DayRow = { hour: number; time: string; cells: Cell[] };
  *     screen whose whole job is showing every hour it owns.
  */
 export function useOwnerDay(date: string = today()) {
-  const { venues, signedIn } = useSession();
-  const venue = venues[0] ?? null;
+  const { activeVenue, signedIn } = useSession();
+  const venue = activeVenue;
   const showcase = !isLive || !signedIn || !venue;
 
   const [cells, setCells] = useState<api.OwnerCell[] | null>(null);

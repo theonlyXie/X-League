@@ -38,7 +38,14 @@ export default function Invite() {
 
   const refreshCounts = async () => {
     if (!isLive || !bookingId) return;
-    setCounts(await squadCounts(bookingId).catch(() => null));
+    // Keep the last known counts on failure rather than dropping to null: a
+    // null makes `full` evaluate false, which silently removes the "starting
+    // five is full" guard and re-enables every Invite button. The server still
+    // refuses, so this only ever cost the player a confusing round trip — but
+    // it is the guard disappearing quietly that makes it worth saying.
+    const next = await squadCounts(bookingId).catch(() => null);
+    if (next) setCounts(next);
+    else setNotice((n) => n ?? t.offline);
   };
 
   useEffect(() => {

@@ -397,9 +397,16 @@ export default function Home() {
         </Txt>
       ) : null}
 
-      {/* §5.3: XP and level are activity, never ability. */}
+      {/* §5.3: XP and level are activity, never ability — and PTS-002 says the
+          total is explainable line by line, which until now it was not: the
+          ledger behind it had no screen. */}
       {home.evidence ? (
-        <View style={{ gap: 10 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.pointsTitle}
+          onPress={() => router.push('/points')}
+          style={{ gap: 10 }}
+        >
           <View
             style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}
           >
@@ -441,7 +448,7 @@ export default function Home() {
               num(home.evidence.level + 1),
             )}
           </Txt>
-        </View>
+        </Pressable>
       ) : null}
     </Screen>
   );

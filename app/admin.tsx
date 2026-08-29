@@ -228,7 +228,16 @@ function TopBar({ section }: { section: Section }) {
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  /** An optional control in the panel's header band — Refresh, mostly. */
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <View
       style={{
@@ -246,11 +255,16 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
           backgroundColor: operative.band,
           borderBottomWidth: 1,
           borderBottomColor: onOperative.hairline,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
         }}
       >
         <Txt size={9.5} weight="semibold" em={0.14} upper color={onOperative.faint}>
           {title}
         </Txt>
+        {action}
       </View>
       <View style={{ padding: 14, gap: 10 }}>{children}</View>
     </View>
@@ -559,13 +573,17 @@ function Moderation({ compact }: { compact?: boolean } = {}) {
 function Ledger({ compact }: { compact?: boolean } = {}) {
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
 
+  // Read on every mount and on demand. `[]` meant an operator who actioned a
+  // report or verified a venue in another panel came back to figures from
+  // whenever they first opened the console.
   useEffect(() => {
     if (!isLive) return;
     adminLedger()
       .then(setRows)
       .catch(() => setError('Not authorised to read the ledger.'));
-  }, []);
+  }, [nonce]);
 
   const total = rows.reduce(
     (acc, r) => ({
@@ -718,18 +736,22 @@ function Settings() {
 function Audit() {
   const [rows, setRows] = useState<AuditEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
 
+  // The audit log is the one panel most likely to be read straight after
+  // acting somewhere else in the console, and it was the one that never
+  // re-read.
   useEffect(() => {
     if (!isLive) return;
     adminAudit(120)
       .then(setRows)
       .catch(() => setError('Not authorised to read the audit log.'));
-  }, []);
+  }, [nonce]);
 
   return (
     <>
       <OpNotice text={error} />
-      <Panel title="Every privileged action">
+      <Panel title="Every privileged action" action={<OpButton label="Refresh" tone="quiet" onPress={() => setNonce((n) => n + 1)} />}>
         {rows.length === 0 ? <Empty text="Nothing recorded yet." /> : null}
         {rows.map((a, i) => (
           <Row key={i}>

@@ -26,8 +26,8 @@ const ROLES: VenueRole[] = ['staff', 'manager', 'owner'];
 export default function Staff() {
   const { t } = useI18n();
   const router = useRouter();
-  const { venues } = useSession();
-  const venue = venues[0] ?? null;
+  const { activeVenue } = useSession();
+  const venue = activeVenue;
   const myRole = venue?.role ?? 'staff';
 
   const [rows, setRows] = useState<StaffMember[]>([]);

@@ -20,8 +20,8 @@ import { today } from '@/data/venue';
  * a person who does not exist.
  */
 export function useOwnerToday() {
-  const { venues, signedIn } = useSession();
-  const venue = venues[0] ?? null;
+  const { activeVenue, signedIn } = useSession();
+  const venue = activeVenue;
   const showcase = !isLive || !signedIn || !venue;
 
   const [arrivals, setArrivals] = useState<api.Arrival[] | null>(null);

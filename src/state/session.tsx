@@ -43,6 +43,16 @@ type SessionContextValue = {
   /** Venues this person may operate (RBAC-002). Empty for a plain player. */
   venues: StaffVenue[];
   /**
+   * The venue Owner Mode is currently operating, and the way to change it.
+   *
+   * Every owner screen used to read `venues[0]`, with no picker anywhere — so
+   * somebody who manages two venues could only ever see, price, staff and take
+   * money for the first one alphabetically. The second was invisible from
+   * every screen in the product.
+   */
+  activeVenue: StaffVenue | null;
+  setActiveVenue: (venueId: string) => void;
+  /**
    * RBAC-003: the platform role, or null. Read for the same reason `venues`
    * is — so the client can stop offering a door that will not open. It never
    * decides who may walk through one; every console function checks for itself.
@@ -101,6 +111,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     useState<SessionContextValue['platformRole']>(null);
   const [restoring, setRestoring] = useState(isLive);
   const [identityFailed, setIdentityFailed] = useState(false);
+  const [activeVenueId, setActiveVenueId] = useState<string | null>(null);
 
   /**
    * The staff list is read from the server on every session change rather than
@@ -264,6 +275,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signedIn: !!session,
       displayName,
       venues,
+      // Falls back to the first, so a single-venue owner never has to choose,
+      // and a stale selection after a role change cannot strand the screen.
+      activeVenue: venues.find((v) => v.venueId === activeVenueId) ?? venues[0] ?? null,
+      setActiveVenue: setActiveVenueId,
       platformRole,
       restoring,
       identityFailed,
@@ -271,7 +286,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
     }),
-    [session, displayName, venues, platformRole, restoring, identityFailed, signIn, signUp, signOut],
+    [
+      session,
+      displayName,
+      venues,
+      activeVenueId,
+      platformRole,
+      restoring,
+      identityFailed,
+      signIn,
+      signUp,
+      signOut,
+    ],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

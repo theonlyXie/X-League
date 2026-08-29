@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
 import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import type { TabBarProps } from './tabBarTypes';
+import { usePathname } from 'expo-router';
 import { useI18n } from '@/i18n';
 import { useSession } from '@/state/session';
 import { unreadNotifications } from '@/data/social';
@@ -29,6 +30,7 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const { t, num } = useI18n();
   const { signedIn } = useSession();
+  const pathname = usePathname();
   const [unread, setUnread] = useState(0);
 
   // Polled rather than pushed: there is no realtime subscription yet, and a
@@ -52,7 +54,11 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [signedIn, state.index]);
+    // Re-read on any navigation, not only a tab change: marking a
+    // notification read happens inside the notifications stack, where the tab
+    // index never moves, so the badge kept its old count until the tab bar
+    // itself remounted.
+  }, [signedIn, state.index, pathname]);
 
   const label: Record<string, string> = {
     Home: t.home, Play: t.play, Cups: t.cups, Chat: t.chat, Me: t.me,

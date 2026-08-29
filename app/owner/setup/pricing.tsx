@@ -31,8 +31,8 @@ import { useI18n } from '@/i18n';
 export default function Pricing() {
   const { t } = useI18n();
   const router = useRouter();
-  const { venues } = useSession();
-  const venue = venues[0] ?? null;
+  const { activeVenue } = useSession();
+  const venue = activeVenue;
 
   const [rules, setRules] = useState<PriceRule[]>([]);
   const [pitches, setPitches] = useState<VenuePitch[]>([]);

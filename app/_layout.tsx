@@ -52,6 +52,7 @@ export default function RootLayout() {
             <Stack.Screen name="admin" />
             <Stack.Screen name="teams" />
             <Stack.Screen name="notifications" />
+            <Stack.Screen name="points" />
             <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
             <Stack.Screen name="onboarding" />
           </Stack>

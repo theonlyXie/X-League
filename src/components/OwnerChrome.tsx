@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
+import { ChevronDown } from './icons';
 import { gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { VENUE } from '@/data/owner';
 import { useSession } from '@/state/session';
@@ -78,8 +79,8 @@ export function OwnerHeader() {
   const { t, longDate } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { venues } = useSession();
-  const venue = venues[0] ?? null;
+  const { venues, activeVenue, setActiveVenue } = useSession();
+  const venue = activeVenue;
 
   return (
     <View style={{ backgroundColor: operative.bg, paddingTop: insets.top }}>
@@ -100,9 +101,30 @@ export function OwnerHeader() {
               to be headed "Stadium One · Tue 18 Aug · evening shift" whoever
               was signed in and whatever the date — a fixture in the one place
               a header is meant to tell you where you are. */}
-          <Txt size={18} weight="bold" em={-0.02} color={ink} numberOfLines={1}>
-            {venue?.name ?? VENUE.name}
-          </Txt>
+          {/* A manager of two venues could only ever operate the first: every
+              owner screen read `venues[0]` and no picker existed anywhere, so
+              the second venue was invisible from every screen in the product. */}
+          {venues.length > 1 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${venue?.name ?? ''}. ${t.ownSwitchVenue}`}
+              onPress={() => {
+                const i = venues.findIndex((v) => v.venueId === venue?.venueId);
+                setActiveVenue(venues[(i + 1) % venues.length].venueId);
+              }}
+              hitSlop={8}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <Txt size={18} weight="bold" em={-0.02} color={ink} numberOfLines={1}>
+                {venue?.name ?? VENUE.name}
+              </Txt>
+              <ChevronDown size={14} color={onOperative.muted} />
+            </Pressable>
+          ) : (
+            <Txt size={18} weight="bold" em={-0.02} color={ink} numberOfLines={1}>
+              {venue?.name ?? VENUE.name}
+            </Txt>
+          )}
           <Txt size={11} color={onOperative.muted}>
             {venue ? longDate(new Date().toISOString()) : VENUE.shift}
           </Txt>

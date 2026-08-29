@@ -17,8 +17,8 @@ import { useI18n } from '@/i18n';
  */
 export default function OwnerMoney() {
   const { t } = useI18n();
-  const { venues } = useSession();
-  const venue = venues[0] ?? null;
+  const { activeVenue } = useSession();
+  const venue = activeVenue;
 
   const [rows, setRows] = useState<PayoutRow[]>([]);
   const [loading, setLoading] = useState(isLive);

@@ -33,8 +33,8 @@ const KINDS: Closure['kind'][] = ['maintenance', 'private', 'holiday', 'closure'
 export default function Closures() {
   const { t } = useI18n();
   const router = useRouter();
-  const { venues } = useSession();
-  const venue = venues[0] ?? null;
+  const { activeVenue } = useSession();
+  const venue = activeVenue;
 
   const [rows, setRows] = useState<Closure[]>([]);
   const [pitches, setPitches] = useState<VenuePitch[]>([]);

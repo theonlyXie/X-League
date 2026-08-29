@@ -35,8 +35,8 @@ import { useI18n } from '@/i18n';
 export default function Hours() {
   const { t } = useI18n();
   const router = useRouter();
-  const { venues } = useSession();
-  const venue = venues[0] ?? null;
+  const { activeVenue } = useSession();
+  const venue = activeVenue;
 
   const [hours, setHours] = useState<VenueHour[]>([]);
   const [pitches, setPitches] = useState<VenuePitch[]>([]);
