@@ -1,0 +1,49 @@
+# Typechecks and builds the admin dashboard.
+#
+# It deploys from Vercel rather than from here, but a build that only ever runs
+# on Vercel is a build that breaks in front of whoever is trying to open a cup.
+# This catches it on the push instead.
+name: Admin dashboard
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['admin/**', '.github/workflows/admin.yml']
+  pull_request:
+    paths: ['admin/**', '.github/workflows/admin.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: admin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: admin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+      # Placeholder values: the build inlines whatever NEXT_PUBLIC_* it finds,
+      # and this job proves the pages compile, not that they can reach a
+      # database. The real values live in the Vercel project.
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+        run: npm run build

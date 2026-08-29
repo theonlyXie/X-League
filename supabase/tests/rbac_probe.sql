@@ -35,7 +35,7 @@ begin
 
   perform set_config('request.jwt.claims', null, true);
   select * into h from hold_slot(stadium_pitch,
-    ((date '2026-08-18' + interval '19 hours') at time zone 'Africa/Cairo'), 60);
+    ((current_date + 1 + interval '19 hours') at time zone 'Africa/Cairo'), 60);
   return query select 'anon cannot hold a slot', coalesce(h.reason,'(allowed!)'),
                       h.ok = false and h.reason = 'Sign in to hold a slot.';
 
@@ -51,18 +51,18 @@ begin
                       r.ok = false and r.reason = 'You do not have access to that venue.';
 
   begin
-    perform * from owner_day(box_venue, date '2026-08-18');
+    perform * from owner_day(box_venue, current_date);
     return query select 'Stadium One staff reads The Box calendar', '(allowed!)', false;
   exception when insufficient_privilege then
     return query select 'Stadium One staff reads The Box calendar', 'refused', true;
   end;
 
   return query select 'Stadium One staff reads their own calendar',
-                      (select count(*)::text || ' cells' from owner_day(stadium_venue, date '2026-08-18')),
-                      (select count(*) > 0 from owner_day(stadium_venue, date '2026-08-18'));
+                      (select count(*)::text || ' cells' from owner_day(stadium_venue, current_date)),
+                      (select count(*) > 0 from owner_day(stadium_venue, current_date));
 
   select * into r from record_offline_booking(box_pitch,
-    ((date '2026-08-18' + interval '23 hours') at time zone 'Africa/Cairo'), 60, 'phone', 'Someone');
+    ((current_date + interval '23 hours') at time zone 'Africa/Cairo'), 60, 'phone', 'Someone');
   return query select 'Stadium One staff writes into The Box calendar',
                       coalesce(r.reason,'(allowed!)'), r.ok = false;
 
@@ -87,7 +87,7 @@ begin
 
   perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
   select * into h from hold_slot(stadium_pitch,
-    ((date '2026-08-18' + interval '19 hours') at time zone 'Africa/Cairo'), 60);
+    ((current_date + 1 + interval '19 hours') at time zone 'Africa/Cairo'), 60);
   return query select 'a signed-in player can hold', coalesce(h.reason,'held'), h.ok = true;
 
   perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);

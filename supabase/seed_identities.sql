@@ -1,5 +1,5 @@
--- Three identities for exercising RBAC-002: a plain player, staff at Stadium
--- One, and staff at The Box.
+-- Four identities for exercising RBAC-002 and RBAC-003: a plain player, staff
+-- at Stadium One, staff at The Box, and one platform admin.
 --
 -- These are created directly because no SMS provider is configured yet. The
 -- real path that creates them is phone OTP (AUTH-001) — see the README. Do not
@@ -13,14 +13,17 @@ values
   ('22222222-2222-2222-2222-222222222222'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
    'authenticated', 'authenticated', '+201000000002', now(), now(), now(), '{}', '{}'),
   ('33333333-3333-3333-3333-333333333333'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
-   'authenticated', 'authenticated', '+201000000003', now(), now(), now(), '{}', '{}')
+   'authenticated', 'authenticated', '+201000000003', now(), now(), now(), '{}', '{}'),
+  ('99999999-9999-9999-9999-999999999999'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
+   'authenticated', 'authenticated', '+201000000009', now(), now(), now(), '{}', '{}')
 on conflict (id) do nothing;
 
 insert into player_profile (id, display_name, phone, birth_year, preferred_area, terms_version, terms_accepted_at)
 values
   ('11111111-1111-1111-1111-111111111111'::uuid, 'Basel Elsayed', '+201000000001', 1998, 'Nasr City', 'v1.1', now()),
   ('22222222-2222-2222-2222-222222222222'::uuid, 'Salma Rashad',  '+201000000002', 1994, 'Nasr City', 'v1.1', now()),
-  ('33333333-3333-3333-3333-333333333333'::uuid, 'Karim Tarek',   '+201000000003', 1991, 'Nasr City', 'v1.1', now())
+  ('33333333-3333-3333-3333-333333333333'::uuid, 'Karim Tarek',   '+201000000003', 1991, 'Nasr City', 'v1.1', now()),
+  ('99999999-9999-9999-9999-999999999999'::uuid, 'Platform Admin','+201000000009', 1990, 'Nasr City', 'v1.1', now())
 on conflict (id) do nothing;
 
 insert into venue_staff (user_id, venue_id, role)
@@ -29,6 +32,8 @@ union all
 select '33333333-3333-3333-3333-333333333333'::uuid, id, 'staff'::venue_role   from venue where name = 'The Box'
 on conflict (user_id, venue_id) do nothing;
 
-insert into platform_admin (user_id, role)
-values ('22222222-2222-2222-2222-222222222222'::uuid, 'super')
+-- RBAC-003: platform authority is global and rare, and lives in its own table
+-- rather than as a venue role with no venue.
+insert into platform_role (user_id, role)
+values ('99999999-9999-9999-9999-999999999999'::uuid, 'admin')
 on conflict (user_id) do nothing;

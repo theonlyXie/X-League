@@ -3,20 +3,18 @@
     "name": "X League",
     "slug": "x-league",
     "scheme": "xleague",
-    "version": "0.3.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#080808",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.xleague.app"
+      "bundleIdentifier": "com.xleague.app",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.xleague.app",
-      "versionCode": 1,
-      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#080808",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,10 +22,16 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "navigationBar": {
-        "backgroundColor": "#080808",
-        "barStyle": "light-content"
-      }
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -40,12 +44,19 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#080808",
           "image": "./assets/splash-icon.png",
-          "imageWidth": 120
+          "resizeMode": "contain",
+          "backgroundColor": "#080808",
+          "imageWidth": 200
         }
       ]
     ],
-    "experiments": { "typedRoutes": true }
+    "experiments": {
+      "typedRoutes": true
+    },
+    "primaryColor": "#C6A34B",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

@@ -1,5 +1,6 @@
 import { Text, TextProps, TextStyle } from 'react-native';
-import { face, tracking, Weight } from '@/theme/typography';
+import { familyFor, tracking, Weight } from '@/theme/typography';
+import { useI18n } from '@/i18n';
 
 type Props = Omit<TextProps, 'style'> & {
   /** Font size in points, exactly as the design states it. */
@@ -31,12 +32,16 @@ export function Txt({
   style,
   ...rest
 }: Props) {
+  const { rtl } = useI18n();
   return (
     <Text
       {...rest}
       style={[
         {
-          fontFamily: face[weight],
+          fontFamily: familyFor(weight, rtl),
+          // Mixed-direction runs (a code, a price) resolve against the script
+          // the interface is in, not against whatever character comes first.
+          writingDirection: rtl ? 'rtl' : 'ltr',
           fontSize: size,
           ...(color ? { color } : null),
           ...(em !== undefined ? { letterSpacing: tracking(size, em) } : null),

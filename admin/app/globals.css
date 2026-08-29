@@ -1,0 +1,452 @@
+/*
+ * The Operative surface, from src/theme/tokens.ts.
+ *
+ * The app has two grounds: Void (#080808) for the player's competition
+ * surface, and Operative (#F3EEE5) for the people who run things. A dashboard
+ * is unambiguously the second, so these are the same values the owner console
+ * uses in the app — not a web approximation of them. Cipher Gold is the single
+ * accent; Deep Burgundy is destructive and nothing else.
+ *
+ * Deliberately one theme rather than light/dark. This is an operations tool
+ * used in an office, and the design system does not define a dark Operative.
+ */
+
+:root {
+  --bg: #f3eee5;
+  --surface: #fffdf9;
+  --band: #ede6d9;
+
+  --ink: #141210;
+  --ink-secondary: rgba(20, 18, 16, 0.62);
+  --ink-muted: rgba(20, 18, 16, 0.5);
+  --ink-faint: rgba(20, 18, 16, 0.45);
+  --ink-dim: rgba(20, 18, 16, 0.4);
+
+  --line: rgba(20, 18, 16, 0.18);
+  --hairline: rgba(20, 18, 16, 0.1);
+  --edge: rgba(20, 18, 16, 0.09);
+
+  --gold: #c6a34b;
+  --gold-ink: #8a6c22;
+  --gold-border: #b08f35;
+  --gold-fill: rgba(198, 163, 75, 0.14);
+  --gold-fill-soft: rgba(198, 163, 75, 0.07);
+
+  --burgundy: #8b2135;
+  --burgundy-fill: rgba(139, 33, 53, 0.08);
+  --positive: #2c6b45;
+
+  /* §4.1: 8–14px on dense owner/admin controls. */
+  --r-panel: 14px;
+  --r-control: 12px;
+  --r-chip: 9px;
+
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* --- layout ------------------------------------------------------------- */
+
+.shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px 64px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 28px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 15px;
+}
+
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #080808;
+  border: 1px solid var(--gold-border);
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* --- type --------------------------------------------------------------- */
+
+h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.eyebrow {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.muted {
+  color: var(--ink-muted);
+}
+.faint {
+  color: var(--ink-faint);
+  font-size: 12.5px;
+}
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* --- panels ------------------------------------------------------------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.grid {
+  display: grid;
+  gap: 14px;
+}
+
+.cols-2 {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* --- controls ----------------------------------------------------------- */
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  margin-bottom: 5px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--gold-border);
+  outline-offset: -1px;
+}
+
+button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 15px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--band);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--gold);
+  border-color: var(--gold-border);
+  color: #141210;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #d4b25c;
+}
+
+button.danger {
+  color: var(--burgundy);
+  border-color: rgba(139, 33, 53, 0.3);
+}
+
+button.danger:hover:not(:disabled) {
+  background: var(--burgundy-fill);
+}
+
+button.small {
+  padding: 6px 11px;
+  font-size: 12px;
+  border-radius: var(--r-chip);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* --- tables ------------------------------------------------------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 8px 10px;
+  background: var(--band);
+}
+
+th:first-child {
+  border-top-left-radius: var(--r-chip);
+  border-bottom-left-radius: var(--r-chip);
+}
+th:last-child {
+  border-top-right-radius: var(--r-chip);
+  border-bottom-right-radius: var(--r-chip);
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A wide table scrolls inside its own panel rather than the page. */
+.scroll-x {
+  overflow-x: auto;
+}
+
+/* --- chips -------------------------------------------------------------- */
+
+.chip {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--hairline);
+  color: var(--ink-secondary);
+  background: var(--bg);
+  white-space: nowrap;
+}
+
+.chip.gold {
+  color: var(--gold-ink);
+  border-color: var(--gold-border);
+  background: var(--gold-fill);
+}
+
+.chip.good {
+  color: var(--positive);
+  border-color: rgba(44, 107, 69, 0.3);
+  background: rgba(44, 107, 69, 0.08);
+}
+
+.chip.warn {
+  color: var(--burgundy);
+  border-color: rgba(139, 33, 53, 0.3);
+  background: var(--burgundy-fill);
+}
+
+/* --- notices ------------------------------------------------------------ */
+
+.notice {
+  padding: 10px 13px;
+  border-radius: var(--r-control);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+
+.notice.error {
+  color: var(--burgundy);
+  background: var(--burgundy-fill);
+  border: 1px solid rgba(139, 33, 53, 0.28);
+}
+
+.notice.ok {
+  color: var(--positive);
+  background: rgba(44, 107, 69, 0.08);
+  border: 1px solid rgba(44, 107, 69, 0.28);
+}
+
+.empty {
+  padding: 28px 0;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+
+/* --- sign in ------------------------------------------------------------ */
+
+.centre {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
+  padding: 26px;
+}
+
+/* --- section navigation -------------------------------------------------- */
+
+/*
+ * A desktop tool: the sections sit in one row under the brand, because
+ * somebody running the platform moves between them constantly and a
+ * hamburger would cost a click every time.
+ */
+.nav {
+  display: flex;
+  gap: 2px;
+  margin: -14px 0 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+
+.nav a {
+  padding: 7px 13px;
+  border-radius: var(--r-chip);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.nav a:hover {
+  background: var(--band);
+  color: var(--ink);
+}
+
+.nav a.nav-on {
+  background: var(--gold-fill);
+  color: var(--gold-ink);
+}
+
+/* Stat tiles for the overview. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
+  padding: 15px 16px;
+}
+
+.tile .k {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+}
+
+.tile .v {
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile .sub {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin-top: 3px;
+}

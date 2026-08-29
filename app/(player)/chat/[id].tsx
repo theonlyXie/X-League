@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -7,178 +9,226 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
-import { LanguageCorner } from '@/components/LanguageCorner';
+import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
+import {
+  conversationMessages,
+  markConversationRead,
+  myConversations,
+  sendMessage,
+  type Message,
+} from '@/data/social';
 import { useI18n } from '@/i18n';
-import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { useMessages } from '@/state/messages';
-import { useProfile } from '@/state/profile';
+import { isLive } from '@/lib/supabase';
 
 /**
- * P-11 / P-12 / P-14 Thread — structured match conversation.
+ * P-14 — one thread.
+ *
+ * Messages arrive newest-first from the server (that is the order a page of
+ * history is fetched in) and are reversed here for display, so "load older"
+ * stays a paging concern rather than something the transport has to know about.
  */
-export default function ChatThread() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+export default function Thread() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t } = useI18n();
-  const { card } = useProfile();
-  const { linesFor, send, markRead, threadById } = useMessages();
-  const thread = threadById(id ?? '') ?? threadById('xl-7k42');
-  const lines = linesFor(thread?.id ?? 'xl-7k42');
+  const params = useLocalSearchParams<{ id?: string }>();
+  const conversationId = params.id ?? null;
+  const { t, hour } = useI18n();
+
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [title, setTitle] = useState('');
+  const [loading, setLoading] = useState(isLive);
   const [draft, setDraft] = useState('');
-  const scrollRef = useRef<ScrollView>(null);
+  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const scroller = useRef<ScrollView | null>(null);
+
+  const load = useCallback(async () => {
+    if (!isLive || !conversationId) return;
+    try {
+      const rows = await conversationMessages(conversationId, 60);
+      setMessages(rows);
+      void markConversationRead(conversationId);
+    } catch {
+      setNotice('You are not in that conversation.');
+    }
+  }, [conversationId]);
 
   useEffect(() => {
-    if (thread?.id) markRead(thread.id);
-  }, [thread?.id, markRead]);
+    if (!isLive || !conversationId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      // The room's name comes from the list rather than a second RPC: it is
+      // already resolved there to a venue, a team or a person.
+      try {
+        const rooms = await myConversations();
+        const room = rooms.find((r) => r.conversationId === conversationId);
+        if (!cancelled && room) setTitle(room.title);
+      } catch {
+        /* the header simply stays empty */
+      }
+      await load();
+      if (!cancelled) setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, load]);
 
-  useEffect(() => {
-    const tmr = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
-    return () => clearTimeout(tmr);
-  }, [lines.length]);
-
-  if (!thread) {
-    return (
-      <View style={{ flex: 1, backgroundColor: void_.bg, paddingTop: insets.top, padding: 20 }}>
-        <LanguageCorner />
-        <Txt color={onVoid.primary}>{t('chat.empty')}</Txt>
-      </View>
-    );
-  }
-
-  const kindDetail =
-    thread.kind === 'match'
-      ? t('chat.kindMatchDetail')
-      : thread.kind === 'venue'
-        ? t('chat.kindVenueDetail')
-        : t('chat.kindCupDetail');
-
-  const onSend = () => {
-    const text = draft.trim();
-    if (!text) return;
-    send(thread.id, text, card.initials);
-    setDraft('');
-  };
+  const ordered = [...messages].reverse();
 
   return (
-    <View style={{ flex: 1, backgroundColor: void_.bg, paddingTop: insets.top }}>
-      <LanguageCorner />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: void_.bg, paddingTop: insets.top }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingHorizontal: 20,
+          paddingVertical: 10,
+        }}
       >
-        <View style={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 10, gap: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingRight: 44 }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('common.back')}
-              onPress={() => (router.canGoBack() ? router.back() : router.replace('/chat'))}
-              hitSlop={8}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: radius.icon,
-                borderWidth: 1,
-                borderColor: 'rgba(243,238,229,.14)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <ArrowLeft size={16} color={onVoid.secondary} />
-            </Pressable>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={17} weight="bold" em={-0.02} color={onVoid.primary} numberOfLines={1}>
-                {thread.title}
-              </Txt>
-              <Txt size={11.5} color={onVoid.faint}>
-                {kindDetail}
-              </Txt>
-            </View>
-          </View>
-        </View>
-
-        <ScrollView
-          ref={scrollRef}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 10 }}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
-        >
-          {lines.map((line) => {
-            const mine = line.from === 'you';
-            return (
-              <View key={line.id} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
-                <View
-                  style={{
-                    maxWidth: '86%',
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderRadius: radius.row,
-                    backgroundColor: mine ? goldAlpha.fill : void_.surface,
-                    borderWidth: 1,
-                    borderColor: mine ? goldAlpha.edge : onVoid.edge,
-                    gap: 4,
-                  }}
-                >
-                  {!mine ? (
-                    <Txt size={10} weight="bold" em={0.12} color={gold.base}>
-                      {line.initials}
-                    </Txt>
-                  ) : null}
-                  <Txt size={13.5} lh={1.4} color={onVoid.primary}>
-                    {line.text}
-                  </Txt>
-                  <Txt size={10} color={onVoid.dim}>
-                    {line.at}
-                  </Txt>
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
-
-        <View
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/chat'))}
+          hitSlop={8}
           style={{
-            flexDirection: 'row',
-            gap: 8,
+            width: 34,
+            height: 34,
+            borderRadius: radius.icon,
+            borderWidth: 1,
+            borderColor: 'rgba(243,238,229,.14)',
             alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingTop: 10,
-            paddingBottom: Math.max(insets.bottom, 12),
-            borderTopWidth: 1,
-            borderTopColor: onVoid.edgeFaint,
-            backgroundColor: void_.chrome,
+            justifyContent: 'center',
           }}
         >
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={t('chat.placeholder')}
-            placeholderTextColor={onVoid.dim}
-            accessibilityLabel={t('chat.placeholder')}
-            onSubmitEditing={onSend}
-            returnKeyType="send"
+          <ArrowLeft size={16} color={onVoid.secondary} />
+        </Pressable>
+        <Txt size={17} weight="bold" em={-0.02} color={onVoid.primary}>
+          {title || t.chatTitle}
+        </Txt>
+      </View>
+
+      <ScrollView
+        ref={scroller}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 14 }}
+        onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })}
+      >
+        {loading ? (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator color={gold.base} />
+          </View>
+        ) : null}
+
+        {!loading && ordered.length === 0 ? (
+          <Txt size={12.5} color={onVoid.dim}>
+            {t.noMessages}
+          </Txt>
+        ) : null}
+
+        {ordered.map((m) => (
+          <View
+            key={m.messageId}
             style={{
-              flex: 1,
-              height: 44,
-              borderRadius: radius.row,
-              borderWidth: 1,
-              borderColor: onVoid.hairline,
-              paddingHorizontal: 14,
-              color: onVoid.primary,
-              fontSize: 14,
-              fontFamily: 'Inter_400Regular',
+              alignSelf: m.mine ? 'flex-end' : 'flex-start',
+              maxWidth: '82%',
+              gap: 4,
             }}
-          />
-          <Button label={t('chat.send')} width={72} onPress={onSend} disabled={!draft.trim()} />
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+          >
+            {!m.mine ? (
+              <Txt size={10.5} color={onVoid.dim}>
+                {m.senderName}
+              </Txt>
+            ) : null}
+            <View
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 13,
+                borderRadius: radius.control,
+                backgroundColor: m.mine ? 'rgba(198,163,75,.14)' : void_.surface,
+                borderWidth: 1,
+                borderColor: m.mine ? 'rgba(198,163,75,.3)' : onVoid.edgeFaint,
+              }}
+            >
+              <Txt size={13.5} lh={1.5} color={onVoid.primary}>
+                {m.body}
+              </Txt>
+            </View>
+            <Txt size={10} color={onVoid.dim} style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start' }}>
+              {hour(m.at)}
+            </Txt>
+          </View>
+        ))}
+      </ScrollView>
+
+      {notice ? (
+        <Txt size={12} color={burgundy.action} style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+          {notice}
+        </Txt>
+      ) : null}
+
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: 8,
+          alignItems: 'center',
+          paddingHorizontal: 20,
+          paddingBottom: 12 + insets.bottom,
+          paddingTop: 8,
+          borderTopWidth: 1,
+          borderTopColor: onVoid.edgeFaint,
+        }}
+      >
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          placeholder={t.messagePlaceholder}
+          placeholderTextColor={onVoid.dim}
+          multiline
+          style={{
+            flex: 1,
+            minHeight: 44,
+            maxHeight: 110,
+            paddingHorizontal: 14,
+            paddingTop: 12,
+            borderRadius: radius.control,
+            borderWidth: 1,
+            borderColor: onVoid.edge,
+            color: onVoid.primary,
+            backgroundColor: void_.surface,
+          }}
+        />
+        <Button
+          label={t.send}
+          height={44}
+          disabled={sending || draft.trim().length === 0}
+          onPress={async () => {
+            if (!conversationId) return;
+            setSending(true);
+            const res = await sendMessage(conversationId, draft);
+            setSending(false);
+            if (res.ok) {
+              setDraft('');
+              setNotice(null);
+              await load();
+            } else {
+              setNotice(res.reason ?? null);
+            }
+          }}
+        />
+      </View>
+    </KeyboardAvoidingView>
   );
 }

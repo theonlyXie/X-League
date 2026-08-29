@@ -1,19 +1,72 @@
+import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Eyebrow } from '@/components/ui';
+import { Button, Divider, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
-import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { CUP_FIXTURES, CUP_RULES, CUPS, GROUP_A } from '@/data/cups';
+import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
+import { mono } from '@/theme/typography';
+import { registerTeam, tournamentDetail, type TournamentDetail } from '@/data/cups';
+import { myTeams, type Team } from '@/data/squad';
+import { useSession } from '@/state/session';
+import { useI18n } from '@/i18n';
+import { isLive } from '@/lib/supabase';
 
 /**
- * P-16–P-20 Tournament detail — standings, fixtures and eligibility.
+ * P-16 – P-18 — one cup: who is in it, what is being played, and the table.
+ *
+ * Standings, fixtures and entrants arrive together in one call, because all
+ * three are one page and fetching them separately would let a player see a
+ * table that disagrees with the results above it.
  */
 export default function CupDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const cup = CUPS.find((c) => c.id === id) ?? CUPS[0];
+  const params = useLocalSearchParams<{ id?: string }>();
+  const tournamentId = params.id ?? null;
+  const { signedIn } = useSession();
+  const { t, num, money, shortDate } = useI18n();
+
+  const [cup, setCup] = useState<TournamentDetail | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(isLive);
+  const [tab, setTab] = useState<'standings' | 'fixtures'>('standings');
+  const [notice, setNotice] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!isLive || !tournamentId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const [detail, mine] = await Promise.all([
+          tournamentDetail(tournamentId),
+          signedIn ? myTeams().catch(() => [] as Team[]) : Promise.resolve([]),
+        ]);
+        if (cancelled) return;
+        setCup(detail);
+        // Only teams this player captains can be entered (TRN-003), so only
+        // those are offered.
+        setTeams(mine.filter((team) => team.role === 'captain' && team.state === 'active'));
+      } catch {
+        if (!cancelled) setCup(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId, signedIn, nonce]);
+
+  const enteredTeamIds = new Set(cup?.teams.map((e) => e.team_id) ?? []);
+  const enterable = teams.filter((team) => !enteredTeamIds.has(team.teamId));
+  const rounds = [...new Set((cup?.fixtures ?? []).map((f) => f.round))].sort((a, b) => a - b);
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
@@ -35,101 +88,291 @@ export default function CupDetail() {
         >
           <ArrowLeft size={16} color={onVoid.secondary} />
         </Pressable>
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ gap: 2, flex: 1 }}>
           <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
-            {cup.name}
+            {cup?.name ?? t.cupsTitle}
           </Txt>
-          <Txt size={11.5} color={onVoid.faint}>
-            {cup.stage} · {cup.prize}
-          </Txt>
-        </View>
-      </View>
-
-      <View style={{ gap: 10 }}>
-        <Eyebrow>Group A</Eyebrow>
-        <View
-          style={{
-            borderRadius: radius.control,
-            borderWidth: 1,
-            borderColor: onVoid.edge,
-            overflow: 'hidden',
-            backgroundColor: void_.surface,
-          }}
-        >
-          <View style={{ flexDirection: 'row', paddingVertical: 8, paddingHorizontal: 14, gap: 8 }}>
-            <Txt size={10} weight="bold" em={0.08} color={onVoid.dim} style={{ flex: 1 }}>
-              TEAM
+          {cup ? (
+            <Txt size={11.5} color={onVoid.faint}>
+              {cup.venueName}
+              {cup.startsOn ? ` · ${shortDate(`${cup.startsOn}T18:00:00Z`)}` : ''}
             </Txt>
-            {['P', 'GD', 'PTS'].map((h) => (
-              <Txt key={h} size={10} weight="bold" em={0.08} color={onVoid.dim} style={{ width: 28, textAlign: 'right' }}>
-                {h}
-              </Txt>
-            ))}
-          </View>
-          {GROUP_A.map((row) => (
-            <View
-              key={row.team}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 11,
-                paddingHorizontal: 14,
-                borderTopWidth: 1,
-                borderTopColor: onVoid.edgeFaint,
-                backgroundColor: row.you ? goldAlpha.fillSoft : 'transparent',
-                gap: 8,
-              }}
-            >
-              <Txt size={13} weight={row.you ? 'bold' : 'medium'} color={row.you ? gold.base : onVoid.primary} style={{ flex: 1 }}>
-                {row.team}
-                {row.you ? ' · you' : ''}
-              </Txt>
-              <Txt size={12} color={onVoid.muted} style={{ width: 28, textAlign: 'right' }}>
-                {row.p}
-              </Txt>
-              <Txt size={12} color={onVoid.muted} style={{ width: 28, textAlign: 'right' }}>
-                {row.gd > 0 ? `+${row.gd}` : row.gd}
-              </Txt>
-              <Txt size={13} weight="bold" color={onVoid.primary} style={{ width: 28, textAlign: 'right' }}>
-                {row.pts}
-              </Txt>
-            </View>
-          ))}
+          ) : null}
         </View>
       </View>
 
-      <View style={{ gap: 10 }}>
-        <Eyebrow>Fixtures</Eyebrow>
-        {CUP_FIXTURES.map((fx) => (
+      {loading ? (
+        <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+          <ActivityIndicator color={gold.base} />
+        </View>
+      ) : null}
+
+      {!loading && !cup ? (
+        <Txt size={13} color={onVoid.muted}>
+          {t.noCups}
+        </Txt>
+      ) : null}
+
+      {cup ? (
+        <>
+          {cup.description ? (
+            <Txt size={13} lh={1.6} color={onVoid.muted}>
+              {cup.description}
+            </Txt>
+          ) : null}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Txt size={11.5} color={onVoid.faint}>
+              {t.teamsEntered(num(cup.teams.length), num(cup.maxTeams))}
+            </Txt>
+            {cup.entryFeeEgp > 0 ? (
+              <Txt size={11.5} color={onVoid.faint}>
+                {t.entryFee(money(cup.entryFeeEgp))}
+              </Txt>
+            ) : null}
+          </View>
+
+          {/* TRN-003: a team enters, and only its captain may enter it. */}
+          {cup.state === 'open' && signedIn ? (
+            <View style={{ gap: 10 }}>
+              <Eyebrow>{t.enterTeam}</Eyebrow>
+              {enterable.length === 0 ? (
+                <Txt size={12.5} color={onVoid.dim}>
+                  {teams.length === 0 ? t.noTeamsBlurb : t.inSquad}
+                </Txt>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {enterable.map((team) => (
+                    <View
+                      key={team.teamId}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        paddingVertical: 11,
+                        paddingHorizontal: 14,
+                        borderRadius: radius.control,
+                        backgroundColor: void_.surface,
+                        borderWidth: 1,
+                        borderColor: onVoid.edgeFaint,
+                      }}
+                    >
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Txt size={13.5} weight="semibold" color={onVoid.primary}>
+                          {team.name}
+                        </Txt>
+                        <Txt size={11} color={onVoid.faint}>
+                          {t.members(num(team.members))}
+                        </Txt>
+                      </View>
+                      <Button
+                        label={t.enterTeam}
+                        height={34}
+                        round={radius.chip}
+                        size={12}
+                        onPress={async () => {
+                          if (!tournamentId) return;
+                          const res = await registerTeam(tournamentId, team.teamId);
+                          if (res.ok) {
+                            setNotice(null);
+                            reload();
+                          } else {
+                            setNotice(res.reason ?? null);
+                          }
+                        }}
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
+              {notice ? (
+                <Txt size={12} color={burgundy.action}>
+                  {notice}
+                </Txt>
+              ) : null}
+            </View>
+          ) : null}
+
+          <Divider />
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {(['standings', 'fixtures'] as const).map((k) => {
+              const on = k === tab;
+              return (
+                <Pressable
+                  key={k}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={k === 'standings' ? t.standings : t.fixtures}
+                  onPress={() => setTab(k)}
+                  style={{
+                    flex: 1,
+                    height: 38,
+                    borderRadius: radius.chip,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    ...(on
+                      ? { backgroundColor: 'rgba(198,163,75,.14)', borderWidth: 1, borderColor: goldAlpha.accent }
+                      : { borderWidth: 1, borderColor: onVoid.hairline }),
+                  }}
+                >
+                  <Txt size={12.5} weight={on ? 'bold' : 'regular'} color={on ? gold.base : onVoid.muted}>
+                    {k === 'standings' ? t.standings : t.fixtures}
+                  </Txt>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {tab === 'standings' ? (
+            <StandingsTable rows={cup.standings} />
+          ) : (
+            <View style={{ gap: 18 }}>
+              {rounds.map((round) => (
+                <View key={round} style={{ gap: 8 }}>
+                  <Eyebrow>{t.roundN(num(round))}</Eyebrow>
+                  {cup.fixtures
+                    .filter((f) => f.round === round)
+                    .map((f) => (
+                      <View
+                        key={f.fixture_id}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 10,
+                          paddingVertical: 11,
+                          paddingHorizontal: 14,
+                          borderRadius: radius.control,
+                          backgroundColor: void_.surface,
+                          borderWidth: 1,
+                          borderColor: onVoid.edgeFaint,
+                        }}
+                      >
+                        <Txt
+                          size={13}
+                          weight="semibold"
+                          color={onVoid.primary}
+                          style={{ flex: 1, textAlign: 'right' }}
+                        >
+                          {f.home ?? t.bye}
+                        </Txt>
+                        <View
+                          style={{
+                            minWidth: 52,
+                            alignItems: 'center',
+                            paddingVertical: 3,
+                            paddingHorizontal: 8,
+                            borderRadius: radius.badge,
+                            borderWidth: 1,
+                            borderColor:
+                              f.state === 'played' ? goldAlpha.accent : onVoid.hairline,
+                          }}
+                        >
+                          <Txt
+                            size={12}
+                            weight="bold"
+                            color={f.state === 'played' ? gold.base : onVoid.dim}
+                            style={{ fontFamily: mono }}
+                          >
+                            {f.state === 'played'
+                              ? `${num(f.score_home ?? 0)}–${num(f.score_away ?? 0)}`
+                              : f.state === 'walkover'
+                                ? '—'
+                                : 'v'}
+                          </Txt>
+                        </View>
+                        <Txt size={13} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
+                          {f.away ?? t.bye}
+                        </Txt>
+                      </View>
+                    ))}
+                </View>
+              ))}
+            </View>
+          )}
+        </>
+      ) : null}
+    </Screen>
+  );
+}
+
+/** P-17's table. Horizontal scroll rather than squeezing eight columns. */
+function StandingsTable({ rows }: { rows: TournamentDetail['standings'] }) {
+  const { t, num } = useI18n();
+
+  if (rows.length === 0) {
+    return (
+      <Txt size={12.5} color={onVoid.dim}>
+        {t.noCups}
+      </Txt>
+    );
+  }
+
+  const Cell = ({ children, w = 26 }: { children: React.ReactNode; w?: number }) => (
+    <Txt
+      size={11.5}
+      color={onVoid.muted}
+      style={{ width: w, textAlign: 'center', fontFamily: mono }}
+    >
+      {children}
+    </Txt>
+  );
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={{ gap: 6, minWidth: '100%' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12 }}>
+          <Txt size={10} em={0.1} upper color={onVoid.dim} style={{ width: 130 }}>
+            {t.standings}
+          </Txt>
+          <Cell>{t.played}</Cell>
+          <Cell>{t.won}</Cell>
+          <Cell>{t.drawn}</Cell>
+          <Cell>{t.lost}</Cell>
+          <Cell w={34}>{t.goalDiff}</Cell>
+          <Cell w={34}>{t.points}</Cell>
+        </View>
+
+        {rows.map((r, i) => (
           <View
-            key={fx.when + fx.home}
+            key={r.team_id}
             style={{
-              padding: 14,
-              borderRadius: radius.row,
-              backgroundColor: void_.surface,
-              borderWidth: 1,
-              borderColor: fx.live ? goldAlpha.edge : onVoid.edge,
+              flexDirection: 'row',
+              alignItems: 'center',
               gap: 6,
+              paddingVertical: 10,
+              paddingHorizontal: 12,
+              borderRadius: radius.chip,
+              backgroundColor: i === 0 ? 'rgba(198,163,75,.08)' : void_.surface,
+              borderWidth: 1,
+              borderColor: i === 0 ? goldAlpha.edgeSoft : onVoid.edgeFaint,
             }}
           >
-            <Txt size={10} weight="bold" em={0.14} color={fx.live ? gold.base : onVoid.dim}>
-              {fx.live ? 'Tonight' : fx.when}
+            <Txt
+              size={13}
+              weight="semibold"
+              color={onVoid.primary}
+              numberOfLines={1}
+              style={{ width: 130 }}
+            >
+              {num(i + 1)}. {r.team_name}
             </Txt>
-            <Txt size={15} weight="semibold" color={onVoid.primary}>
-              {fx.home} vs {fx.away}
-            </Txt>
-            <Txt size={12} color={onVoid.faint}>
-              {fx.pitch}
+            <Cell>{num(r.played)}</Cell>
+            <Cell>{num(r.won)}</Cell>
+            <Cell>{num(r.drawn)}</Cell>
+            <Cell>{num(r.lost)}</Cell>
+            <Cell w={34}>{r.gd > 0 ? `+${num(r.gd)}` : num(r.gd)}</Cell>
+            <Txt
+              size={13}
+              weight="bold"
+              color={gold.base}
+              style={{ width: 34, textAlign: 'center', fontFamily: mono }}
+            >
+              {num(r.points)}
             </Txt>
           </View>
         ))}
       </View>
-
-      <Txt size={12} lh={1.5} color={onVoid.dim}>
-        {CUP_RULES}
-      </Txt>
-
-      <Button label="Match lobby" onPress={() => router.push('/play/lobby')} />
-    </Screen>
+    </ScrollView>
   );
 }

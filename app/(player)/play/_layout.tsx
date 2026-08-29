@@ -2,9 +2,11 @@ import { Stack } from 'expo-router';
 import { void_ } from '@/theme/tokens';
 
 /**
- * Everything downstream of Play — pitch, checkout, confirmation and the match
- * lobby — lives inside the Play tab, which is what keeps the Play tick gold
- * through the whole booking flow, as the design does.
+ * Everything downstream of Play — pitch, checkout, confirmation, the match
+ * lobby, filling a squad, reporting the result and rating it afterwards — lives
+ * inside the Play tab,
+ * which is what keeps the Play tick gold through the whole booking flow, as the
+ * design does.
  */
 export default function PlayLayout() {
   return (
@@ -14,6 +16,9 @@ export default function PlayLayout() {
       <Stack.Screen name="checkout" />
       <Stack.Screen name="confirmation" />
       <Stack.Screen name="lobby" />
+      <Stack.Screen name="invite" />
+      <Stack.Screen name="result" />
+      <Stack.Screen name="rate" />
     </Stack>
   );
 }

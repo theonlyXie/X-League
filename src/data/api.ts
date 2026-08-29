@@ -188,9 +188,12 @@ export async function recordOfflineBooking(
 }
 
 export type OwnerCell = {
+  pitchId: string;
   pitchLabel: string;
   hour: number;
   startsAt: string;
+  /** The booking occupying this hour, when there is one. */
+  bookingId: string | null;
   state: BookingState | null;
   source: BookingSource;
   code: string | null;
@@ -207,9 +210,11 @@ export async function ownerDay(venueId: string, date: string): Promise<OwnerCell
   if (error) throw error;
   return (
     data as {
+      pitch_id: string;
       pitch_label: string;
       hour: number;
       starts_at: string;
+      booking_id: string | null;
       state: BookingState | null;
       source: BookingSource;
       code: string | null;
@@ -217,9 +222,11 @@ export async function ownerDay(venueId: string, date: string): Promise<OwnerCell
       price_egp: number;
     }[]
   ).map((r) => ({
+    pitchId: r.pitch_id,
     pitchLabel: r.pitch_label,
     hour: r.hour,
     startsAt: r.starts_at,
+    bookingId: r.booking_id,
     state: r.state,
     source: r.source,
     code: r.code,
@@ -317,7 +324,14 @@ export type Arrival = {
   source: BookingSource;
   code: string | null;
   captainName: string | null;
-  depositEgp: number;
+  /**
+   * What is still owed on this booking, from `payment_reference`. It used to
+   * be `booking.deposit_egp`, which the no-deposit change set to zero on every
+   * row — so the gate was told to collect nothing from anybody.
+   */
+  dueEgp: number;
+  /** Whether the venue has already taken the cash. */
+  paid: boolean;
   checkedIn: boolean;
 };
 
@@ -336,7 +350,8 @@ export async function ownerArrivals(venueId: string, date: string): Promise<Arri
     source: r.source,
     code: r.code,
     captainName: r.captain_name,
-    depositEgp: r.deposit_egp,
+    dueEgp: r.due_egp,
+    paid: r.paid,
     checkedIn: r.checked_in,
   }));
 }
@@ -364,40 +379,3 @@ export async function ownerSummary(venueId: string, date: string): Promise<Owner
     conflicts: r.conflicts,
   };
 }
-
-export type PlayerVenueRow = {
-  venueId: string;
-  venueName: string;
-  area: string;
-  verification: string;
-  lat: number;
-  lon: number;
-  pitchId: string;
-  pitchLabel: string;
-  hourlyEgp: number;
-};
-
-/** Venues and pitches the player can browse (requires seed_demo_evening migration). */
-export async function listPlayerVenues(): Promise<PlayerVenueRow[]> {
-  const { data, error } = await supabase().rpc('list_player_venues');
-  if (error) throw error;
-  return (data as Record<string, unknown>[]).map((r) => ({
-    venueId: r.venue_id as string,
-    venueName: r.venue_name as string,
-    area: r.area as string,
-    verification: r.verification as string,
-    lat: Number(r.lat),
-    lon: Number(r.lon),
-    pitchId: r.pitch_id as string,
-    pitchLabel: r.pitch_label as string,
-    hourlyEgp: Number(r.hourly_egp),
-  }));
-}
-
-/** Idempotent demo seed — run once on a fresh project. */
-export async function seedDemoEvening(): Promise<{ ok: boolean; skipped?: boolean; venues?: number }> {
-  const { data, error } = await supabase().rpc('seed_demo_evening');
-  if (error) throw error;
-  return data as { ok: boolean; skipped?: boolean; venues?: number };
-}
-

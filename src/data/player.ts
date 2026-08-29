@@ -1,18 +1,30 @@
 /**
  * Fixture data for the player surface, carried over verbatim from
  * `XL Player.dc.html`. The booking spine is one real evening: Basel Elsayed
- * holds the 9 PM slot on Pitch A at Stadium One, cash deposit at the gate.
+ * holds the 9 PM slot on Pitch A at Stadium One, paid in cash at the venue.
  */
 
-export type SlotTime = '6:00' | '7:00' | '8:00' | '9:00' | '10:00' | '11:00';
+/**
+ * A sellable hour, identified by its 24-hour hour: `'21'` is 9 PM.
+ *
+ * It was a union of the design's six evening hours, which made the type a
+ * claim about every venue in Egypt: a pitch selling 2 PM to 6 PM had no
+ * representable slot at all. Widening it to a display label was not enough
+ * either — a venue open 10:00 to midnight produced two chips both reading
+ * `10:00`, and since the label was the identity, `taken`, `slotPrices` and the
+ * selection all collided on it. Tapping the evening chip held the morning
+ * hour. The hour is the identity now; the label is only ever a rendering of
+ * it, through `hourLabel`, which knows about AM.
+ */
+export type SlotTime = string;
 
-/** Every hour the venue calendar exposes tonight. */
-export const SLOT_TIMES: SlotTime[] = ['6:00', '7:00', '8:00', '9:00', '10:00', '11:00'];
+/** The design's evening, for the demo build and the signed-out visitor. */
+export const SLOT_TIMES: SlotTime[] = ['18', '19', '20', '21', '22', '23'];
 
 /** Hours already sold — through any channel, which is the whole point. */
-export const SLOTS_TAKEN: SlotTime[] = ['6:00', '11:00'];
+export const SLOTS_TAKEN: SlotTime[] = ['18', '23'];
 
-export const DEFAULT_SLOT: SlotTime = '9:00';
+export const DEFAULT_SLOT: SlotTime = '21';
 
 /** §5.4: the hold is atomic and configurable; the design counts from 4:52. */
 export const HOLD_SECONDS = 292;
@@ -25,8 +37,6 @@ export const BOOKING = {
   date: 'Tue 18 Aug 2026',
   format: '5-a-side · 5 + 2 subs',
   hourly: 300,
-  deposit: 100,
-  balance: 200,
   bookingFee: 0,
   gateNote: 'Gate 2 · ask for Pitch A · arrive 10 minutes early',
   cancellation: 'Free cancellation until 3:00 PM today.',
@@ -40,8 +50,6 @@ export type Venue = {
   distanceKm: number;
   surface: string;
   hourly: number;
-  lat: number;
-  lng: number;
   /** Hours still saleable tonight; empty means fully booked. */
   open: string[];
   /** Hours shown struck through on the card. */
@@ -62,8 +70,6 @@ export const VENUES: Venue[] = [
     distanceKm: 2.1,
     surface: 'Artificial turf',
     hourly: 300,
-    lat: 30.0561,
-    lng: 31.3302,
     open: ['7:00', '8:00', '9:00', '10:00'],
     nextSlot: '9:00 PM',
     moreSlots: 3,
@@ -76,8 +82,6 @@ export const VENUES: Venue[] = [
     distanceKm: 3.4,
     surface: 'Indoor',
     hourly: 260,
-    lat: 30.0622,
-    lng: 31.3411,
     open: ['10:00'],
     gone: ['8:00'],
     note: '2 slots left tonight',
@@ -92,8 +96,6 @@ export const VENUES: Venue[] = [
     distanceKm: 4.8,
     surface: 'Artificial turf',
     hourly: 280,
-    lat: 30.0488,
-    lng: 31.3188,
     open: [],
     note: 'Fully booked tonight · notify me',
     nextSlot: '—',

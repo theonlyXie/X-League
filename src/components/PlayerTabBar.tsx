@@ -1,18 +1,68 @@
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
-import { useI18n } from '@/i18n';
-import { useMessages } from '@/state/messages';
-import { gold, onVoid, void_ } from '@/theme/tokens';
+import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import type { TabBarProps } from './tabBarTypes';
+import { usePathname } from 'expo-router';
+import { useI18n } from '@/i18n';
+import { useSession } from '@/state/session';
+import { unreadNotifications } from '@/data/social';
+import { isLive } from '@/lib/supabase';
 
-const ROUTES = ['index', 'play', 'cups', 'chat', 'me'] as const;
-const LABELS = ['tabs.home', 'tabs.play', 'tabs.cups', 'tabs.chat', 'tabs.me'] as const;
+/**
+ * The five-tab bar from option 1h, model one — labelled tabs with a gold tick
+ * on the active one, matching the spec's player IA (§3.1) one-to-one.
+ *
+ * Cups and Chat were drawn but inert while nothing stood behind them. Both are
+ * live now, and Chat carries an unread count, because a message nobody is told
+ * about is a message that did not arrive.
+ */
+const ITEMS: { label: string; route: string }[] = [
+  { label: 'Home', route: 'index' },
+  { label: 'Play', route: 'play' },
+  { label: 'Cups', route: 'cups' },
+  { label: 'Chat', route: 'chat' },
+  { label: 'Me', route: 'me' },
+];
 
 export function PlayerTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const { t } = useI18n();
-  const { unreadTotal } = useMessages();
+  const { t, num } = useI18n();
+  const { signedIn } = useSession();
+  const pathname = usePathname();
+  const [unread, setUnread] = useState(0);
+
+  // Polled rather than pushed: there is no realtime subscription yet, and a
+  // count that is a minute stale is still better than no count at all.
+  useEffect(() => {
+    if (!isLive || !signedIn) {
+      setUnread(0);
+      return;
+    }
+    let cancelled = false;
+    const read = () => {
+      unreadNotifications()
+        .then((n) => {
+          if (!cancelled) setUnread(n);
+        })
+        .catch(() => {});
+    };
+    read();
+    const timer = setInterval(read, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+    // Re-read on any navigation, not only a tab change: marking a
+    // notification read happens inside the notifications stack, where the tab
+    // index never moves, so the badge kept its old count until the tab bar
+    // itself remounted.
+  }, [signedIn, state.index, pathname]);
+
+  const label: Record<string, string> = {
+    Home: t.home, Play: t.play, Cups: t.cups, Chat: t.chat, Me: t.me,
+  };
   const activeRoute = state.routes[state.index]?.name;
 
   return (
@@ -28,21 +78,24 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
         paddingHorizontal: 6,
       }}
     >
-      {ROUTES.map((route, i) => {
-        const label = t(LABELS[i]!);
-        const active = route === activeRoute;
+      {ITEMS.map((item) => {
+        const active = item.route === activeRoute;
         const color = active ? gold.base : onVoid.dim;
-        const badge = route === 'chat' && unreadTotal > 0 ? unreadTotal : 0;
+        const badge = item.label === 'Chat' ? unread : 0;
 
         return (
           <Pressable
-            key={route}
+            key={item.label}
             accessibilityRole="tab"
-            accessibilityLabel={badge ? `${label}, ${badge}` : label}
+            accessibilityLabel={
+              badge > 0
+                ? `${label[item.label] ?? item.label}, ${badge} unread`
+                : (label[item.label] ?? item.label)
+            }
             accessibilityState={{ selected: active }}
             onPress={() => {
               if (active) return;
-              navigation.navigate(route as never);
+              navigation.navigate(item.route as never);
             }}
             style={{ flex: 1, alignItems: 'center', paddingTop: 11, gap: 7 }}
           >
@@ -54,24 +107,27 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
                 backgroundColor: active ? gold.base : 'transparent',
               }}
             />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View>
               <Txt size={10.5} weight="semibold" color={color}>
-                {label}
+                {label[item.label] ?? item.label}
               </Txt>
-              {badge ? (
+              {badge > 0 ? (
                 <View
                   style={{
-                    minWidth: 14,
-                    height: 14,
-                    borderRadius: 7,
+                    position: 'absolute',
+                    top: -6,
+                    right: -12,
+                    minWidth: 15,
+                    height: 15,
+                    paddingHorizontal: 4,
+                    borderRadius: radius.pill,
                     backgroundColor: gold.base,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    paddingHorizontal: 3,
                   }}
                 >
-                  <Txt size={8} weight="bold" color={void_.bg}>
-                    {badge > 9 ? '9+' : badge}
+                  <Txt size={9} weight="bold" color={void_.bg}>
+                    {num(Math.min(badge, 99))}
                   </Txt>
                 </View>
               ) : null}

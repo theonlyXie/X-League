@@ -2,24 +2,32 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
-import { useI18n } from '@/i18n';
+import { ChevronDown } from './icons';
 import { gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { VENUE } from '@/data/owner';
-import { useMyVenueSubmission } from '@/state/venues';
+import { useSession } from '@/state/session';
 import type { TabBarProps } from './tabBarTypes';
+import { useI18n } from '@/i18n';
 
-const ROUTES = ['index', 'calendar', 'bookings', 'customers', 'more'] as const;
-const LABELS = [
-  'ownerTabs.today',
-  'ownerTabs.calendar',
-  'ownerTabs.bookings',
-  'ownerTabs.customers',
-  'ownerTabs.more',
-] as const;
+/**
+ * Owner mode runs in Operative: bone surfaces, denser type, 8–12 px corners.
+ * It is shift software, so the active tab is ink rather than gold — gold stays
+ * reserved for money and for the app-sourced booking.
+ *
+ * The last three tabs were drawn but inert. They now carry the rest of §4.5:
+ * what the venue is owed (O-06), what players said (O-08), and the
+ * configuration behind both (O-03, O-04, O-05, O-07).
+ */
+const ITEMS: { label: string; route: string }[] = [
+  { label: 'Today', route: 'index' },
+  { label: 'Calendar', route: 'calendar' },
+  { label: 'Money', route: 'money' },
+  { label: 'Reviews', route: 'reviews' },
+  { label: 'Setup', route: 'setup' },
+];
 
 export function OwnerTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const { t } = useI18n();
   const activeRoute = state.routes[state.index]?.name;
 
   return (
@@ -35,19 +43,18 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
         paddingHorizontal: 6,
       }}
     >
-      {ROUTES.map((route, i) => {
-        const label = t(LABELS[i]!);
-        const active = route === activeRoute;
+      {ITEMS.map((item) => {
+        const active = item.route === activeRoute;
         const color = active ? ink : onOperative.dim;
         return (
           <Pressable
-            key={route}
+            key={item.label}
             accessibilityRole="tab"
-            accessibilityLabel={label}
+            accessibilityLabel={item.label}
             accessibilityState={{ selected: active }}
             onPress={() => {
               if (active) return;
-              navigation.navigate(route as never);
+              navigation.navigate(item.route as never);
             }}
             style={{ flex: 1, alignItems: 'center', paddingTop: 11, gap: 7 }}
           >
@@ -55,7 +62,7 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
               style={{ width: 16, height: 2, borderRadius: 2, backgroundColor: active ? ink : 'transparent' }}
             />
             <Txt size={10.5} weight="semibold" color={color}>
-              {label}
+              {item.label}
             </Txt>
           </Pressable>
         );
@@ -64,16 +71,16 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
   );
 }
 
+/**
+ * The venue header. Its OWNER chip is the workspace switch back to Player Mode
+ * — RBAC-005: more than one role under one identity, no sign-out.
+ */
 export function OwnerHeader() {
+  const { t, longDate } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { t, language, setLanguage } = useI18n();
-  const { mine } = useMyVenueSubmission();
-  const venueName = mine?.status === 'approved' ? mine.name : VENUE.name;
-  const shift =
-    mine?.status === 'approved' ? t('owner.shiftOwner', { area: mine.area }) : VENUE.shift;
-  const nextLang = language === 'ar' ? 'en' : 'ar';
-  const langLabel = language === 'ar' ? 'EN' : 'ع';
+  const { venues, activeVenue, setActiveVenue } = useSession();
+  const venue = activeVenue;
 
   return (
     <View style={{ backgroundColor: operative.bg, paddingTop: insets.top }}>
@@ -87,41 +94,44 @@ export function OwnerHeader() {
           justifyContent: 'space-between',
           borderBottomWidth: 1,
           borderBottomColor: onOperative.edge,
-          gap: 10,
         }}
       >
-        <View style={{ gap: 2, flex: 1 }}>
-          <Txt size={18} weight="bold" em={-0.02} color={ink}>
-            {venueName}
-          </Txt>
+        <View style={{ gap: 2 }}>
+          {/* The venue this person actually works at. Every owner screen used
+              to be headed "Stadium One · Tue 18 Aug · evening shift" whoever
+              was signed in and whatever the date — a fixture in the one place
+              a header is meant to tell you where you are. */}
+          {/* A manager of two venues could only ever operate the first: every
+              owner screen read `venues[0]` and no picker existed anywhere, so
+              the second venue was invisible from every screen in the product. */}
+          {venues.length > 1 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${venue?.name ?? ''}. ${t.ownSwitchVenue}`}
+              onPress={() => {
+                const i = venues.findIndex((v) => v.venueId === venue?.venueId);
+                setActiveVenue(venues[(i + 1) % venues.length].venueId);
+              }}
+              hitSlop={8}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <Txt size={18} weight="bold" em={-0.02} color={ink} numberOfLines={1}>
+                {venue?.name ?? VENUE.name}
+              </Txt>
+              <ChevronDown size={14} color={onOperative.muted} />
+            </Pressable>
+          ) : (
+            <Txt size={18} weight="bold" em={-0.02} color={ink} numberOfLines={1}>
+              {venue?.name ?? VENUE.name}
+            </Txt>
+          )}
           <Txt size={11} color={onOperative.muted}>
-            {shift}
+            {venue ? longDate(new Date().toISOString()) : VENUE.shift}
           </Txt>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={nextLang === 'ar' ? t('language.switchToArabic') : t('language.switchToEnglish')}
-          hitSlop={8}
-          onPress={() => void setLanguage(nextLang)}
-          style={({ pressed }) => ({
-            minWidth: 36,
-            height: 30,
-            paddingHorizontal: 10,
-            borderRadius: radius.denseChip,
-            borderWidth: 1,
-            borderColor: 'rgba(20,18,16,.18)',
-            backgroundColor: pressed ? 'rgba(198,163,75,.2)' : 'rgba(255,255,255,.7)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          })}
-        >
-          <Txt size={12} weight="bold" color={gold.ink}>
-            {langLabel}
-          </Txt>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('owner.leaveOwner')}
+          accessibilityLabel={t.ownSwitchBack}
           hitSlop={12}
           onPress={() => router.replace('/')}
           style={{
@@ -145,7 +155,7 @@ export function OwnerHeader() {
             }}
           />
           <Txt size={10} weight="bold" em={0.12} color={gold.base}>
-            {t('owner.switchPlayer')}
+            OWNER
           </Txt>
         </Pressable>
       </View>

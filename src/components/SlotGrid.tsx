@@ -4,6 +4,7 @@ import { Txt } from './Txt';
 import { hitSlopTo44 } from './ui';
 import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { SlotTime } from '@/data/player';
+import { useI18n } from '@/i18n';
 
 /**
  * The hour grid on the pitch page — option 1f, the "chips" model: thumb-safe
@@ -27,6 +28,7 @@ export function SlotGrid({
   columns?: number;
   gap?: number;
 }) {
+  const { t: strings, hourLabel } = useI18n();
   const [width, setWidth] = useState(0);
   const cell = width > 0 ? (width - gap * (columns - 1)) / columns : 0;
 
@@ -38,12 +40,17 @@ export function SlotGrid({
       {times.map((t) => {
         const isTaken = taken.includes(t);
         const on = t === selected;
+        // The chip is a rendering of the hour, not the hour itself. It used to
+        // draw the identity directly and append "PM" — so a venue open from 10
+        // in the morning drew two chips reading `10:00`, one of them the wrong
+        // hour, and told a screen-reader user both were in the evening.
+        const label = hourLabel(Number(t));
         return (
           <Pressable
             key={t}
             accessibilityRole="radio"
             accessibilityState={{ selected: on, disabled: isTaken }}
-            accessibilityLabel={isTaken ? `${t} PM, already booked` : `${t} PM`}
+            accessibilityLabel={isTaken ? strings.slotTaken(label) : label}
             disabled={isTaken}
             onPress={() => onSelect(t)}
             hitSlop={hitSlopTo44(40)}
@@ -65,7 +72,7 @@ export function SlotGrid({
               color={on ? void_.bg : isTaken ? onVoid.disabled : 'rgba(243,238,229,.72)'}
               style={isTaken ? { textDecorationLine: 'line-through' } : undefined}
             >
-              {t}
+              {label}
             </Txt>
           </Pressable>
         );

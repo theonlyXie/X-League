@@ -15,6 +15,23 @@ export const face = {
 
 export type Weight = keyof typeof face;
 
+/**
+ * §4.1 pairs Inter with IBM Plex Sans Arabic for RTL. The Arabic family has no
+ * ExtraBold, so the heaviest weight maps to Bold rather than falling back to a
+ * synthesised face that renders differently on each platform.
+ */
+export const arabicFace: Record<Weight, string> = {
+  regular: 'IBMPlexSansArabic_400Regular',
+  medium: 'IBMPlexSansArabic_500Medium',
+  semibold: 'IBMPlexSansArabic_600SemiBold',
+  bold: 'IBMPlexSansArabic_700Bold',
+  extrabold: 'IBMPlexSansArabic_700Bold',
+};
+
+/** The family for a weight in the active script. */
+export const familyFor = (weight: Weight, arabic: boolean) =>
+  arabic ? arabicFace[weight] : face[weight];
+
 /** Map the design's numeric weights onto the loaded faces. */
 export const weightForCss: Record<string, Weight> = {
   '400': 'regular',

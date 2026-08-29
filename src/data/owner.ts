@@ -25,13 +25,16 @@ export type Arrival = {
   badge?: string;
   detail: string;
   /** Money line — gold when it is cash to collect, burgundy when it is owed. */
-  money?: { text: string; tone: 'due' | 'unpaid' };
+  money?: { text: string; tone: 'due' | 'unpaid'; amount?: string };
   /** The app booking that just landed gets the highlighted treatment. */
   justBooked?: { code: string };
-  /** Live booking id for cash check-in RPC. */
+  /** Present when the row came from the venue calendar rather than fixtures. */
   bookingId?: string;
   checkedIn?: boolean;
-  depositEgp?: number;
+  /** What is still owed on this booking, from the ledger. */
+  dueEgp?: number;
+  /** The booking's own state, so a no-show stays visible as one. */
+  state?: string;
 };
 
 export const ARRIVALS: Arrival[] = [
@@ -68,7 +71,17 @@ export const OPEN_TONIGHT = {
   detail: '7:00 PM · 8:00 PM Pitch B · 11:00 PM',
 };
 
-export type Cell = { source: BookingSource; title: string; detail: string };
+export type Cell = {
+  source: BookingSource;
+  title: string;
+  detail: string;
+  /** When the cell came from a real calendar — what tapping it can act on. */
+  startsAt?: string;
+  pitchId?: string;
+  pitchLabel?: string;
+  priceEgp?: number;
+  bookingId?: string;
+};
 export type CalendarRow = { time: string; a: Cell; b: Cell; c: Cell };
 
 const cell = (source: BookingSource, title: string, detail: string): Cell => ({ source, title, detail });

@@ -1,162 +1,180 @@
-import { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { useI18n } from '@/i18n';
-import type { I18nKey } from '@/i18n';
+import { Button, Eyebrow } from '@/components/ui';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import type { ThreadKind } from '@/data/chat';
-import { useMessages } from '@/state/messages';
-
-const FILTERS: { id: 'all' | ThreadKind; key: I18nKey }[] = [
-  { id: 'all', key: 'chat.filterAll' },
-  { id: 'match', key: 'chat.filterMatch' },
-  { id: 'venue', key: 'chat.filterVenue' },
-  { id: 'cup', key: 'chat.filterCup' },
-];
+import { myConversations, type ConversationSummary } from '@/data/social';
+import { useSession } from '@/state/session';
+import { useI18n } from '@/i18n';
+import { isLive } from '@/lib/supabase';
 
 /**
- * P-10 Inbox — match, venue and cup threads only (§4.3).
+ * P-12 — every room this player is in.
+ *
+ * The rooms are derived from relationships that already exist: a squad, a team,
+ * or two people who have shared a pitch. There is deliberately no "new message"
+ * button here, because there is no way to start a conversation with a stranger
+ * — the way in is the lobby you were invited to or the team you joined.
  */
-export default function ChatInbox() {
+export default function ChatList() {
   const router = useRouter();
-  const { t } = useI18n();
-  const { threads, unreadTotal } = useMessages();
-  const [filter, setFilter] = useState<'all' | ThreadKind>('all');
+  const { signedIn } = useSession();
+  const { t, num, hour, shortDate } = useI18n();
 
-  const rows = useMemo(
-    () => (filter === 'all' ? threads : threads.filter((th) => th.kind === filter)),
-    [threads, filter],
-  );
+  const [rooms, setRooms] = useState<ConversationSummary[]>([]);
+  const [loading, setLoading] = useState(isLive);
+  /** §4.7: a list we could not read is not an empty list. */
+  const [unreachable, setUnreachable] = useState(false);
+  const [nonce, setNonce] = useState(0);
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
 
-  const kindLabel = (kind: ThreadKind) =>
-    kind === 'match' ? t('chat.kindMatch') : kind === 'venue' ? t('chat.kindVenue') : t('chat.kindCup');
+  useEffect(() => {
+    if (!isLive || !signedIn) {
+      setLoading(false);
+      setRooms([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const rows = await myConversations();
+        if (!cancelled) {
+          setRooms(rows);
+          setUnreachable(false);
+        }
+      } catch {
+        // "You have no conversations" and "we could not read them" are
+        // different sentences, and only one of them is ever true here.
+        if (!cancelled) {
+          setRooms([]);
+          setUnreachable(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn, nonce]);
+
+  const sameDay = (iso: string) =>
+    new Date(iso).toDateString() === new Date().toDateString();
 
   return (
-    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 14 }}>
-      <View style={{ gap: 4, paddingRight: 48 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-            <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-              {t('chat.title')}
-            </Txt>
-            {unreadTotal > 0 ? (
-              <Txt size={12} weight="semibold" color={gold.base}>
-                {unreadTotal}
-              </Txt>
-            ) : null}
-          </View>
-          <Txt size={13} color={onVoid.faint}>
-            {t('chat.subtitle')}
+    <Screen
+      contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}
+      refreshControl={
+        isLive && signedIn ? (
+          <RefreshControl refreshing={loading} onRefresh={reload} tintColor={gold.base} colors={[gold.base]} />
+        ) : undefined
+      }
+    >
+      <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
+        {t.chatTitle}
+      </Txt>
+
+      {isLive && !signedIn ? (
+        <View style={{ gap: 12, alignItems: 'flex-start' }}>
+          <Txt size={13} color={onVoid.muted}>
+            {t.signedOutHomeBlurb}
+          </Txt>
+          <Button label={t.signIn} height={44} onPress={() => router.push('/sign-in?next=/chat')} />
+        </View>
+      ) : null}
+
+      {loading && rooms.length === 0 ? (
+        <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+          <ActivityIndicator color={gold.base} />
+        </View>
+      ) : null}
+
+      {!loading && signedIn && rooms.length === 0 ? (
+        <View style={{ gap: 6 }}>
+          <Txt size={15} weight="semibold" color={onVoid.primary}>
+            {unreachable ? t.listUnreachable : t.noConversations}
+          </Txt>
+          <Txt size={12.5} lh={1.55} color={onVoid.muted}>
+            {unreachable ? t.listUnreachableBlurb : t.noConversationsBlurb}
           </Txt>
         </View>
+      ) : null}
 
-        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-          {FILTERS.map((f) => {
-            const on = f.id === filter;
-            return (
-              <Pressable
-                key={f.id}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                onPress={() => setFilter(f.id)}
-                style={{
-                  paddingVertical: 6,
-                  paddingHorizontal: 10,
-                  borderRadius: radius.denseChip,
-                  ...(on
-                    ? { backgroundColor: gold.base }
-                    : { borderWidth: 1, borderColor: onVoid.hairline }),
-                }}
-              >
-                <Txt size={11.5} weight="semibold" color={on ? void_.bg : onVoid.secondary}>
-                  {t(f.key)}
-                </Txt>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {rows.length === 0 ? (
-          <View
-            style={{
-              padding: 18,
+      <View style={{ gap: 8 }}>
+        {rooms.map((room) => (
+          <Pressable
+            key={room.conversationId}
+            accessibilityRole="button"
+            accessibilityLabel={
+              room.unread > 0 ? `${room.title}, ${room.unread} unread` : room.title
+            }
+            onPress={() => router.push(`/chat/${room.conversationId}`)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              paddingVertical: 13,
+              paddingHorizontal: 14,
               borderRadius: radius.control,
-              borderWidth: 1,
-              borderColor: onVoid.edge,
               backgroundColor: void_.surface,
-            }}
+              borderWidth: 1,
+              borderColor: room.unread > 0 ? goldAlpha.edgeSoft : pressed ? goldAlpha.edge : onVoid.edgeFaint,
+            })}
           >
-            <Txt size={14} color={onVoid.muted}>
-              {t('chat.empty')}
-            </Txt>
-          </View>
-        ) : (
-          rows.map((thread) => (
-            <Pressable
-              key={thread.id}
-              accessibilityRole="button"
-              accessibilityLabel={`${thread.title}. ${thread.preview}`}
-              onPress={() => router.push(`/chat/${thread.id}`)}
-              style={({ pressed }) => ({
-                padding: 14,
-                borderRadius: radius.control,
-                backgroundColor: void_.surface,
-                borderWidth: 1,
-                borderColor: thread.unread ? goldAlpha.edgeSoft : pressed ? goldAlpha.edge : onVoid.edgeFaint,
-                flexDirection: 'row',
-                gap: 12,
-                alignItems: 'flex-start',
-              })}
+            <View
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: radius.pill,
+                backgroundColor: void_.inset,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: radius.pill,
-                  backgroundColor: void_.inset,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Txt size={9} weight="bold" em={0.06} color={gold.base}>
-                  {kindLabel(thread.kind)}
+              <Txt size={11} weight="bold" color={gold.base}>
+                {room.title.slice(0, 2).toUpperCase()}
+              </Txt>
+            </View>
+
+            <View style={{ flex: 1, gap: 3 }}>
+              <Txt size={14} weight="semibold" color={onVoid.primary}>
+                {room.title}
+              </Txt>
+              <Txt size={11.5} color={onVoid.faint} numberOfLines={1}>
+                {room.lastBody ?? t.noMessages}
+              </Txt>
+            </View>
+
+            <View style={{ alignItems: 'flex-end', gap: 5 }}>
+              {room.lastAt ? (
+                <Txt size={10.5} color={onVoid.dim}>
+                  {sameDay(room.lastAt) ? hour(room.lastAt) : shortDate(room.lastAt)}
                 </Txt>
-              </View>
-              <View style={{ flex: 1, gap: 3 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-                  <Txt size={14.5} weight="semibold" color={onVoid.primary} style={{ flex: 1 }} numberOfLines={1}>
-                    {thread.title}
-                  </Txt>
-                  <Txt size={11} color={onVoid.dim}>
-                    {thread.when}
-                  </Txt>
-                </View>
-                <Txt size={12.5} color={onVoid.faint} numberOfLines={2}>
-                  {thread.preview}
-                </Txt>
-              </View>
-              {thread.unread ? (
+              ) : null}
+              {room.unread > 0 ? (
                 <View
                   style={{
                     minWidth: 18,
                     height: 18,
+                    paddingHorizontal: 5,
                     borderRadius: radius.pill,
                     backgroundColor: gold.base,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    paddingHorizontal: 5,
-                    marginTop: 2,
                   }}
                 >
                   <Txt size={10} weight="bold" color={void_.bg}>
-                    {thread.unread}
+                    {num(room.unread)}
                   </Txt>
                 </View>
               ) : null}
-            </Pressable>
-          ))
-        )}
+            </View>
+          </Pressable>
+        ))}
+      </View>
     </Screen>
   );
 }

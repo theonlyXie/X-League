@@ -34,6 +34,15 @@ export function ChevronLeft({ size = 20, color }: IconProps) {
   );
 }
 
+/** Points at a list that opens below — the venue switch in Owner Mode. */
+export function ChevronDown({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Polyline points="5,8 10,14 15,8" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}
+
 export function MoreHorizontal({ size = 20, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
