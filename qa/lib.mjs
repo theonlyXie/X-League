@@ -76,6 +76,13 @@ export const SETTLE_MS = Number(process.env.QA_SETTLE_MS ?? 5000);
 const QUIET_MS = Number(process.env.QA_QUIET_MS ?? 900);
 
 /**
+ * Long enough for a mount effect to have issued its first request.
+ *
+ * Without this, `networkidle` below answers before the fetching has begun.
+ */
+const EFFECT_MS = Number(process.env.QA_EFFECT_MS ?? 600);
+
+/**
  * Go to a route and wait for it to render.
  *
  * Expo's web build paints after hydration, so a `load` event means the bundle
@@ -93,11 +100,20 @@ export async function visit(page, route, { settleMs = SETTLE_MS } = {}) {
     })
     .catch(() => {});
 
-  // The errors that matter most arrive *after* paint, from the effects that
-  // fetch. Waiting for the network to go quiet targets that directly; a fixed
-  // sleep only guesses at it, and guessing short is how a console assertion
-  // silently becomes a coin flip. The three 401s this harness found on its
-  // first run were exactly this shape.
+  // Order matters here, and getting it wrong is not a small mistake: it makes
+  // the console assertion silently stop working.
+  //
+  // The errors worth catching arrive *after* paint, from the effects that
+  // fetch — the three 401s this harness found on its first run were exactly
+  // that shape. But an effect fires a tick after the paint it follows, so
+  // asking for `networkidle` immediately gets "idle" back for the wrong
+  // reason: the request has not started yet. Verified by planting one of
+  // those 401s back in and watching the check pass.
+  //
+  // So: give the effects a beat to start, then wait for the network they
+  // started to finish, then keep listening a little longer for whatever the
+  // failure logs.
+  await page.waitForTimeout(EFFECT_MS);
   await page.waitForLoadState('networkidle', { timeout: settleMs }).catch(() => {});
   await page.waitForTimeout(QUIET_MS);
 
