@@ -26,6 +26,7 @@ declare
   v_price integer;
   v_txt   text;
   v_num   numeric;
+  v_bool  boolean;
   h       hold_outcome;
   r       record;
 begin
@@ -185,6 +186,41 @@ begin
                       and r.reason = 'Somebody has already booked that hour. Cancel the booking first.';
 
   -- =========================================================================
+  -- O-01 The gate — what is owed, and taking it
+  -- =========================================================================
+  -- All three of these read `booking.deposit_egp`, which no_deposit set to
+  -- zero everywhere, so the screen a venue works its evening from said there
+  -- was no cash to collect from anybody.
+  select price_egp into v_price from booking where id = v_bk;
+
+  select due_egp into v_num from owner_arrivals(v_venue, current_date + 1)
+   where booking_id = v_bk;
+  return query select 'the arrival says what is owed at the gate',
+                      v_num::text, v_num = v_price;
+
+  select cash_due_egp into v_num from owner_summary(v_venue, current_date + 1);
+  return query select 'and the tile totals it', v_num::text, v_num >= v_price;
+
+  -- The default kind used to be `cash_deposit`, so the one call a gate makes
+  -- without thinking — record_payment(id) — refused.
+  select * into r from record_payment(v_bk);
+  return query select 'the cash can be taken without naming a kind',
+                      coalesce(r.reason, 'collected'), r.ok;
+
+  select due_egp into v_num from owner_arrivals(v_venue, current_date + 1)
+   where booking_id = v_bk;
+  return query select 'and then nothing is owed', v_num::text, v_num = 0;
+
+  select paid into v_bool from owner_arrivals(v_venue, current_date + 1)
+   where booking_id = v_bk;
+  return query select 'while the arrival still says it was paid', v_bool::text, v_bool;
+
+  -- A no-show has to stay on the shift, or the operator cannot see that they
+  -- marked it.
+  select count(*)::integer into v_n from owner_arrivals(v_venue, current_date + 1);
+  return query select 'and every channel is on the shift', v_n::text, v_n > 0;
+
+  -- =========================================================================
   -- O-05 Staff
   -- =========================================================================
   select * into r from set_venue_staff(v_venue, BASEL, 'staff');
@@ -234,16 +270,16 @@ begin
     from venue_payouts(v_venue, current_date + 1, current_date + 1);
   return query select 'the payout row states what was sold', v_num::text, v_num = v_n;
 
+  -- The gate took this one in O-01 above, and the payout row is where that
+  -- lands. It used to land nowhere a venue could see.
   select collected_egp into v_num
     from venue_payouts(v_venue, current_date + 1, current_date + 1);
-  return query select 'and nothing is collected until somebody collects it',
-                      v_num::text, v_num = 0;
-
-  perform record_payment(v_bk, 'balance', 'book 1 p3');
-  select collected_egp into v_num
-    from venue_payouts(v_venue, current_date + 1, current_date + 1);
-  return query select 'taking the cash at the gate moves it to collected',
+  return query select 'cash taken at the gate reaches the payout row',
                       v_num::text, v_num = v_price;
+
+  select outstanding_egp into v_num
+    from venue_payouts(v_venue, current_date + 1, current_date + 1);
+  return query select 'and stops being outstanding', v_num::text, v_num = v_n - v_price;
 
   -- Gross is unchanged by collecting: one is what was sold, the other what
   -- came in. Counting a booking once per payment row is how the two drift.

@@ -7,13 +7,22 @@ import { today } from '@/data/venue';
 /**
  * O-01's arrivals and tiles, from the venue's own calendar.
  *
- * Scoped by the server to the venues the signed-in person works at (RBAC-002);
- * a person with no staff role gets nothing, and the screen falls back to the
- * design's sample shift rather than pretending.
+ * Scoped by the server to the venues the signed-in person works at (RBAC-002).
+ *
+ * Three states, not two. `showcase` is the demo build and the signed-out
+ * visitor, who are shown the design's sample shift because there is no venue
+ * to show them instead. A signed-in operator is never in that state: if their
+ * calendar cannot be read they get the error, and nothing else.
+ *
+ * That distinction used to be missing, and the consequence was the worst thing
+ * this app could do — a real venue whose network dropped was shown three
+ * invented arrivals, one of them instructing the gate to collect EGP 100 from
+ * a person who does not exist.
  */
 export function useOwnerToday() {
   const { venues, signedIn } = useSession();
   const venue = venues[0] ?? null;
+  const showcase = !isLive || !signedIn || !venue;
 
   const [arrivals, setArrivals] = useState<api.Arrival[] | null>(null);
   const [summary, setSummary] = useState<api.OwnerSummary | null>(null);
@@ -53,8 +62,12 @@ export function useOwnerToday() {
     summary,
     loading,
     error,
+    /** The screen is showing this venue's real evening. */
     live: arrivals !== null,
+    /** There is no venue to show, so the design's sample shift stands in. */
+    showcase,
     venueName: venue?.name ?? null,
+    venueId: venue?.venueId ?? null,
     reload: load,
   };
 }

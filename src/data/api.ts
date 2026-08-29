@@ -188,9 +188,12 @@ export async function recordOfflineBooking(
 }
 
 export type OwnerCell = {
+  pitchId: string;
   pitchLabel: string;
   hour: number;
   startsAt: string;
+  /** The booking occupying this hour, when there is one. */
+  bookingId: string | null;
   state: BookingState | null;
   source: BookingSource;
   code: string | null;
@@ -207,9 +210,11 @@ export async function ownerDay(venueId: string, date: string): Promise<OwnerCell
   if (error) throw error;
   return (
     data as {
+      pitch_id: string;
       pitch_label: string;
       hour: number;
       starts_at: string;
+      booking_id: string | null;
       state: BookingState | null;
       source: BookingSource;
       code: string | null;
@@ -217,9 +222,11 @@ export async function ownerDay(venueId: string, date: string): Promise<OwnerCell
       price_egp: number;
     }[]
   ).map((r) => ({
+    pitchId: r.pitch_id,
     pitchLabel: r.pitch_label,
     hour: r.hour,
     startsAt: r.starts_at,
+    bookingId: r.booking_id,
     state: r.state,
     source: r.source,
     code: r.code,
@@ -317,7 +324,14 @@ export type Arrival = {
   source: BookingSource;
   code: string | null;
   captainName: string | null;
-  depositEgp: number;
+  /**
+   * What is still owed on this booking, from `payment_reference`. It used to
+   * be `booking.deposit_egp`, which the no-deposit change set to zero on every
+   * row — so the gate was told to collect nothing from anybody.
+   */
+  dueEgp: number;
+  /** Whether the venue has already taken the cash. */
+  paid: boolean;
   checkedIn: boolean;
 };
 
@@ -336,7 +350,8 @@ export async function ownerArrivals(venueId: string, date: string): Promise<Arri
     source: r.source,
     code: r.code,
     captainName: r.captain_name,
-    depositEgp: r.deposit_egp,
+    dueEgp: r.due_egp,
+    paid: r.paid,
     checkedIn: r.checked_in,
   }));
 }

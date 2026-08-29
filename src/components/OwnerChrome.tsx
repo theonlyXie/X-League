@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
 import { gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { VENUE } from '@/data/owner';
+import { useSession } from '@/state/session';
 import type { TabBarProps } from './tabBarTypes';
 import { useI18n } from '@/i18n';
 
@@ -74,9 +75,11 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
  * — RBAC-005: more than one role under one identity, no sign-out.
  */
 export function OwnerHeader() {
-  const { t } = useI18n();
+  const { t, longDate } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { venues } = useSession();
+  const venue = venues[0] ?? null;
 
   return (
     <View style={{ backgroundColor: operative.bg, paddingTop: insets.top }}>
@@ -93,11 +96,15 @@ export function OwnerHeader() {
         }}
       >
         <View style={{ gap: 2 }}>
-          <Txt size={18} weight="bold" em={-0.02} color={ink}>
-            {VENUE.name}
+          {/* The venue this person actually works at. Every owner screen used
+              to be headed "Stadium One · Tue 18 Aug · evening shift" whoever
+              was signed in and whatever the date — a fixture in the one place
+              a header is meant to tell you where you are. */}
+          <Txt size={18} weight="bold" em={-0.02} color={ink} numberOfLines={1}>
+            {venue?.name ?? VENUE.name}
           </Txt>
           <Txt size={11} color={onOperative.muted}>
-            {VENUE.shift}
+            {venue ? longDate(new Date().toISOString()) : VENUE.shift}
           </Txt>
         </View>
         <Pressable

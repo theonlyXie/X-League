@@ -102,17 +102,24 @@ begin
   -- -------------------------------------------------------------------------
   -- After the cutoff
   -- -------------------------------------------------------------------------
-  -- A match *today*: the cutoff is an hour on the match day, so a booking three
-  -- days out has a cutoff three days out whatever hour is configured.
-  v_slot := ((current_date + interval '23 hours') at time zone 'Africa/Cairo');
+  -- The cutoff is an hour on the match day, so a booking three days out has a
+  -- cutoff three days out whatever hour is configured.
+  --
+  -- Two days out rather than tonight. This case used to book today at 23:00,
+  -- which stopped being a future hour every evening after 20:00 UTC — so the
+  -- suite went red every night, and a suite that is red every night is one
+  -- nobody reads. Nothing here depends on the match being today; what it
+  -- depends on is the cutoff having passed, and that is set below.
+  v_slot := ((current_date + interval '2 days 20 hours') at time zone 'Africa/Cairo');
   delete from booking where pitch_id = v_pitch and during && tstzrange(v_slot, v_slot + interval '1 hour');
   select * into h from hold_slot(v_pitch, v_slot, 60, 'Basel Elsayed');
   v_bk := h.booking_id;
   perform confirm_booking(v_bk);
 
   -- Move the policy rather than the clock: the cutoff is data, which is the
-  -- point of putting it in a table. Midnight on the match day has passed.
-  update policy_setting set value = 0 where key = 'cancellation_cutoff_hour';
+  -- point of putting it in a table. Forty-eight hours before the match day
+  -- lands on midnight this morning, which has passed at every hour of the day.
+  update policy_setting set value = -48 where key = 'cancellation_cutoff_hour';
   select free_now into v_bool from booking_terms(v_bk);
   return query select 'with the cutoff passed, cancelling is no longer free',
                       v_bool::text, v_bool = false;

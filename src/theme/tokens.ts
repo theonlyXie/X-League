@@ -44,8 +44,12 @@ export const gold = {
   base: '#C6A34B',
   /** Hover / pressed on Void surfaces. */
   hover: '#D4B25C',
-  /** Legible gold on Operative surfaces. */
-  ink: '#8A6C22',
+  /**
+   * Legible gold on Operative surfaces. Two shades darker than the design's
+   * `#8A6C22`, which came to 4.28:1 on the bone ground and 3.98:1 on the band
+   * — under AA in exactly the places it is used for a figure. 4.97:1 now.
+   */
+  ink: '#7E6220',
   /** Filled-cell border on Operative surfaces. */
   border: '#B08F35',
 } as const;
@@ -77,20 +81,37 @@ export const ink = '#141210';
 /**
  * Alpha ramps. The design writes these inline as `rgba(...)`; they are
  * enumerated here so a screen never has to guess an opacity.
+ *
+ * The text steps have been raised from the design's originals so that every
+ * one of them clears WCAG AA (4.5:1) on the darkest ground it is used against.
+ * The originals were a designer's ramp read off a calibrated monitor: `faint`
+ * came to 4.03:1, `dim` to 2.84:1, and on the Operative side `muted`, `faint`
+ * and `dim` came to 3.50, 3.01 and 2.60. Those are the values used for prices,
+ * kick-off times and the eyebrows that name every section, at 11–13 px, on a
+ * phone held outdoors in Cairo. Legibility is not a matter of taste.
+ *
+ * The ramp is compressed rather than flattened — the steps still descend, and
+ * still descend in the same order. On the Operative side they descend less far
+ * than they used to, because near-black ink on a warm bone ground simply has
+ * no room below about .59 alpha, which is the finding rather than a compromise.
+ *
+ * The non-text steps below `disabled` — hairlines and card edges — are left
+ * exactly as the design drew them. They carry no text and AA does not reach
+ * them.
  */
 export const onVoid = {
-  /** Primary text. */
+  /** Primary text. 17.4:1 */
   primary: bone,
-  /** Secondary body copy. */
-  secondary: 'rgba(243,238,229,.6)',
-  /** Supporting detail. */
-  muted: 'rgba(243,238,229,.5)',
-  /** Metadata. */
-  faint: 'rgba(243,238,229,.45)',
-  /** Section eyebrows and inactive tabs. */
-  dim: 'rgba(243,238,229,.35)',
-  /** Struck-through / unavailable. */
-  disabled: 'rgba(243,238,229,.2)',
+  /** Secondary body copy. 8.9:1 */
+  secondary: 'rgba(243,238,229,.72)',
+  /** Supporting detail. 6.8:1 */
+  muted: 'rgba(243,238,229,.62)',
+  /** Metadata. 5.6:1 */
+  faint: 'rgba(243,238,229,.55)',
+  /** Section eyebrows and inactive tabs. 4.6:1 */
+  dim: 'rgba(243,238,229,.49)',
+  /** Struck-through / unavailable. 3.0:1 — a sold hour still has to be read. */
+  disabled: 'rgba(243,238,229,.36)',
   /** Strong hairline. */
   line: 'rgba(243,238,229,.16)',
   /** Standard hairline. */
@@ -102,12 +123,18 @@ export const onVoid = {
 } as const;
 
 export const onOperative = {
+  /** 15.9:1 */
   primary: ink,
-  secondary: 'rgba(20,18,16,.62)',
-  muted: 'rgba(20,18,16,.5)',
-  faint: 'rgba(20,18,16,.45)',
-  dim: 'rgba(20,18,16,.4)',
-  disabled: 'rgba(20,18,16,.28)',
+  /** 8.6:1 */
+  secondary: 'rgba(20,18,16,.78)',
+  /** 6.5:1 */
+  muted: 'rgba(20,18,16,.7)',
+  /** 5.3:1 */
+  faint: 'rgba(20,18,16,.64)',
+  /** 4.5:1 */
+  dim: 'rgba(20,18,16,.6)',
+  /** 3.0:1 */
+  disabled: 'rgba(20,18,16,.46)',
   line: 'rgba(20,18,16,.18)',
   hairline: 'rgba(20,18,16,.1)',
   edge: 'rgba(20,18,16,.09)',

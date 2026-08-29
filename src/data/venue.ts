@@ -26,3 +26,22 @@ export const DEMO_VENUE_ID = process.env.EXPO_PUBLIC_VENUE_ID ?? '';
 export function today(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: VENUE_TIMEZONE });
 }
+
+/**
+ * A date `offset` days from today, in the venue's zone.
+ *
+ * Callers used to reach for `new Date(...).toISOString().slice(0, 10)`, which
+ * is UTC. Cairo runs two or three hours ahead, so after about 9 PM local that
+ * returns *yesterday* — and the server correctly refuses to sell yesterday. It
+ * made "Tonight" empty for exactly the people browsing at peak booking hour.
+ */
+export function dateFromToday(offset: number): string {
+  return addDays(today(), offset);
+}
+
+/** `2026-08-29` plus n days, as calendar arithmetic rather than clock arithmetic. */
+export function addDays(date: string, offset: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const when = new Date(Date.UTC(y, m - 1, d + offset));
+  return when.toISOString().slice(0, 10);
+}

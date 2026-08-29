@@ -76,6 +76,13 @@ export function Button({
           backgroundColor: v.bg,
           alignItems: 'center',
           justifyContent: 'center',
+          // Most buttons in this app are laid out with `flex` or a `width` and
+          // never notice this. A button in a `flex-start` column has neither,
+          // so it shrinks to exactly the width of its own text — and the corner
+          // radius then eats the first and last letter of the label. It is why
+          // "Sign in" read as "ign i" on the signed-out Home screen. The
+          // padding is enough to clear the largest radius the component takes.
+          paddingHorizontal: 20,
           ...(v.border ? { borderWidth: 1, borderColor: v.border } : null),
           ...(flex !== undefined ? { flex } : null),
           ...(width !== undefined ? { width } : null),
