@@ -41,6 +41,7 @@ export default function VenueProfile() {
   const [entryNote, setEntryNote] = useState('');
   const [houseRules, setHouseRules] = useState('');
   const [amenities, setAmenities] = useState('');
+  const [mapUrl, setMapUrl] = useState('');
 
   const load = useCallback(async () => {
     if (!isLive || !venue) {
@@ -57,6 +58,7 @@ export default function VenueProfile() {
       setEntryNote(d?.entryNote ?? '');
       setHouseRules(d?.houseRules ?? '');
       setAmenities((d?.amenities ?? []).join(', '));
+      setMapUrl(d?.mapUrl ?? '');
       setNotice(null);
     } catch {
       setNotice(t.ownVenueUnreadable);
@@ -110,6 +112,12 @@ export default function VenueProfile() {
         <OpField label={t.ownRules} value={houseRules} onChangeText={setHouseRules} />
       </OpSection>
 
+      {/* VEN-009: the deep link a player's "Navigate" button opens. Nothing
+          could set it, so that button did nothing for every venue. */}
+      <OpSection title={t.ownFindUs} hint={t.ownMapHint}>
+        <OpField label={t.ownMapLink} value={mapUrl} onChangeText={setMapUrl} placeholder={t.ownEgMapLink} />
+      </OpSection>
+
       <OpSection title={t.ownFacilities} hint={t.ownAmenitiesHint}>
         <OpField label={t.ownAmenities} value={amenities} onChangeText={setAmenities} placeholder={t.ownEgAmenities} />
       </OpSection>
@@ -129,6 +137,7 @@ export default function VenueProfile() {
                 .split(',')
                 .map((a) => a.trim())
                 .filter(Boolean),
+              mapUrl: mapUrl.trim(),
             });
             if (res.ok) {
               setSaved(true);

@@ -299,8 +299,15 @@ export async function updateVenueProfile(
     houseRules?: string;
     amenities?: string[];
     mapUrl?: string;
+    lat?: number;
+    lon?: number;
   },
 ): Promise<{ ok: boolean; reason?: string }> {
+  // `p_lat` and `p_lon` were hardcoded null here and no screen passed a map
+  // link either, so nothing in the product could put a venue on a map. The
+  // "Navigate" button on Home and on the confirmation screen builds its URL
+  // from exactly those three columns, so it did nothing at all, silently, for
+  // every venue in the database.
   const { data, error } = await supabase().rpc('update_venue_profile', {
     p_venue_id: venueId,
     p_name: patch.name ?? null,
@@ -310,8 +317,8 @@ export async function updateVenueProfile(
     p_house_rules: patch.houseRules ?? null,
     p_amenities: patch.amenities ?? null,
     p_map_url: patch.mapUrl ?? null,
-    p_lat: null,
-    p_lon: null,
+    p_lat: patch.lat ?? null,
+    p_lon: patch.lon ?? null,
   });
   if (error) throw error;
   const row = (data as any[])[0];
@@ -596,6 +603,27 @@ export async function adminSetSetting(
   const { data, error } = await supabase().rpc('admin_set_setting', {
     p_key: key,
     p_value: value,
+  });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row.ok ? { ok: true } : { ok: false, reason: row.reason ?? undefined };
+}
+
+/**
+ * AUTH: a person changing their own password.
+ *
+ * `change_password` has been granted and tested since the password migration
+ * and had no caller in either client, so nobody using this product could
+ * change their password — including the staff account whose password has been
+ * typed into a chat window.
+ */
+export async function changePassword(
+  current: string,
+  next: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('change_password', {
+    p_current: current,
+    p_new: next,
   });
   if (error) throw error;
   const row = (data as any[])[0];

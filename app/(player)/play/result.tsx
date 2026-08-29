@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { completeMatch } from '@/data/progress';
-import { myBookings, type PastBooking } from '@/data/discovery';
+import { myBookings, submitReview, type PastBooking } from '@/data/discovery';
 import { useCard } from '@/state/card';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
@@ -39,6 +39,13 @@ export default function ReportResult() {
   const [home, setHome] = useState(0);
   const [away, setAway] = useState(0);
   const [saving, setSaving] = useState(false);
+  // VEN-008. `submit_review` was granted and tested and had no caller
+  // anywhere: the pitch page and the owner's reviews tab both *display*
+  // reviews, and nothing in the product could create one, so a venue's rating
+  // could only ever come from seed data. This is the moment to ask — the
+  // player has just played there and is already telling us how it went.
+  const [stars, setStars] = useState(0);
+  const [note, setNote] = useState('');
 
   // The booking is fetched rather than passed through params so the screen can
   // name the venue and hour it is asking about — reporting a score against a
@@ -68,6 +75,12 @@ export default function ReportResult() {
   const submit = async (withScore: boolean) => {
     if (!bookingId) return;
     setSaving(true);
+    // The review goes first and its failure is not fatal. A venue rating that
+    // could not be saved must never cost the player their match result, which
+    // is the thing the whole progression system hangs on.
+    if (stars > 0) {
+      await submitReview(bookingId, stars, note.trim() || undefined).catch(() => null);
+    }
     const res = await completeMatch(
       bookingId,
       withScore ? home : null,
@@ -177,6 +190,61 @@ export default function ReportResult() {
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <ScoreDial label={t.resultHome} value={home} onChange={setHome} format={num} />
             <ScoreDial label={t.resultAway} value={away} onChange={setAway} format={num} />
+          </View>
+
+          <View style={{ gap: 10 }}>
+            <Eyebrow>{t.reviewVenue}</Eyebrow>
+            <Txt size={11.5} color={onVoid.faint}>
+              {t.reviewVenueBlurb}
+            </Txt>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[1, 2, 3, 4, 5].map((n) => {
+                const on = n <= stars;
+                return (
+                  <Pressable
+                    key={n}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: stars === n }}
+                    accessibilityLabel={t.reviewStars(num(n))}
+                    onPress={() => setStars(stars === n ? 0 : n)}
+                    style={{
+                      flex: 1,
+                      height: 44,
+                      borderRadius: radius.chip,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 1,
+                      borderColor: on ? gold.base : onVoid.line,
+                      backgroundColor: on ? 'rgba(198,163,75,.14)' : 'transparent',
+                    }}
+                  >
+                    <Txt size={14} weight="bold" color={on ? gold.base : onVoid.muted}>
+                      {num(n)}
+                    </Txt>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {stars > 0 ? (
+              <TextInput
+                value={note}
+                onChangeText={setNote}
+                multiline
+                accessibilityLabel={t.reviewNote}
+                placeholder={t.reviewNote}
+                placeholderTextColor={onVoid.disabled}
+                style={{
+                  minHeight: 64,
+                  borderRadius: radius.chip,
+                  borderWidth: 1,
+                  borderColor: onVoid.line,
+                  padding: 12,
+                  color: onVoid.primary,
+                  fontSize: 13.5,
+                  textAlignVertical: 'top',
+                }}
+              />
+            ) : null}
           </View>
 
           <View style={{ gap: 10 }}>

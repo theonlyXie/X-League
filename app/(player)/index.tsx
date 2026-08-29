@@ -38,6 +38,10 @@ export default function Home() {
 
   const [inviteNotice, setInviteNotice] = useState<string | null>(null);
 
+  const nextMapUrl =
+    home.next?.mapUrl ??
+    (home.next?.lat != null ? `https://maps.google.com/?q=${home.next.lat},${home.next.lon}` : null);
+
   /**
    * Accepting or declining used to discard `{ ok, reason }` entirely, so a
    * refusal — the squad already full, the invitation already answered —
@@ -172,19 +176,20 @@ export default function Home() {
                 flex={1}
                 onPress={() => router.push(`/play/lobby?booking=${home.next!.bookingId}`)}
               />
-              <Button
-                label={t.navigate}
-                variant="ghost"
-                flex={1}
-                onPress={() => {
-                  const url =
-                    home.next?.mapUrl ??
-                    (home.next?.lat != null
-                      ? `https://maps.google.com/?q=${home.next.lat},${home.next.lon}`
-                      : null);
-                  if (url) Linking.openURL(url).catch(() => {});
-                }}
-              />
+              {/* Only when there is somewhere to go. The button used to be
+                  drawn for every booking and did nothing, silently, for any
+                  venue with no pin and no map link — which until the venue
+                  profile screen could set one was every venue. */}
+              {nextMapUrl ? (
+                <Button
+                  label={t.navigate}
+                  variant="ghost"
+                  flex={1}
+                  onPress={() => {
+                    Linking.openURL(nextMapUrl).catch(() => {});
+                  }}
+                />
+              ) : null}
             </View>
 
             {home.next.depositEgp > 0 ? (

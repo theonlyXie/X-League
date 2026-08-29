@@ -14,6 +14,7 @@ import { DEMO_VENUE_ID, today } from '@/data/venue';
 import { venueDetail, venueReviews, type Review, type VenueDetail } from '@/data/discovery';
 import { useBooking } from '@/state/booking';
 import { useSession } from '@/state/session';
+import { ReportSheet } from '@/components/ReportSheet';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 
@@ -92,6 +93,7 @@ export default function PitchDetail() {
   // cash deposit the product no longer takes, a six-hour cancellation window
   // that is not the policy, and another venue's gate.
   const showcase = !isLive || !venueId;
+  const [reporting, setReporting] = useState(false);
   const amenities = venue?.amenities.length ? venue.amenities : showcase ? PITCH_AMENITIES : [];
   const rules = venue?.houseRules ?? (showcase ? HOUSE_RULES : null);
   const verified = venue?.verification === 'verified';
@@ -265,8 +267,38 @@ export default function PitchDetail() {
               </View>
             </>
           ) : null}
+
+          {/* MSG-005. The moderation queue in both consoles is fed from here
+              and from the lobby; before this there was no way to file a report
+              at all, so the queue could only ever say "Nothing reported." */}
+          {signedIn && venue ? (
+            <>
+              <Divider />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${t.reportThis} ${venue.name}`}
+                onPress={() => setReporting(true)}
+                hitSlop={8}
+                style={{ paddingVertical: 8 }}
+              >
+                <Txt size={12} color={onVoid.faint}>
+                  {t.reportThis}
+                </Txt>
+              </Pressable>
+            </>
+          ) : null}
         </View>
       </ScrollView>
+
+      {venue ? (
+        <ReportSheet
+          kind="venue"
+          subjectId={venue.venueId}
+          subjectName={venue.name}
+          open={reporting}
+          onClose={() => setReporting(false)}
+        />
+      ) : null}
 
       {/* BKG-002: selecting a slot creates the server-side hold. */}
       <LinearGradient

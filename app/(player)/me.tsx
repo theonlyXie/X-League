@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
@@ -8,9 +9,10 @@ import { ChevronRight, TrendUp } from '@/components/icons';
 import { StrokeLine } from '@/components/StrokeLine';
 import { VoidMark } from '@/components/VoidMark';
 import { cssAngle } from '@/theme/gradient';
-import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
+import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { CARD } from '@/data/player';
 import { useCard } from '@/state/card';
+import { changePassword } from '@/data/manage';
 import type { MatchEvidence } from '@/data/progress';
 import { CONFIDENCE_COPY } from '@/data/assessment';
 import { useI18n } from '@/i18n';
@@ -280,6 +282,8 @@ export default function Me() {
               })}
             </View>
           </View>
+
+          {signedIn ? <ChangePassword /> : null}
 
           {signedIn ? (
             <WorkspaceRow
@@ -572,6 +576,119 @@ function EvidenceBar({ label, pct, color }: { label: string; pct: number; color:
       <Txt size={11} color={onVoid.muted} style={{ width: 92 }}>
         {label}
       </Txt>
+    </View>
+  );
+}
+
+/**
+ * Changing your own password. `change_password` was granted and tested and had
+ * no caller in either client: nobody using this product could change their
+ * password at all.
+ */
+function ChangePassword() {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  if (!open) {
+    return (
+      <WorkspaceRow
+        title={t.changePassword}
+        detail={done ? t.passwordChanged : t.authPasswordHint}
+        onPress={() => {
+          setOpen(true);
+          setDone(false);
+          setNotice(null);
+        }}
+      />
+    );
+  }
+
+  const submit = async () => {
+    setBusy(true);
+    setNotice(null);
+    const res = await changePassword(current, next).catch(() => ({
+      ok: false,
+      reason: t.offline,
+    }));
+    setBusy(false);
+    if (res.ok) {
+      setCurrent('');
+      setNext('');
+      setDone(true);
+      setOpen(false);
+    } else {
+      setNotice(res.reason ?? t.passwordChangeFailed);
+    }
+  };
+
+  return (
+    <View
+      style={{
+        gap: 10,
+        padding: 14,
+        borderRadius: radius.control,
+        backgroundColor: void_.surface,
+        borderWidth: 1,
+        borderColor: onVoid.edge,
+      }}
+    >
+      <Txt size={13.5} weight="semibold" color={onVoid.primary}>
+        {t.changePassword}
+      </Txt>
+      <PasswordField label={t.currentPassword} value={current} onChangeText={setCurrent} />
+      <PasswordField label={t.newPassword} value={next} onChangeText={setNext} />
+      {notice ? (
+        <Txt size={12} weight="semibold" color={burgundy.action}>
+          {notice}
+        </Txt>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Button
+          label={busy ? t.authWorking : t.ownSave}
+          flex={1}
+          height={42}
+          disabled={busy || current.length === 0 || next.length < 8}
+          onPress={submit}
+        />
+        <Button label={t.close} variant="ghost" flex={1} height={42} onPress={() => setOpen(false)} />
+      </View>
+    </View>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChangeText,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+}) {
+  return (
+    <View style={{ gap: 5 }}>
+      <Eyebrow>{label}</Eyebrow>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry
+        accessibilityLabel={label}
+        placeholderTextColor={onVoid.disabled}
+        style={{
+          height: 44,
+          borderRadius: radius.row,
+          borderWidth: 1,
+          borderColor: onVoid.line,
+          paddingHorizontal: 12,
+          color: onVoid.primary,
+          fontSize: 14,
+        }}
+      />
     </View>
   );
 }
