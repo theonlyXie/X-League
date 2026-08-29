@@ -36,7 +36,10 @@ type I18nValue = {
   shortDate: (iso: string) => string;
   longDate: (iso: string) => string;
   slot: (label: string) => string;
-  pm: (label: string) => string;
+  /** An hour of the day from its 24-hour number: `9:00 PM`, `١٠:٠٠ ص`. */
+  hourLabel: (hour24: number) => string;
+  /** A moment with its hour: `3:00 PM on Sun 30 Aug`. */
+  moment: (iso: string) => string;
   clock: (text: string) => string;
 };
 
@@ -76,7 +79,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       shortDate: (iso) => fmt.shortDate(iso, locale),
       longDate: (iso) => fmt.longDate(iso, locale),
       slot: (l) => fmt.slotLabel(l, locale),
-      pm: (l) => fmt.pmLabel(l, locale),
+      hourLabel: (h) => fmt.hourLabel(h, locale),
+      moment: (iso) => fmt.momentLabel(iso, locale),
       clock: (c) => fmt.clock(c, locale),
     };
   }, [locale, needsRestart, setLocale]);

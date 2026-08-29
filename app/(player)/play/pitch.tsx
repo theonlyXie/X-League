@@ -37,7 +37,7 @@ export default function PitchDetail() {
   const {
     slot,
     selectSlot,
-    slotLabel,
+    slotHour,
     beginHold,
     taken,
     times,
@@ -49,7 +49,7 @@ export default function PitchDetail() {
     pitchId,
   } = useBooking();
   const { signedIn } = useSession();
-  const { t, num } = useI18n();
+  const { t, num, hourLabel } = useI18n();
 
   const [venue, setVenue] = useState<VenueDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -130,7 +130,7 @@ export default function PitchDetail() {
               {venue?.ratingAvg != null ? <Star size={12} color={gold.base} /> : null}
               <Txt size={12.5} color={onVoid.muted}>
                 {venue?.ratingAvg != null
-                  ? `${num(venue.ratingAvg)} · ${num(venue.ratingCount)} reviews · ${venue.area ?? ''}`
+                  ? `${num(venue.ratingAvg)} · ${t.reviewCount(num(venue.ratingCount), venue.ratingCount)} · ${venue.area ?? ''}`
                   : (venue?.area ?? '')}
               </Txt>
             </View>
@@ -215,7 +215,11 @@ export default function PitchDetail() {
                 </Txt>
                 {conflict.alternatives.length ? (
                   <Txt size={11.5} color={onVoid.muted}>
-                    {t.stillFree(`${conflict.alternatives.join(' · ')} PM`)}
+                    {/* Each alternative is an hour, formatted as one. Joining
+                        the raw identities and appending "PM" once produced
+                        "21 · 22 PM" the moment the identity stopped being a
+                        display label. */}
+                    {t.stillFree(conflict.alternatives.map((a) => hourLabel(Number(a))).join(' · '))}
                   </Txt>
                 ) : null}
               </Pressable>
@@ -315,7 +319,9 @@ export default function PitchDetail() {
       >
         <PriceForSlot />
         <Button
-          label={isLive && !signedIn ? t.signInToHold(slotLabel) : t.hold(slotLabel)}
+          label={
+            isLive && !signedIn ? t.signInToHold(hourLabel(slotHour)) : t.hold(hourLabel(slotHour))
+          }
           flex={1}
           height={50}
           round={radius.control}

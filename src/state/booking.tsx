@@ -32,8 +32,10 @@ export type HoldState = 'idle' | 'holding' | 'expired' | 'confirmed';
 type BookingContextValue = {
   slot: SlotTime;
   selectSlot: (slot: SlotTime) => void;
-  slotLabel: string;
-  slotEndLabel: string;
+  /** The selected hour, 0-23, for the screens to format. */
+  slotHour: number;
+  /** The hour it ends at. */
+  slotEndHour: number;
   /** Hours already sold, through any channel. */
   taken: SlotTime[];
   /**
@@ -96,17 +98,14 @@ const BookingContext = createContext<BookingContextValue | null>(null);
 const hourOf = (t: SlotTime) => parseInt(t, 10);
 
 /**
- * A slot's label, in 12-hour form where that is unambiguous.
+ * A slot's identity: its hour, as a string.
  *
- * This was `hour - 12`, which is only right for the evening the design drew:
- * a venue selling 10 AM produced `-2:00`, which matched nothing in the grid,
- * so the hour was invisible and unbookable.
+ * Not a display label. A label is ambiguous — a venue open from 10 in the
+ * morning until midnight has two hours that read `10:00` — and this value is
+ * the key for `taken`, for `slotPrices` and for the selection itself. The
+ * screens render it through `hourLabel`, which adds AM or PM.
  */
-const labelOf = (s: api.Slot) => `${s.hour > 12 ? s.hour - 12 : s.hour === 0 ? 12 : s.hour}:00` as SlotTime;
-
-/** `9:00` on a slot whose hour is 21 reads PM; the same label at 9 reads AM. */
-const meridiemOf = (times: api.Slot[], label: SlotTime) =>
-  (times.find((s) => labelOf(s) === label)?.hour ?? 12) >= 12 ? 'PM' : 'AM';
+const labelOf = (s: api.Slot) => String(s.hour) as SlotTime;
 
 export function BookingProvider({ children }: { children: ReactNode }) {
   const [pitchId, setPitchId] = useState<string>(DEMO_PITCH_ID);
@@ -314,8 +313,8 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     return {
       slot,
       selectSlot,
-      slotLabel: `${slot} ${meridiemOf(slots, slot)}`,
-      slotEndLabel: `${hourOf(slot) + 1}:00 ${meridiemOf(slots, slot)}`,
+      slotHour: hourOf(slot),
+      slotEndHour: hourOf(slot) + 1,
       taken,
       times: isLive ? slots.map(labelOf) : SLOT_TIMES,
       slotPrices: Object.fromEntries(slots.map((s) => [labelOf(s), s.priceEgp])),
@@ -323,7 +322,11 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       loading,
       unreachable,
       hold,
-      holdText: `${minutes}:${seconds}`,
+      // Zero once the hold is gone. The countdown is derived from the local
+      // clock, but a hold can end on the server first — a refused confirm, or
+      // a slot claimed elsewhere — and the banner then read "Your hold
+      // expired" beside a clock still counting down four minutes.
+      holdText: hold === 'expired' ? '0:00' : `${minutes}:${seconds}`,
       bookingId,
       code,
       conflict,

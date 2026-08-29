@@ -58,6 +58,8 @@ export const STRINGS = {
     calendarChecking: 'Checking the venue calendar…',
     calendarUnreachable: 'Could not reach the venue calendar — these times may be out of date.',
     stillFree: (times: string) => `Still free: ${times}`,
+    slotTaken: (time: string) => `${time}, already booked`,
+    reviewCount: (n: string, count: number) => `${n} ${count === 1 ? 'review' : 'reviews'}`,
 
     // Checkout (P-05)
     confirmYourSlot: 'Confirm your slot',
@@ -529,6 +531,8 @@ export const STRINGS = {
     calendarChecking: 'جارٍ قراءة جدول الملعب…',
     calendarUnreachable: 'تعذّر الوصول لجدول الملعب — قد تكون المواعيد قديمة.',
     stillFree: (times: string) => `ما زال متاحًا: ${times}`,
+    slotTaken: (time: string) => `${time}، محجوز`,
+    reviewCount: (n: string, count: number) => (count === 1 ? 'تقييم واحد' : `${n} تقييمات`),
 
     confirmYourSlot: 'أكّد موعدك',
     slotHeld: 'الموعد محجوز لك',

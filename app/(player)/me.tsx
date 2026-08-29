@@ -108,7 +108,11 @@ export default function Me() {
       {/* Matches that were played and never reported. They are not evidence
           and cannot become evidence until somebody says how they ended, so
           they sit above the evidence list rather than inside it. */}
-      {live && awaitingResult.length > 0 ? (
+      {/* Not gated on having a card. MCH-001 says a played match with no
+          result credits nobody, and a brand-new player's *first* match is
+          exactly the case where there is no card yet — so gating the prompt on
+          one hid it at the only moment it was the whole point. */}
+      {awaitingResult.length > 0 ? (
         <View style={{ width: '100%', gap: 8 }}>
           <Eyebrow>{t.resultAwaiting}</Eyebrow>
           {awaitingResult.map((b) => (

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isLive } from '@/lib/supabase';
+import { today } from '@/data/venue';
 import { useSession } from '@/state/session';
 import {
   myBookings,
@@ -71,7 +72,14 @@ export function useHome(): HomeState {
       try {
         // Venues are public, so they load whether or not anybody is signed in —
         // a guest opening the app should still see what is on tonight.
-        const venues = await searchVenues({ limit: 6 });
+        //
+        // The date is passed explicitly, in the venue's zone. Omitting it let
+        // the server default to `current_date`, which on this deployment is
+        // UTC — so between midnight and 03:00 Cairo, Home searched *yesterday*
+        // and reported every venue fully booked while Play, two taps away,
+        // showed fourteen free hours at the same venues. Two screens
+        // disagreeing about what day it is, on the screen people open first.
+        const venues = await searchVenues({ date: today(), limit: 6 });
         if (cancelled) return;
         setNearby(venues);
 

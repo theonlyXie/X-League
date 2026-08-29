@@ -22,9 +22,9 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Confirmation() {
   const router = useRouter();
-  const { slot, slotLabel, slotEndLabel, code, bookingId, venueId, pitchId, slotPrices, date } =
+  const { slot, slotHour, slotEndHour, code, bookingId, venueId, pitchId, slotPrices, date } =
     useBooking();
-  const { t, money, pm, shortDate } = useI18n();
+  const { t, money, hourLabel, shortDate } = useI18n();
 
   // A signed-out visitor and the demo build are shown the design's booking.
   // A real player is never quoted a fixture price or sent to a fixture gate.
@@ -67,7 +67,7 @@ export default function Confirmation() {
           {t.yourePlaying}
         </Txt>
         <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
-          {t.tonightAtTime(pm(slot))}
+          {t.tonightAtTime(hourLabel(slotHour))}
         </Txt>
       </View>
 
@@ -94,7 +94,11 @@ export default function Confirmation() {
             {/* The day this booking is actually for. This was the string
                 literal 'Tue 18 Aug' in the source, so every confirmation on
                 every date said the same Tuesday in August. */}
-            {t.bookingWhen(shortDate(`${date}T12:00:00Z`), pm(slot), pm(slotEndLabel.replace(' PM', '')))}
+            {t.bookingWhen(
+              shortDate(`${date}T12:00:00Z`),
+              hourLabel(slotHour),
+              hourLabel(slotEndHour),
+            )}
           </Txt>
         </View>
 

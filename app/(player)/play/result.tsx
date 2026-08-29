@@ -30,7 +30,7 @@ export default function ReportResult() {
   const router = useRouter();
   const params = useLocalSearchParams<{ booking?: string }>();
   const bookingId = params.booking ?? null;
-  const { t, num } = useI18n();
+  const { t, num, moment } = useI18n();
   const { reload: reloadCard } = useCard();
 
   const [booking, setBooking] = useState<PastBooking | null>(null);
@@ -100,15 +100,11 @@ export default function ReportResult() {
     else router.replace('/me');
   };
 
-  const when = booking
-    ? new Date(booking.startsAt).toLocaleString(undefined, {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
-    : null;
+  // In the venue's zone, through the same formatter as every other date in
+  // the app. `toLocaleString(undefined, …)` used the *device's* zone, so a
+  // player abroad — or simply on a handset set to the wrong city — was asked
+  // to confirm a match at an hour it did not kick off at.
+  const when = booking ? moment(booking.startsAt) : null;
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>

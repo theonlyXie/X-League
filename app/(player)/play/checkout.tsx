@@ -25,8 +25,8 @@ export default function Checkout() {
   const router = useRouter();
   const {
     slot,
-    slotLabel,
-    slotEndLabel,
+    slotHour,
+    slotEndHour,
     holdText,
     hold,
     releaseHold,
@@ -37,7 +37,7 @@ export default function Checkout() {
     date,
     bookingId,
   } = useBooking();
-  const { t, money, clock, num, longDate } = useI18n();
+  const { t, money, clock, num, longDate, hourLabel, moment } = useI18n();
   const expired = hold === 'expired';
 
   const [venueLine, setVenueLine] = useState<string | null>(null);
@@ -167,7 +167,7 @@ export default function Checkout() {
           value={venueLine ?? (showcase ? `${BOOKING.venue} · ${BOOKING.pitch}` : '—')}
         />
         <DetailRow label={t.date} value={longDate(`${date}T18:00:00Z`)} />
-        <DetailRow label={t.time} value={`${slotLabel} – ${slotEndLabel}`} />
+        <DetailRow label={t.time} value={`${hourLabel(slotHour)} – ${hourLabel(slotEndHour)}`} />
         <DetailRow label={t.format} value={t.fiveASide} />
       </View>
 
@@ -237,7 +237,7 @@ export default function Checkout() {
       </View>
 
       <Txt size={11.5} lh={1.6} color={onVoid.faint}>
-        {cutoff ? t.cancelFreeUntil(longDate(cutoff)) : t.cancellationNoteFree}
+        {cutoff ? t.cancelFreeUntil(moment(cutoff)) : t.cancellationNoteFree}
       </Txt>
 
       {/* BKG-010: a restriction the player can see is one they can fix. It is

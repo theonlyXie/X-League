@@ -158,8 +158,11 @@ export default function RateMatch() {
         </View>
       ) : null}
 
+      {/* `targets.length > 0` meant a match with nobody to rate — a booking
+          played solo, or one whose squad has all been rated — rendered a
+          header and then nothing at all, with no explanation. */}
       {!loading && !subject ? (
-        remaining.length === 0 && targets.length > 0 ? (
+        remaining.length === 0 ? (
           <Txt size={13} color={onVoid.muted}>
             {t.rateNobody}
           </Txt>

@@ -325,6 +325,19 @@ export async function updateVenueProfile(
   return row.ok ? { ok: true } : { ok: false, reason: row.reason ?? undefined };
 }
 
+export type StaffVenueRow = { venueId: string; name: string; role: VenueRole };
+
+/**
+ * The venues this person staffs. The session provider reads the same function
+ * on sign-in, but the sign-in screen has to decide where to land before that
+ * state has settled, so it asks directly.
+ */
+export async function myVenues(): Promise<StaffVenueRow[]> {
+  const { data, error } = await supabase().rpc('my_venues');
+  if (error) throw error;
+  return (data as any[]).map((r) => ({ venueId: r.venue_id, name: r.name, role: r.role }));
+}
+
 export type ReviewSummary = {
   ratingAvg: number | null;
   ratingCount: number;

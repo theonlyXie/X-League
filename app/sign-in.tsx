@@ -11,6 +11,7 @@ import { face } from '@/theme/typography';
 import { useSession } from '@/state/session';
 import { useI18n } from '@/i18n';
 import { myCard } from '@/data/api';
+import { myVenues } from '@/data/manage';
 
 /**
  * P-01 Onboarding — signing in, and joining.
@@ -54,16 +55,32 @@ export default function SignIn() {
         (role === 'player' || (venueName.trim().length >= 2 && venueArea.trim().length >= 2));
 
   /**
-   * Where somebody lands once they are in. A venue owner goes to their console;
-   * a player with no card yet has unfinished onboarding, and dropping them on a
-   * home screen that shows no identity would look broken rather than new.
+   * Where somebody lands once they are in.
+   *
+   * A venue owner goes to their console — on the way *in* as well as on the way
+   * through sign-up. The owner test used to be `mode === 'join'`, so somebody
+   * who registered a venue on Tuesday and signed back in on Wednesday was sent
+   * to the player card assessment and asked which position they play before
+   * they could reach their own venue. Venue staff are recognised by the venues
+   * they staff, not by which screen they happened to arrive from.
+   *
+   * A player with no card yet does have unfinished onboarding, and dropping
+   * them on a home screen that shows no identity would look broken rather than
+   * new — so that redirect stays, for players.
    */
   const land = async () => {
     if (mode === 'join' && role === 'venue_owner') {
       router.replace('/owner');
       return;
     }
-    const card = await myCard().catch(() => null);
+    const [card, venues] = await Promise.all([
+      myCard().catch(() => null),
+      myVenues().catch(() => []),
+    ]);
+    if (venues.length > 0) {
+      router.replace('/owner');
+      return;
+    }
     if (!card) {
       router.replace('/onboarding');
       return;
