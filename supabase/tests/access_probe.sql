@@ -39,7 +39,7 @@ declare
     'nearest_alternatives', 'search_availability', 'search_venues', 'sign_up',
     'staff_auth_status', 'staff_reset_password', 'staff_set_first_password',
     'tournament_awards', 'tournament_detail', 'tournament_regions',
-    'venue_detail', 'venue_reviews'
+    'tournament_venues', 'venue_detail', 'venue_reviews'
   ];
   v_open text;
   v_n    integer;

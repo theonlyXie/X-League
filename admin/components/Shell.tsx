@@ -93,6 +93,47 @@ export function whenText(iso: string | null): string {
   });
 }
 
+/**
+ * The instant a wall-clock hour in Cairo actually is.
+ *
+ * A match kicks off at seven in Giza whatever the organiser's own clock says,
+ * and `datetime-local` gives back the *browser's* wall time — an organiser
+ * abroad would have been putting matches on at the wrong hour with nothing on
+ * screen to say so. So the day and hour they typed are read as Cairo's, and the
+ * zone's offset at that moment converts them. The offset is applied twice
+ * because the first pass is measured at the wrong instant when the hour typed
+ * sits on the far side of a daylight-saving change.
+ */
+export function cairoInstant(day: string, time: string): string {
+  const wall = Date.parse(`${day}T${time}:00Z`);
+  let ts = wall;
+  for (let i = 0; i < 2; i += 1) ts = wall - cairoOffsetMinutes(ts) * 60000;
+  return new Date(ts).toISOString();
+}
+
+function cairoOffsetMinutes(ts: number): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+    .formatToParts(new Date(ts))
+    .reduce<Record<string, string>>((acc, p) => {
+      acc[p.type] = p.value;
+      return acc;
+    }, {});
+  const hour = parts.hour === '24' ? '00' : parts.hour;
+  const asUtc = Date.parse(
+    `${parts.year}-${parts.month}-${parts.day}T${hour}:${parts.minute}:${parts.second}Z`,
+  );
+  return (asUtc - ts) / 60000;
+}
+
 export function dayText(date: string | null): string {
   if (!date) return '—';
   return new Date(`${date}T12:00:00Z`).toLocaleDateString('en-GB', {

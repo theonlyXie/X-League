@@ -4,13 +4,17 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Gate, canAct } from '@/components/Gate';
-import { Notice, Shell, StateChip, dayText, whenText } from '@/components/Shell';
+import { Notice, Shell, StateChip, cairoInstant, dayText, whenText } from '@/components/Shell';
 import { useSession } from '@/lib/session';
 import {
+  addTournamentVenue,
+  adminVenues,
   deletePaymentChannel,
   decideRegistration,
   generateFixtures,
+  placeFixture,
   recordFixtureResult,
+  removeTournamentVenue,
   scheduleFixture,
   paymentChannels,
   savePaymentChannel,
@@ -22,9 +26,12 @@ import {
   tournamentBookings,
   tournamentDetail,
   tournamentEntries,
+  tournamentPitches,
   type Award,
   type BookableHour,
+  type CupPitch,
   type Entry,
+  type Venue,
   type PaymentChannel,
   type PaymentChannelKind,
   type TournamentDetail,
@@ -135,6 +142,8 @@ function Cup() {
       <Notice text={note} kind="ok" />
 
       {may ? <Lifecycle cup={cup} awards={awards.length} busy={busy} run={run} /> : null}
+
+      <Grounds cup={cup} may={may} busy={busy} run={run} />
 
       <Money
         cup={cup}
@@ -466,6 +475,151 @@ function Lifecycle({
   );
 }
 
+/**
+ * The grounds a cup is played on.
+ *
+ * A cup in Giza is not at one pitch — it is spread across the grounds an
+ * organiser could get for the weekend, and each match may be at a different
+ * one. The host is the ground the cup was created at: it is what decides who
+ * may run the cup, so it stays and cannot be dropped.
+ */
+function Grounds({
+  cup,
+  may,
+  busy,
+  run,
+}: {
+  cup: TournamentDetail;
+  may: boolean;
+  busy: boolean;
+  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<void>;
+}) {
+  const [all, setAll] = useState<Venue[] | null>(null);
+  const [picked, setPicked] = useState('');
+
+  useEffect(() => {
+    if (!may) return;
+    // Support-level and above can read the venue list. A venue manager running
+    // their own cup cannot, and the panel says so rather than showing an empty
+    // dropdown that looks like there are no venues in the country.
+    adminVenues()
+      .then(setAll)
+      .catch(() => setAll([]));
+  }, [may]);
+
+  const already = new Set(cup.venues.map((v) => v.venue_id));
+  const addable = (all ?? []).filter((v) => !already.has(v.venueId));
+
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <h2>Grounds</h2>
+        <span className="spacer" />
+        <span className="chip">
+          {cup.venues.length} {cup.venues.length === 1 ? 'ground' : 'grounds'}
+        </span>
+      </div>
+
+      <div className="scroll-x">
+        <table>
+          <thead>
+            <tr>
+              <th>Ground</th>
+              <th>Area</th>
+              <th className="num">Matches here</th>
+              {may ? <th /> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {cup.venues.map((v) => {
+              const here = cup.fixtures.filter((f) => f.venue_name === v.name).length;
+              return (
+                <tr key={v.venue_id}>
+                  <td style={{ fontWeight: 600 }}>
+                    {v.name}
+                    {v.is_host ? (
+                      <span className="chip gold" style={{ marginLeft: 8 }}>
+                        host
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="muted">{v.area ?? '—'}</td>
+                  <td className="num">{here}</td>
+                  {may ? (
+                    <td className="num">
+                      {v.is_host ? (
+                        <span className="faint">stays</span>
+                      ) : (
+                        <button
+                          className="small danger"
+                          disabled={busy}
+                          onClick={() =>
+                            void run(
+                              () => removeTournamentVenue(cup.tournamentId, v.venue_id),
+                              `${v.name} is no longer one of the grounds.`,
+                            )
+                          }
+                        >
+                          Drop
+                        </button>
+                      )}
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {may ? (
+        <div className="row" style={{ marginTop: 12 }}>
+          {all === null ? (
+            <span className="faint">Loading the venue list…</span>
+          ) : addable.length === 0 ? (
+            <span className="faint">
+              {all.length === 0
+                ? 'Adding a ground needs the platform venue list, which only platform staff can read.'
+                : 'Every venue is already one of this cup\u2019s grounds.'}
+            </span>
+          ) : (
+            <>
+              <select
+                value={picked}
+                onChange={(e) => setPicked(e.target.value)}
+                style={{ maxWidth: 320 }}
+              >
+                <option value="">Add another ground…</option>
+                {addable.map((v) => (
+                  <option key={v.venueId} value={v.venueId}>
+                    {v.name}
+                    {v.area ? ` · ${v.area}` : ''} · {v.pitches}{' '}
+                    {v.pitches === 1 ? 'pitch' : 'pitches'}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="primary"
+                disabled={busy || !picked}
+                onClick={() => {
+                  const name = addable.find((v) => v.venueId === picked)?.name ?? 'That ground';
+                  void run(async () => {
+                    const res = await addTournamentVenue(cup.tournamentId, picked);
+                    if (res.ok) setPicked('');
+                    return res;
+                  }, `${name} is now one of the grounds.`);
+                }}
+              >
+                Add
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Fixtures({
   cup,
   may,
@@ -519,6 +673,7 @@ function Fixtures({
                 <thead>
                   <tr>
                     <th>Match</th>
+                    <th>Where</th>
                     <th>Kick-off</th>
                     <th className="num">Score</th>
                     <th>State</th>
@@ -533,6 +688,18 @@ function Fixtures({
                       <tr key={f.fixture_id}>
                         <td style={{ fontWeight: 600 }}>
                           {f.home ?? 'TBC'} <span className="muted">v</span> {f.away ?? 'TBC'}
+                        </td>
+                        <td className="muted">
+                          {f.venue_name ? (
+                            <>
+                              {f.venue_name}
+                              {f.pitch_label ? (
+                                <span className="faint"> · {f.pitch_label}</span>
+                              ) : null}
+                            </>
+                          ) : (
+                            <span className="faint">not placed</span>
+                          )}
                         </td>
                         <td className="muted">{whenText(f.kicks_off_at)}</td>
                         <td className="num mono">
@@ -554,7 +721,7 @@ function Fixtures({
                                     setScheduling(scheduling === f.fixture_id ? null : f.fixture_id)
                                   }
                                 >
-                                  {f.kicks_off_at ? 'Move' : 'Schedule'}
+                                  {f.kicks_off_at ? 'Move' : 'Place'}
                                 </button>
                               ) : null}
                               {/* The score is read off the match the captain
@@ -585,10 +752,17 @@ function Fixtures({
             </div>
 
             {cup.fixtures.some((f) => f.round === round && f.fixture_id === scheduling) ? (
-              <SchedulePicker
+              <PlacePicker
                 tournamentId={cup.tournamentId}
                 fixtureId={scheduling!}
                 busy={busy}
+                onPlace={async (pitchId, whenIso) => {
+                  await run(
+                    () => placeFixture(scheduling!, pitchId, whenIso),
+                    'The match has a ground and an hour.',
+                  );
+                  setScheduling(null);
+                }}
                 onPick={async (bookingId) => {
                   await run(
                     () => scheduleFixture(scheduling!, bookingId),
@@ -608,15 +782,24 @@ function Fixtures({
 }
 
 /**
- * A fixture is played at a real booked hour, so scheduling means picking one of
- * the venue's bookings rather than typing a time. `reported` is why this list
- * carries more than ids: a fixture can only be settled once the captain has
- * reported that match, and this is where an organiser sees which are ready.
+ * Where and when a match is played.
+ *
+ * Two ways in, because there are two ways a pitch is actually got. An organiser
+ * running a cup across a city has agreed four grounds for a Saturday by phone;
+ * there is no booking to point at, and making them invent one would be asking
+ * them to lie about how the hour was arranged. So the first tab places the
+ * match at any pitch of any ground the cup is played on, at an hour they type.
+ *
+ * The second is the original: a real booking at the host venue, which is right
+ * when the cup is buying pitch-hours through the app. `reported` is why that
+ * list carries more than ids — a fixture can only be settled once the captain
+ * has reported that match, and this is where an organiser sees which are ready.
  */
-function SchedulePicker({
+function PlacePicker({
   tournamentId,
   fixtureId,
   busy,
+  onPlace,
   onPick,
   onCancel,
   onReload,
@@ -624,14 +807,26 @@ function SchedulePicker({
   tournamentId: string;
   fixtureId: string;
   busy: boolean;
+  onPlace: (pitchId: string, whenIso: string) => Promise<void>;
   onPick: (bookingId: string) => Promise<void>;
   onCancel: () => void;
   onReload: () => Promise<void>;
 }) {
+  const [mode, setMode] = useState<'ground' | 'booking'>('ground');
+  const [pitches, setPitches] = useState<CupPitch[] | null>(null);
+  const [pitch, setPitch] = useState('');
+  const [day, setDay] = useState(cairoToday());
+  const [time, setTime] = useState('18:00');
   const [date, setDate] = useState(cairoToday());
   const [hours, setHours] = useState<BookableHour[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    tournamentPitches(tournamentId)
+      .then(setPitches)
+      .catch(() => setPitches([]));
+  }, [tournamentId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -665,7 +860,86 @@ function SchedulePicker({
       }}
     >
       <div className="row" style={{ marginBottom: 12 }}>
-        <strong style={{ fontSize: 13 }}>Put this fixture on a booked hour</strong>
+        <strong style={{ fontSize: 13 }}>Where and when is this match?</strong>
+        <span className="spacer" />
+        <button
+          className={`small ${mode === 'ground' ? 'primary' : ''}`}
+          onClick={() => setMode('ground')}
+        >
+          A ground and an hour
+        </button>
+        <button
+          className={`small ${mode === 'booking' ? 'primary' : ''}`}
+          onClick={() => setMode('booking')}
+        >
+          A booked hour
+        </button>
+        <button className="small" onClick={onCancel}>
+          Close
+        </button>
+      </div>
+
+      {mode === 'ground' ? (
+        pitches === null ? (
+          <div className="empty">Loading the grounds…</div>
+        ) : pitches.length === 0 ? (
+          <div className="empty">
+            None of this cup&rsquo;s grounds has a pitch on it. Add the pitches to the venue first,
+            or add a ground that has some.
+          </div>
+        ) : (
+          <>
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              <select
+                value={pitch}
+                onChange={(e) => setPitch(e.target.value)}
+                style={{ maxWidth: 340 }}
+              >
+                <option value="">Pick a pitch…</option>
+                {[...new Set(pitches.map((p) => p.venueName))].map((venueName) => (
+                  <optgroup key={venueName} label={venueName}>
+                    {pitches
+                      .filter((p) => p.venueName === venueName)
+                      .map((p) => (
+                        <option key={p.pitchId} value={p.pitchId}>
+                          {p.label}
+                          {p.isHost ? ' · host' : ''}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={day}
+                onChange={(e) => setDay(e.target.value)}
+                style={{ width: 'auto' }}
+              />
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                style={{ width: 'auto' }}
+              />
+              <button
+                className="primary"
+                disabled={busy || !pitch || !day || !time}
+                onClick={() => void onPlace(pitch, cairoInstant(day, time))}
+              >
+                Place it
+              </button>
+            </div>
+            <p className="faint" style={{ marginTop: 8, marginBottom: 0 }}>
+              Times are Cairo&rsquo;s, wherever you are reading this.
+            </p>
+          </>
+        )
+      ) : null}
+
+      {mode === 'booking' ? (
+        <>
+      <div className="row" style={{ marginBottom: 12 }}>
+        <span className="faint">Bookings at the host venue</span>
         <span className="spacer" />
         <input
           type="date"
@@ -673,9 +947,6 @@ function SchedulePicker({
           onChange={(e) => setDate(e.target.value)}
           style={{ width: 'auto' }}
         />
-        <button className="small" onClick={onCancel}>
-          Close
-        </button>
       </div>
 
       <Notice text={error} />
@@ -731,6 +1002,8 @@ function SchedulePicker({
           </table>
         </div>
       )}
+        </>
+      ) : null}
     </div>
   );
 }

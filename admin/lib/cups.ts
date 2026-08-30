@@ -103,6 +103,9 @@ export type Fixture = {
   score_away: number | null;
   state: 'scheduled' | 'played' | 'walkover' | 'cancelled';
   kicks_off_at: string | null;
+  /** Where it is. Null until somebody places it — a real state, not a gap. */
+  venue_name: string | null;
+  pitch_label: string | null;
 };
 
 export type StandingRow = {
@@ -120,6 +123,14 @@ export type StandingRow = {
   points: number;
 };
 
+/** A ground this cup is played on. The host is the one that says who runs it. */
+export type CupVenue = {
+  venue_id: string;
+  name: string;
+  area: string | null;
+  is_host: boolean;
+};
+
 export type TournamentDetail = {
   tournamentId: string;
   name: string;
@@ -135,6 +146,7 @@ export type TournamentDetail = {
   teams: Entrant[];
   fixtures: Fixture[];
   standings: StandingRow[];
+  venues: CupVenue[];
 };
 
 /** Entrants, fixtures and the table arrive together, so they cannot disagree. */
@@ -159,6 +171,7 @@ export async function tournamentDetail(id: string): Promise<TournamentDetail | n
     teams: (r.teams as Entrant[]) ?? [],
     fixtures: (r.fixtures as Fixture[]) ?? [],
     standings: (r.standings as StandingRow[]) ?? [],
+    venues: (r.venues as CupVenue[]) ?? [],
   };
 }
 
@@ -190,6 +203,35 @@ export async function tournamentBookings(id: string, date?: string): Promise<Boo
     captainName: (r.captain_name as string) ?? null,
     reported: r.reported as boolean,
     fixtureId: (r.fixture_id as string) ?? null,
+  }));
+}
+
+/**
+ * Every pitch the cup may use, across every ground it is played on.
+ *
+ * The placer groups by `venueName` rather than asking for a venue and then its
+ * pitches: a cup in Giza across four grounds is one list an organiser reads
+ * down, not four screens they have to hold in their head.
+ */
+export type CupPitch = {
+  pitchId: string;
+  label: string;
+  venueId: string;
+  venueName: string;
+  area: string | null;
+  isHost: boolean;
+};
+
+export async function tournamentPitches(id: string): Promise<CupPitch[]> {
+  const { data, error } = await supabase().rpc('tournament_pitches', { p_tournament_id: id });
+  if (error) throw error;
+  return (data as Array<Record<string, unknown>>).map((r) => ({
+    pitchId: r.pitch_id as string,
+    label: r.label as string,
+    venueId: r.venue_id as string,
+    venueName: r.venue_name as string,
+    area: (r.area as string) ?? null,
+    isHost: r.is_host as boolean,
   }));
 }
 
@@ -250,6 +292,25 @@ export async function generateFixtures(
 
 export const scheduleFixture = (fixtureId: string, bookingId: string) =>
   act('schedule_fixture', { p_fixture_id: fixtureId, p_booking_id: bookingId });
+
+export const addTournamentVenue = (tournamentId: string, venueId: string) =>
+  act('add_tournament_venue', { p_tournament_id: tournamentId, p_venue_id: venueId });
+
+export const removeTournamentVenue = (tournamentId: string, venueId: string) =>
+  act('remove_tournament_venue', { p_tournament_id: tournamentId, p_venue_id: venueId });
+
+/**
+ * Put a match at a pitch and an hour without a booking behind it.
+ *
+ * `kicksOffAt` is an ISO instant. The picker builds it from a local date and
+ * time in Cairo, which is the clock the organiser and everybody playing is on.
+ */
+export const placeFixture = (fixtureId: string, pitchId: string, kicksOffAt: string) =>
+  act('place_fixture', {
+    p_fixture_id: fixtureId,
+    p_pitch_id: pitchId,
+    p_kicks_off_at: kicksOffAt,
+  });
 
 export const recordFixtureResult = (fixtureId: string) =>
   act('record_fixture_result', { p_fixture_id: fixtureId });

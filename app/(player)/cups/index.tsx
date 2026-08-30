@@ -6,9 +6,16 @@ import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Eyebrow } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
-import { CapacityBar, PressScale } from '@/components/motion';
+import { CapacityBar, PressScale, Reveal } from '@/components/motion';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { listTournaments, myTournaments, type MyTournament, type TournamentSummary } from '@/data/cups';
+import {
+  listTournaments,
+  myCupFixtures,
+  myTournaments,
+  type MyCupFixture,
+  type MyTournament,
+  type TournamentSummary,
+} from '@/data/cups';
 import { featuredClubs, tournamentRegions, type FeaturedClub, type Region } from '@/data/board';
 import { useSession } from '@/state/session';
 import { useI18n } from '@/i18n';
@@ -24,10 +31,11 @@ import { isLive } from '@/lib/supabase';
 export default function Cups() {
   const router = useRouter();
   const { signedIn } = useSession();
-  const { t, num, money, shortDate } = useI18n();
+  const { t, num, money, shortDate, moment } = useI18n();
 
   const [all, setAll] = useState<TournamentSummary[]>([]);
   const [mine, setMine] = useState<MyTournament[]>([]);
+  const [matches, setMatches] = useState<MyCupFixture[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
   const [place, setPlace] = useState<string | null>(null);
   const [holders, setHolders] = useState<FeaturedClub[]>([]);
@@ -46,15 +54,17 @@ export default function Cups() {
     (async () => {
       setLoading(true);
       try {
-        const [rows, ours, places, won] = await Promise.all([
+        const [rows, ours, ties, places, won] = await Promise.all([
           listTournaments(25, place),
           signedIn ? myTournaments().catch(() => [] as MyTournament[]) : Promise.resolve([]),
+          signedIn ? myCupFixtures(8).catch(() => [] as MyCupFixture[]) : Promise.resolve([]),
           tournamentRegions().catch(() => [] as Region[]),
           featuredClubs().catch(() => [] as FeaturedClub[]),
         ]);
         if (cancelled) return;
         setAll(rows);
         setMine(ours);
+        setMatches(ties);
         setRegions(places);
         setHolders(won);
         setUnreachable(false);
@@ -91,6 +101,65 @@ export default function Cups() {
       {loading && all.length === 0 ? (
         <View style={{ paddingVertical: 40, alignItems: 'center' }}>
           <ActivityIndicator color={gold.base} />
+        </View>
+      ) : null}
+
+      {/* Where and when, first. A cup now runs across several grounds, and each
+          match may be at a different one, so "the venue" stopped being an
+          answer to the only question a player opens this tab with. */}
+      {matches.length > 0 ? (
+        <View style={{ gap: 12 }}>
+          <Eyebrow>{t.yourMatches}</Eyebrow>
+          <View style={{ gap: 8 }}>
+            {matches.map((m, i) => (
+              <Reveal key={m.fixtureId} index={i}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${m.cupName}. ${
+                    m.opponent ? t.againstName(m.opponent) : t.bye
+                  }. ${
+                    m.venueName
+                      ? m.pitchLabel
+                        ? t.groundAndPitch(m.venueName, m.pitchLabel)
+                        : m.venueName
+                      : t.whereTbc
+                  }. ${m.kicksOffAt ? moment(m.kicksOffAt) : t.whenTbc}`}
+                  onPress={() => router.push(`/cups/${m.tournamentId}`)}
+                  style={{
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    borderRadius: radius.control,
+                    backgroundColor: void_.surface,
+                    borderWidth: 1,
+                    borderColor: goldAlpha.edge,
+                    gap: 6,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Txt size={14.5} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
+                      {m.opponent ? t.againstName(m.opponent) : t.bye}
+                    </Txt>
+                    <Txt size={10.5} weight="semibold" em={0.06} color={gold.base}>
+                      {m.mySide === 'home' ? t.matchAtHome : t.matchAway}
+                    </Txt>
+                  </View>
+                  <Txt size={11.5} color={onVoid.secondary}>
+                    {m.venueName
+                      ? m.pitchLabel
+                        ? t.groundAndPitch(m.venueName, m.pitchLabel)
+                        : m.venueName
+                      : t.whereTbc}
+                  </Txt>
+                  <Txt size={11.5} color={m.kicksOffAt ? onVoid.secondary : onVoid.faint}>
+                    {m.kicksOffAt ? moment(m.kicksOffAt) : t.whenTbc}
+                  </Txt>
+                  <Txt size={11} color={onVoid.faint}>
+                    {t.cupAndRound(m.cupName, t.roundN(num(m.round)))}
+                  </Txt>
+                </Pressable>
+              </Reveal>
+            ))}
+          </View>
         </View>
       ) : null}
 

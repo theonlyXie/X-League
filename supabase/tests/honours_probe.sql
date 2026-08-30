@@ -24,6 +24,7 @@ declare
   v_reg_a uuid;
   v_reg_b uuid;
   v_fix   uuid;
+  v_alpha_home boolean;
   v_bk    uuid;
   v_match uuid;
   v_slot  timestamptz;
@@ -130,11 +131,22 @@ begin
   -- Play it
   -- -------------------------------------------------------------------------
   select f.id into v_fix from fixture f where f.tournament_id = v_trn limit 1;
+
+  -- The draw is a draw: which side Alpha are on is decided by it, not by the
+  -- order they entered. Ask, rather than assume — this probe hardcoded `home`
+  -- and started failing the moment the shuffle went in, which is the shuffle
+  -- working.
+  select (reg.club_id = v_club_a) into v_alpha_home
+    from fixture f join tournament_registration reg on reg.id = f.home_entrant_id
+   where f.id = v_fix;
   v_slot := ((current_date - 1 + interval '20 hours') at time zone 'Africa/Cairo');
   v_bk := test_past_booking(v_pitch, v_slot, CAP_A);
 
   insert into match (booking_id, played_at, state, score_home, score_away, reported_by)
-  values (v_bk, v_slot, 'played', 3, 0, CAP_A)
+  values (v_bk, v_slot, 'played',
+          case when v_alpha_home then 3 else 0 end,
+          case when v_alpha_home then 0 else 3 end,
+          CAP_A)
   returning id into v_match;
 
   -- Alpha win three nil. Their keeper keeps a clean sheet, their forward scores
@@ -142,14 +154,19 @@ begin
   -- a function that returned the same player for all of them would be caught.
   insert into match_participant (match_id, player_id, display_name, side, position, goals, assists)
   values
-    (v_match, v_gk,   'Honours Player 1', 'home', 'GK',  0, 0),
-    (v_match, v_star, 'Honours Player 2', 'home', 'FWD', 2, 1),
-    (v_match, 'd1000000-0000-0000-0000-000000000003'::uuid, 'Honours Player 3', 'home', 'MID', 1, 0),
-    (v_match, 'd1000000-0000-0000-0000-000000000008'::uuid, 'Honours Player 8', 'away', 'GK',  0, 0),
-    (v_match, 'd1000000-0000-0000-0000-000000000009'::uuid, 'Honours Player 9', 'away', 'FWD', 0, 0);
+    (v_match, v_gk,   'Honours Player 1', case when v_alpha_home then 'home' else 'away' end, 'GK',  0, 0),
+    (v_match, v_star, 'Honours Player 2', case when v_alpha_home then 'home' else 'away' end, 'FWD', 2, 1),
+    (v_match, 'd1000000-0000-0000-0000-000000000003'::uuid, 'Honours Player 3',
+      case when v_alpha_home then 'home' else 'away' end, 'MID', 1, 0),
+    (v_match, 'd1000000-0000-0000-0000-000000000008'::uuid, 'Honours Player 8',
+      case when v_alpha_home then 'away' else 'home' end, 'GK',  0, 0),
+    (v_match, 'd1000000-0000-0000-0000-000000000009'::uuid, 'Honours Player 9',
+      case when v_alpha_home then 'away' else 'home' end, 'FWD', 0, 0);
 
   update fixture set booking_id = v_bk, match_id = v_match,
-                     score_home = 3, score_away = 0, state = 'played'
+                     score_home = case when v_alpha_home then 3 else 0 end,
+                     score_away = case when v_alpha_home then 0 else 3 end,
+                     state = 'played'
    where id = v_fix;
   perform rebuild_standings(v_trn);
 

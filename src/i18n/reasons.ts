@@ -235,6 +235,10 @@ const AR: Record<string, string> = {
   'You do not have access to that venue.': 'ليس لك وصول إلى هذا الملعب.',
   'You do not have permission to do that.': 'ليس لديك صلاحية لفعل ذلك.',
   'You do not manage that cup.': 'أنت لا تدير هذه البطولة.',
+  'Matches are already placed there. Move them first.':
+    'هناك مباريات مُحدَّدة على هذا الملعب بالفعل. انقلها أولًا.',
+  'That pitch is not at a ground this cup is played on.':
+    'هذا الملعب ليس ضمن الملاعب التي تُقام عليها البطولة.',
   'You do not manage that tournament.': 'أنت لا تدير هذه البطولة.',
   'You do not manage that venue.': 'أنت لا تدير هذا الملعب.',
   'You have already answered that invitation.': 'أجبت عن هذه الدعوة بالفعل.',

@@ -28,7 +28,7 @@ export default function CupDetail() {
   const params = useLocalSearchParams<{ id?: string }>();
   const tournamentId = params.id ?? null;
   const { signedIn } = useSession();
-  const { reason, t, num, money, shortDate } = useI18n();
+  const { reason, t, num, money, shortDate, moment } = useI18n();
 
   const [cup, setCup] = useState<TournamentDetail | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -313,9 +313,7 @@ export default function CupDetail() {
                       <View
                         key={f.fixture_id}
                         style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 10,
+                          gap: 8,
                           paddingVertical: 11,
                           paddingHorizontal: 14,
                           borderRadius: radius.control,
@@ -324,6 +322,7 @@ export default function CupDetail() {
                           borderColor: onVoid.edgeFaint,
                         }}
                       >
+                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <Txt
                           size={13}
                           weight="semibold"
@@ -360,6 +359,29 @@ export default function CupDetail() {
                         <Txt size={13} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
                           {f.away ?? t.bye}
                         </Txt>
+                       </View>
+
+                        {/* A cup across a city means each match has its own
+                            ground and hour. A match nobody has placed yet says
+                            so — it is a real state, not a blank. */}
+                        {f.state !== 'walkover' ? (
+                          <Txt
+                            size={11}
+                            color={f.venue_name || f.kicks_off_at ? onVoid.secondary : onVoid.faint}
+                            style={{ textAlign: 'center' }}
+                          >
+                            {f.venue_name || f.kicks_off_at
+                              ? t.whereAndWhen(
+                                  f.venue_name
+                                    ? f.pitch_label
+                                      ? t.groundAndPitch(f.venue_name, f.pitch_label)
+                                      : f.venue_name
+                                    : t.whereTbc,
+                                  f.kicks_off_at ? moment(f.kicks_off_at) : t.whenTbc,
+                                )
+                              : t.whereWhenTbc}
+                          </Txt>
+                        ) : null}
                       </View>
                     ))}
                 </View>

@@ -77,6 +77,9 @@ export type Fixture = {
   score_away: number | null;
   state: 'scheduled' | 'played' | 'walkover' | 'cancelled';
   kicks_off_at: string | null;
+  /** Where it is played. Null until an organiser has placed it. */
+  venue_name: string | null;
+  pitch_label: string | null;
 };
 
 export type StandingRow = {
@@ -94,6 +97,14 @@ export type StandingRow = {
   points: number;
 };
 
+/** One of the grounds a cup is played on. */
+export type CupVenue = {
+  venue_id: string;
+  name: string;
+  area: string | null;
+  is_host: boolean;
+};
+
 export type TournamentDetail = {
   tournamentId: string;
   name: string;
@@ -109,6 +120,8 @@ export type TournamentDetail = {
   teams: Entrant[];
   fixtures: Fixture[];
   standings: StandingRow[];
+  /** Every ground the cup is played across, the host first. */
+  venues: CupVenue[];
 };
 
 export async function tournamentDetail(tournamentId: string): Promise<TournamentDetail | null> {
@@ -134,7 +147,55 @@ export async function tournamentDetail(tournamentId: string): Promise<Tournament
     teams: r.teams ?? [],
     fixtures: r.fixtures ?? [],
     standings: r.standings ?? [],
+    venues: r.venues ?? [],
   };
+}
+
+/**
+ * A match this player is in: who, where and when.
+ *
+ * The cup page can only say where a *fixture* is; this is the other question —
+ * a player opening the app wants their own next match, not to remember which
+ * cup it is in and find themselves in the list. `venueName` and `kicksOffAt`
+ * are both nullable because a drawn match that nobody has placed yet is a real
+ * state, and the screen says so rather than showing a blank.
+ */
+export type MyCupFixture = {
+  fixtureId: string;
+  tournamentId: string;
+  cupName: string;
+  round: number;
+  mySide: 'home' | 'away';
+  myEntrant: string;
+  opponent: string | null;
+  venueName: string | null;
+  area: string | null;
+  pitchLabel: string | null;
+  kicksOffAt: string | null;
+  state: 'scheduled' | 'played' | 'walkover' | 'cancelled';
+  scoreHome: number | null;
+  scoreAway: number | null;
+};
+
+export async function myCupFixtures(limit = 20): Promise<MyCupFixture[]> {
+  const { data, error } = await supabase().rpc('my_cup_fixtures', { p_limit: limit });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    fixtureId: r.fixture_id,
+    tournamentId: r.tournament_id,
+    cupName: r.cup_name,
+    round: r.round,
+    mySide: r.my_side,
+    myEntrant: r.my_entrant,
+    opponent: r.opponent,
+    venueName: r.venue_name,
+    area: r.area,
+    pitchLabel: r.pitch_label,
+    kicksOffAt: r.kicks_off_at,
+    state: r.state,
+    scoreHome: r.score_home,
+    scoreAway: r.score_away,
+  }));
 }
 
 export type MyTournament = {
