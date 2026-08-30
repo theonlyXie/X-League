@@ -62,7 +62,10 @@ const REASONS = new Set(
  */
 const FIXTURES = ['src/data/player.ts', 'src/data/owner.ts'];
 
-const LITERAL = /(['"`])([A-Z][A-Za-z]+(?:[ ][A-Za-z${}.]+){1,8})\1/g;
+// The run may contain an apostrophe — `Live from ${venue}'s calendar` was
+// hardcoded on the owner's calendar in English, next to the key that already
+// said it, and hid here for weeks because `'s` broke the match.
+const LITERAL = /(['"`])([A-Z][A-Za-z]+(?:[ ][A-Za-z${}.'\u2019]+){1,8})\1/g;
 const NOT_COPY =
   /(accessibilityRole|fontFamily|import |from ['"]|require\(|@\/|https?:\/\/|StyleSheet|Platform\.|process\.env|console\.)/;
 

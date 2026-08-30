@@ -164,7 +164,7 @@ export default function OwnerCalendar() {
           : error
             ? error
             : live
-              ? `Live from ${venueName}'s calendar`
+              ? t.ownLiveFrom(venueName ?? '')
               : showcase
                 ? t.ownSampleDay
                 : ''}
