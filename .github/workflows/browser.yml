@@ -1,0 +1,115 @@
+# Loads every screen in a real browser and fails if any of them breaks.
+#
+# The SQL suites prove the database keeps its promises. They cannot say whether
+# a screen renders at all — and the defects this project actually shipped were
+# never crashes in SQL, they were screens that rendered the wrong thing or
+# threw on mount. Both are invisible to `tsc` and to `psql`, and obvious to a
+# browser.
+#
+# It runs against the static web export rather than the dev server: `expo
+# export` is closer to what ships, starts in seconds rather than after a
+# bundle, and cannot half-start. The export is a single-page app, so the
+# server has to fall back to index.html for every route — `serve -s` does.
+#
+# Deliberately no credentials. `smoke` signs into nothing and writes nothing,
+# so this needs no secrets and can run on every pull request, including from a
+# fork. The other two checks in `qa/` need accounts and are for a person to run
+# against a database they are happy to touch; see `qa/README.md`.
+#
+# It builds against the real project, because a check that runs in demo mode
+# proves only that every screen mounts: the three 401s this harness found on
+# its first run never fire when there is no database to answer them.
+#
+# That has a cost worth stating. `smoke` is signed out and reads only — it
+# writes nothing, ever — but every pull request now depends on that project
+# being reachable, so an outage there turns pull requests red for reasons that
+# have nothing to do with the diff. If that becomes annoying, point the
+# repository variables at a staging project rather than dropping back to demo
+# mode.
+name: Browser
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['app/**', 'src/**', 'qa/**', 'package.json', '.github/workflows/browser.yml']
+  pull_request:
+    paths: ['app/**', 'src/**', 'qa/**', 'package.json', '.github/workflows/browser.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Both values are publishable by design: they are inlined into every APK
+      # and reach the browser bundle regardless, so treating either as a secret
+      # would be theatre. `admin/.env.production` commits the equivalent pair
+      # for the same reason and says so in its own header. There is no
+      # service-role key here or anywhere else in this repository.
+      #
+      # Written as a default rather than a required variable so that a fresh
+      # clone gets a check that actually exercises the database. Set the
+      # repository variables to point CI at a different project — they win.
+      - name: Build the web export
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: >-
+            ${{ vars.EXPO_PUBLIC_SUPABASE_URL || 'https://ymuknkhapibmtqkrlmia.supabase.co' }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: >-
+            ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltdWtua2hhcGlibXRxa3JsbWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNzEwMTQsImV4cCI6MjEwMjY0NzAxNH0.AOQV2K4x1AG02JG8tTK_l9aoKH0DPpjTY2IGk6lbFoQ' }}
+        run: npm run build:web
+
+      - name: Install the checks
+        working-directory: qa
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      # `serve -s` rewrites every unmatched path to index.html, which is what
+      # an expo-router single-page export needs; without it every route but `/`
+      # answers 404 and the whole run fails for a reason that is not the app's.
+      - name: Serve it
+        run: |
+          npx --yes serve -s dist -l 8081 > /tmp/serve.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:8081/ && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://localhost:8081/ || { echo "static server never came up"; cat /tmp/serve.log; exit 1; }
+
+      # The ceiling a route gets to paint, not a cost per route: `visit` waits
+      # for the render and moves on. It is *larger* than the local default
+      # because a hosted runner is three to four times slower, and a ceiling
+      # that is too tight fails screens that were only ever slow.
+      - name: Smoke
+        working-directory: qa
+        env:
+          QA_SETTLE_MS: 20000
+          QA_QUIET_MS: 1200
+        run: npm run smoke
+
+      # The run's own output names the failing route; the screenshots are for
+      # the ones where the text does not make it obvious.
+      - name: Keep whatever it captured
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure
+          path: |
+            qa/*.png
+            /tmp/serve.log
+          if-no-files-found: ignore
+          retention-days: 7

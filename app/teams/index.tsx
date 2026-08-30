@@ -9,6 +9,7 @@ import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens
 import { createTeam, myTeams, respondToTeamInvite, type Team } from '@/data/squad';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
+import { useSession } from '@/state/session';
 
 /**
  * P-10 — the teams a player belongs to.
@@ -17,6 +18,7 @@ import { isLive } from '@/lib/supabase';
  * invitation nobody can answer from where they see it is a dead end.
  */
 export default function Teams() {
+  const { signedIn } = useSession();
   const router = useRouter();
   const { t, num } = useI18n();
 
@@ -31,7 +33,9 @@ export default function Teams() {
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
-    if (!isLive) {
+    // Same as notifications: `my_teams` needs an account, and a 401 read as
+    // an outage rather than as "you are not signed in".
+    if (!isLive || !signedIn) {
       setLoading(false);
       return;
     }
@@ -56,7 +60,7 @@ export default function Teams() {
     return () => {
       cancelled = true;
     };
-  }, [nonce]);
+  }, [nonce, signedIn]);
 
   const invited = teams.filter((team) => team.state === 'invited');
   const active = teams.filter((team) => team.state === 'active');
