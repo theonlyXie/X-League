@@ -485,6 +485,19 @@ export const STRINGS = {
     // Where a venue stands with the platform (O-01). Deliberately not alarming:
     // an unverified venue is listed and bookable, and only ranks below the
     // verified ones — so the copy says that rather than implying it is hidden.
+    // Who plays here (O-09)
+    ownCustomers: 'Customers',
+    ownCustomersBlurb: 'Who plays here, and how often.',
+    ownCustomersEmpty: 'No customers yet',
+    ownCustomersEmptyBlurb: 'Once an hour has been played, whoever booked it appears here.',
+    ownCustomersUnreadable: 'Could not read this venue’s customers.',
+    ownVisits: (n: string) => `${n} visits`,
+    ownOneVisit: 'One visit',
+    ownNoShowsCount: (n: string) => `${n} no-shows`,
+    ownOneNoShow: 'One no-show',
+    ownLastVisit: (when: string) => `Last played ${when}`,
+    ownOnTheApp: 'On the app',
+    ownAtTheDesk: 'Booked at the venue',
     ownNextArrivals: 'Next arrivals',
     ownLiveFrom: (venue: string) => `Live from ${venue}’s calendar`,
     ownPending: 'Awaiting verification',
@@ -1000,6 +1013,18 @@ export const STRINGS = {
     ownSave: 'حفظ',
     ownVerifiedByX: 'موثّق من إكس ليج',
 
+    ownCustomers: 'العملاء',
+    ownCustomersBlurb: 'مين بيلعب هنا، وكام مرة.',
+    ownCustomersEmpty: 'لسه مفيش عملاء',
+    ownCustomersEmptyBlurb: 'أول ما ساعة تتلعب، اللي حجزها هيظهر هنا.',
+    ownCustomersUnreadable: 'مش قادرين نقرأ عملاء الملعب ده.',
+    ownVisits: (n: string) => `${n} زيارة`,
+    ownOneVisit: 'زيارة واحدة',
+    ownNoShowsCount: (n: string) => `${n} مرات ملجاش`,
+    ownOneNoShow: 'مرة ملجاش',
+    ownLastVisit: (when: string) => `آخر لعب ${when}`,
+    ownOnTheApp: 'على التطبيق',
+    ownAtTheDesk: 'حجز في الملعب',
     ownNextArrivals: 'الوصول الجاي',
     ownLiveFrom: (venue: string) => `مباشر من تقويم ${venue}`,
     ownPending: 'تحت المراجعة',

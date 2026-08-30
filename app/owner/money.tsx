@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
 import { OpMono, OpNotice, OpRow, OpScreen, OpSection, OpTile } from '@/components/operative';
+import { ChevronRight } from '@/components/icons';
 import { gold, ink, onOperative } from '@/theme/tokens';
 import { venuePayouts, type PayoutRow } from '@/data/manage';
 import { useSession } from '@/state/session';
@@ -17,6 +19,7 @@ import { useI18n } from '@/i18n';
  */
 export default function OwnerMoney() {
   const { t, num } = useI18n();
+  const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
 
@@ -62,6 +65,20 @@ export default function OwnerMoney() {
       </View>
 
       <OpNotice text={error} />
+
+      {/* The other half of the commercial picture, and the only way into it —
+          Owner Mode's tab bar is five items by design and this is not a sixth. */}
+      <OpRow onPress={() => router.push('/owner/customers')}>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Txt size={13.5} weight="semibold" color={ink}>
+            {t.ownCustomers}
+          </Txt>
+          <Txt size={10.5} color="rgba(20,18,16,.45)">
+            {t.ownCustomersBlurb}
+          </Txt>
+        </View>
+        <ChevronRight size={14} color={onOperative.dim} />
+      </OpRow>
 
       {loading ? <ActivityIndicator color={ink} /> : null}
 

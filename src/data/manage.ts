@@ -285,6 +285,39 @@ export async function venuePayouts(
   }));
 }
 
+export type VenueCustomer = {
+  /** Stable across reloads — the account id, or the folded name for a walk-in. */
+  key: string;
+  name: string;
+  /** False for somebody the venue booked in over the phone or at the desk. */
+  hasAccount: boolean;
+  bookings: number;
+  noShows: number;
+  lastVisit: string;
+  /** What their hours sold for, and what the gate actually took. Different questions. */
+  grossEgp: number;
+  collectedEgp: number;
+};
+
+/** Who plays here, and how often. Grouped by account where there is one. */
+export async function venueCustomers(venueId: string, limit = 100): Promise<VenueCustomer[]> {
+  const { data, error } = await supabase().rpc('venue_customers', {
+    p_venue_id: venueId,
+    p_limit: limit,
+  });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    key: r.customer_key,
+    name: r.display_name,
+    hasAccount: r.has_account,
+    bookings: r.bookings,
+    noShows: r.no_shows,
+    lastVisit: r.last_visit,
+    grossEgp: r.gross_egp,
+    collectedEgp: r.collected_egp,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // O-07 / O-08 Profile and reviews
 // ---------------------------------------------------------------------------
