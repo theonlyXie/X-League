@@ -9,13 +9,15 @@ import {
   OpNotice,
   OpScreen,
   OpSection,
+  OpStanding,
 } from '@/components/operative';
 import { gold, ink, onOperative, radius } from '@/theme/tokens';
 import { updateVenueProfile } from '@/data/manage';
 import { venueDetail, type VenueDetail } from '@/data/discovery';
-import { useSession } from '@/state/session';
+import { useSession, type VenueVerification } from '@/state/session';
 import { isLive } from '@/lib/supabase';
 import { useI18n } from '@/i18n';
+import { useVenueStanding } from '@/state/standing';
 
 /**
  * O-07 — what players see.
@@ -31,6 +33,9 @@ export default function VenueProfile() {
   const venue = activeVenue;
 
   const [detail, setDetail] = useState<VenueDetail | null>(null);
+  // From the freshly-read venue rather than the session's copy, since this is
+  // the screen that just asked the server.
+  const standing = useVenueStanding(detail?.verification as VenueVerification | undefined);
   const [loading, setLoading] = useState(isLive);
   const [notice, setNotice] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -77,7 +82,12 @@ export default function VenueProfile() {
       <OpNotice text={notice} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      {detail ? (
+      {/* Verified keeps its gold badge. Anything else now says what it means in
+          words, from the same place Owner Today reads — this printed
+          `Verification: pending. Set by the platform, not here.`, which is a
+          column value and a line of developer-speak, in English on a screen
+          that is otherwise fully translated. */}
+      {detail && detail.verification === 'verified' ? (
         <View
           style={{
             flexDirection: 'row',
@@ -87,15 +97,21 @@ export default function VenueProfile() {
             paddingHorizontal: 12,
             borderRadius: radius.chip,
             borderWidth: 1,
-            borderColor: detail.verification === 'verified' ? 'rgba(198,163,75,.5)' : onOperative.hairline,
+            borderColor: 'rgba(198,163,75,.5)',
           }}
         >
-          <Txt size={11.5} color={detail.verification === 'verified' ? gold.ink : onOperative.dim}>
-            {detail.verification === 'verified'
-              ? t.ownVerifiedByX
-              : `Verification: ${detail.verification}. Set by the platform, not here.`}
+          <Txt size={11.5} color={gold.ink}>
+            {t.ownVerifiedByX}
           </Txt>
         </View>
+      ) : null}
+
+      {detail && standing ? (
+        <OpStanding
+          title={standing.title}
+          blurb={`${standing.blurb} ${t.ownVerificationSetByPlatform}`}
+          tone={standing.tone}
+        />
       ) : null}
 
       <OpSection title={t.ownDetails}>
@@ -151,7 +167,7 @@ export default function VenueProfile() {
         />
         {saved ? (
           <Txt size={11.5} color={onOperative.dim}>
-            Saved.
+            {t.ownHoursSaved}
           </Txt>
         ) : null}
       </View>

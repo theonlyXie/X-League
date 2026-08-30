@@ -20,7 +20,23 @@ import { isLive, supabase } from '@/lib/supabase';
  * switch in §3.1 possible.
  */
 
-export type StaffVenue = { venueId: string; name: string; role: 'staff' | 'manager' | 'owner' };
+/**
+ * `verification` is where the venue stands with the platform, and it is here
+ * rather than fetched per screen because Owner Mode reads this list once a
+ * session anyway.
+ *
+ * It ranks a venue in search and nothing more — `search_venues` returns
+ * unverified venues and merely orders verified ones above them. Any copy built
+ * on this must not imply a pending venue is hidden, because it is not.
+ */
+export type VenueVerification = 'pending' | 'verified' | 'rejected' | 'suspended';
+
+export type StaffVenue = {
+  venueId: string;
+  name: string;
+  role: 'staff' | 'manager' | 'owner';
+  verification: VenueVerification;
+};
 
 /**
  * Joining as a player, or as somebody with a pitch to fill. The venue fields
@@ -157,10 +173,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         ((profile ?? []) as { display_name: string }[])[0]?.display_name ?? null,
       );
       setVenues(
-        ((mine ?? []) as { venue_id: string; name: string; role: StaffVenue['role'] }[]).map((v) => ({
+        (
+          (mine ?? []) as {
+            venue_id: string;
+            name: string;
+            role: StaffVenue['role'];
+            verification: VenueVerification | null;
+          }[]
+        ).map((v) => ({
           venueId: v.venue_id,
           name: v.name,
           role: v.role,
+          // A venue is pending until the platform says otherwise, which is also
+          // what the column defaults to — so an absent value means the same
+          // thing here as it does there rather than becoming a fourth state.
+          verification: v.verification ?? 'pending',
         })),
       );
     } catch {

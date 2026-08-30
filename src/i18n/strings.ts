@@ -481,6 +481,21 @@ export const STRINGS = {
     ownHouseRules: 'House rules',
     ownSave: 'Save',
     ownVerifiedByX: 'Verified by X League',
+
+    // Where a venue stands with the platform (O-01). Deliberately not alarming:
+    // an unverified venue is listed and bookable, and only ranks below the
+    // verified ones — so the copy says that rather than implying it is hidden.
+    ownNextArrivals: 'Next arrivals',
+    ownLiveFrom: (venue: string) => `Live from ${venue}’s calendar`,
+    ownPending: 'Awaiting verification',
+    ownPendingBlurb:
+      'Your venue is listed and players can book it now. Verified venues appear above yours in search.',
+    ownRejected: 'Verification declined',
+    ownRejectedBlurb:
+      'Players can still find and book you. Get in touch with X League to sort it out.',
+    ownSuspended: 'Verification suspended',
+    ownSuspendedBlurb: 'Get in touch with X League to find out what is needed.',
+    ownVerificationSetByPlatform: 'Set by X League, not from this screen.',
     ownVenueUnreadable: 'Could not read this venue.',
     ownAtGateSection: 'At the gate',
     ownRules: 'Rules',
@@ -984,6 +999,17 @@ export const STRINGS = {
     ownHouseRules: 'قواعد الملعب',
     ownSave: 'حفظ',
     ownVerifiedByX: 'موثّق من إكس ليج',
+
+    ownNextArrivals: 'الوصول الجاي',
+    ownLiveFrom: (venue: string) => `مباشر من تقويم ${venue}`,
+    ownPending: 'تحت المراجعة',
+    ownPendingBlurb:
+      'ملعبك ظاهر واللاعبين يقدروا يحجزوه دلوقتي. الملاعب الموثّقة بتظهر فوق ملعبك في البحث.',
+    ownRejected: 'التوثيق اترفض',
+    ownRejectedBlurb: 'اللاعبين لسه يقدروا يلاقوك ويحجزوا. كلّم إكس ليج عشان تظبطها.',
+    ownSuspended: 'التوثيق موقوف',
+    ownSuspendedBlurb: 'كلّم إكس ليج عشان تعرف المطلوب.',
+    ownVerificationSetByPlatform: 'إكس ليج هي اللي بتحدده، مش من الشاشة دي.',
     ownVenueUnreadable: 'مش قادرين نقرأ بيانات الملعب ده.',
     ownAtGateSection: 'عند البوابة',
     ownRules: 'القواعد',

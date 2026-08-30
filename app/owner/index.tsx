@@ -11,6 +11,9 @@ import * as api from '@/data/api';
 import { markNoShow, recordPayment } from '@/data/manage';
 import { useBooking } from '@/state/booking';
 import { useI18n } from '@/i18n';
+import { OpStanding } from '@/components/operative';
+import { useSession } from '@/state/session';
+import { useVenueStanding } from '@/state/standing';
 
 /**
  * O-01 Today — run the current shift (§4.5).
@@ -29,6 +32,8 @@ import { useI18n } from '@/i18n';
 export default function OwnerToday() {
   const { t, money, num } = useI18n();
   const { arrivals, summary, loading, error, live, showcase, venueName, reload } = useOwnerToday();
+  const { activeVenue } = useSession();
+  const standing = useVenueStanding(activeVenue?.verification);
 
   const tiles = summary
     ? [
@@ -65,6 +70,14 @@ export default function OwnerToday() {
       // 7 PM numbers were still on it at 11 PM.
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={ink} />}
     >
+      {/* Above the numbers, because a venue that has just signed up needs to
+          know where it stands before it needs to know its occupancy — and this
+          is the screen it lands on. It was only ever said four taps into Setup,
+          as a raw enum value. Nothing renders once verified. */}
+      {standing ? (
+        <OpStanding title={standing.title} blurb={standing.blurb} tone={standing.tone} />
+      ) : null}
+
       {tiles ? (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {tiles.map((kpi) => (
@@ -97,7 +110,7 @@ export default function OwnerToday() {
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <Txt size={10} weight="semibold" em={0.16} upper color={onOperative.faint}>
-            Next arrivals
+            {t.ownNextArrivals}
           </Txt>
         </View>
 
@@ -119,7 +132,12 @@ export default function OwnerToday() {
             : error
               ? error
               : live
-                ? `Live from ${venueName}'s calendar`
+                ? // Named only when there is a name. The old template literal
+                  // took the same nullable value and would have written "Live
+                  // from null's calendar" onto an operator's screen.
+                  venueName
+                  ? t.ownLiveFrom(venueName)
+                  : ''
                 : showcase
                   ? t.ownSampleShift
                   : ''}
