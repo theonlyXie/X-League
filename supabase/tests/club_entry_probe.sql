@@ -25,6 +25,11 @@ declare
   v_i     integer;
   v_n     integer;
   v_lvl   integer;
+  v_reg2  uuid;
+  v_fix   uuid;
+  v_match uuid;
+  v_pitch uuid;
+  v_txt   text;
   r       record;
   q       record;
 begin
@@ -306,6 +311,87 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', 'e1000000-0000-0000-0000-000000000001')::text, true);
   select count(*)::integer into v_n from my_tournaments() where tournament_id = v_trn;
   return query select 'and a player in one club sees it once', v_n::text, v_n = 1;
+
+  -- -------------------------------------------------------------------------
+  -- A cup match with no booking behind it
+  -- -------------------------------------------------------------------------
+  -- The organiser who agreed a ground by phone has no booking to point at, and
+  -- under the new rule a cup is the only thing that makes a stat evidence — so
+  -- if this path could not produce a match, the rule would be true of nothing.
+  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+
+  select id into v_reg2 from tournament_registration
+   where tournament_id = v_trn and id <> v_reg and state = 'pending' limit 1;
+  perform set_registration_paid(v_reg2, true);
+  perform decide_registration(v_reg2, true);
+
+  select * into r from generate_fixtures(v_trn);
+  return query select 'two admitted clubs make a draw', coalesce(r.reason, 'drawn'), r.ok;
+
+  select id into v_fix from fixture where tournament_id = v_trn limit 1;
+  select p.id into v_pitch from pitch p where p.venue_id = v_venue limit 1;
+  perform place_fixture(v_fix, v_pitch, now() - interval '2 hours');
+
+  select * into r from report_fixture_result(v_fix, 3, 1);
+  return query select 'the organiser writes down a score with no booking behind it',
+                      coalesce(r.reason, 'recorded'), r.ok;
+  v_match := r.match_id;
+
+  select count(*)::integer into v_n
+    from match_participant where match_id = v_match and side = 'home';
+  return query select 'the home team sheet comes from the squad that entered',
+                      v_n::text, v_n >= 7;
+  select count(*)::integer into v_n
+    from match_participant where match_id = v_match and side = 'away';
+  return query select 'and so does the away one', v_n::text, v_n >= 7;
+
+  select state::text into v_txt from match where id = v_match;
+  return query select 'the match is played and not yet evidence', v_txt, v_txt = 'played';
+
+  select score_home, state into r from fixture where id = v_fix;
+  return query select 'the fixture carries the score', r.score_home::text, r.score_home = 3;
+  return query select 'and reads as played', r.state::text, r.state = 'played';
+
+  -- A second write corrects the score rather than making a second match. It has
+  -- to: a knockout tie level after ninety minutes is settled on penalties, and
+  -- the score that sent somebody through is the only place this product can
+  -- record that.
+  select * into r from report_fixture_result(v_fix, 4, 1);
+  return query select 'a later write corrects the score',
+                      coalesce(r.reason, 'corrected'), r.ok;
+
+  select count(*)::integer into v_n from match where id = v_match;
+  return query select 'on the same match', v_n::text, v_n = 1;
+  select score_home into r from match where id = v_match;
+  return query select 'which now reads the corrected score', r.score_home::text, r.score_home = 4;
+  select count(*)::integer into v_n
+    from match m join fixture f on f.match_id = m.id where f.id = v_fix;
+  return query select 'and no second match was made', v_n::text, v_n = 1;
+
+  -- Three of the people on the pitch rate a fourth. Same threshold as before;
+  -- what has changed is that it now lands on a match a cup stands behind.
+  declare
+    v_subject uuid;
+    v_rater   uuid;
+    v_k       integer := 0;
+  begin
+    select mp.player_id into v_subject
+      from match_participant mp where mp.match_id = v_match and mp.side = 'home' limit 1;
+
+    for v_rater in
+      select mp.player_id from match_participant mp
+       where mp.match_id = v_match and mp.player_id <> v_subject limit 3
+    loop
+      perform set_config('request.jwt.claims', json_build_object('sub', v_rater)::text, true);
+      perform submit_peer_rating(v_match, v_subject, '{"PAS":70,"DRI":65}'::jsonb);
+      v_k := v_k + 1;
+    end loop;
+    return query select 'three of the squad rate a fourth', v_k::text, v_k = 3;
+  end;
+
+  select state::text into v_txt from match where id = v_match;
+  return query select 'and a cup match with three raters becomes evidence',
+                      v_txt, v_txt = 'verified';
 end;
 $$;
 

@@ -9,12 +9,14 @@ import { useSession } from '@/lib/session';
 import {
   addTournamentVenue,
   adminVenues,
+  advanceKnockout,
   deletePaymentChannel,
   decideRegistration,
   generateFixtures,
   placeFixture,
   recordFixtureResult,
   removeTournamentVenue,
+  reportFixtureResult,
   scheduleFixture,
   paymentChannels,
   savePaymentChannel,
@@ -634,6 +636,7 @@ function Fixtures({
   onReload: () => Promise<void>;
 }) {
   const [scheduling, setScheduling] = useState<string | null>(null);
+  const [scoring, setScoring] = useState<string | null>(null);
 
   const rounds = [...new Set(cup.fixtures.map((f) => f.round))].sort((a, b) => a - b);
 
@@ -654,6 +657,24 @@ function Fixtures({
             }
           >
             Make the draw
+          </button>
+        ) : null}
+
+        {/* A knockout's later rounds are drawn from the round before, so they
+            cannot exist until it is finished. The button says so by being here
+            rather than by being disabled somewhere else. */}
+        {may && cup.format === 'knockout' && cup.fixtures.length > 0 ? (
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                const res = await advanceKnockout(cup.tournamentId);
+                return res.ok ? { ok: true } : { ok: false, reason: res.reason };
+              }, 'The next round is drawn.')
+            }
+          >
+            Draw the next round
           </button>
         ) : null}
       </div>
@@ -724,11 +745,14 @@ function Fixtures({
                                   {f.kicks_off_at ? 'Move' : 'Place'}
                                 </button>
                               ) : null}
-                              {/* The score is read off the match the captain
-                                  reported, never typed here — a cup result that
-                                  could disagree with the game played is exactly
-                                  what record_fixture_result exists to prevent. */}
-                              {f.kicks_off_at && f.state !== 'played' ? (
+                              {/* Where a booking exists the score is read off
+                                  the match the captain reported, never typed
+                                  here — a cup result that could disagree with
+                                  the game played is what record_fixture_result
+                                  exists to prevent. Where there is no booking
+                                  there is no captain's report to read, and the
+                                  organiser who ran the match writes it down. */}
+                              {f.kicks_off_at && f.state !== 'played' && f.booked ? (
                                 <button
                                   className="small primary"
                                   disabled={busy}
@@ -742,6 +766,17 @@ function Fixtures({
                                   Take result
                                 </button>
                               ) : null}
+                              {f.kicks_off_at && f.state !== 'played' && !f.booked ? (
+                                <button
+                                  className="small primary"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    setScoring(scoring === f.fixture_id ? null : f.fixture_id)
+                                  }
+                                >
+                                  Enter score
+                                </button>
+                              ) : null}
                             </span>
                           </td>
                         ) : null}
@@ -750,6 +785,21 @@ function Fixtures({
                 </tbody>
               </table>
             </div>
+
+            {cup.fixtures.some((f) => f.round === round && f.fixture_id === scoring) ? (
+              <ScoreEntry
+                key={scoring!}
+                busy={busy}
+                onSave={async (home, away) => {
+                  await run(
+                    () => reportFixtureResult(scoring!, home, away),
+                    'Recorded. The squads can rate each other now.',
+                  );
+                  setScoring(null);
+                }}
+                onCancel={() => setScoring(null)}
+              />
+            ) : null}
 
             {cup.fixtures.some((f) => f.round === round && f.fixture_id === scheduling) ? (
               <PlacePicker
@@ -777,6 +827,72 @@ function Fixtures({
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+/**
+ * The score, written down by the organiser who ran the match.
+ *
+ * Only reachable for a fixture with no booking behind it. The two squads that
+ * entered become the team sheet, so everyone who played can rate everyone else
+ * — and three of those ratings are what make the match evidence.
+ */
+function ScoreEntry({
+  busy,
+  onSave,
+  onCancel,
+}: {
+  busy: boolean;
+  onSave: (home: number, away: number) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [home, setHome] = useState('');
+  const [away, setAway] = useState('');
+  const ok = /^\d+$/.test(home) && /^\d+$/.test(away);
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: 14,
+        borderRadius: 12,
+        background: 'var(--bg)',
+        border: '1px solid var(--hairline)',
+      }}
+    >
+      <div className="row" style={{ flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: 13 }}>How did it end?</strong>
+        <input
+          inputMode="numeric"
+          value={home}
+          onChange={(e) => setHome(e.target.value)}
+          placeholder="Home"
+          style={{ width: 80 }}
+        />
+        <span className="muted">&ndash;</span>
+        <input
+          inputMode="numeric"
+          value={away}
+          onChange={(e) => setAway(e.target.value)}
+          placeholder="Away"
+          style={{ width: 80 }}
+        />
+        <button
+          className="primary"
+          disabled={busy || !ok}
+          onClick={() => void onSave(Number(home), Number(away))}
+        >
+          Record it
+        </button>
+        <button className="small" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+      <p className="faint" style={{ marginTop: 8, marginBottom: 0 }}>
+        For a match played on a ground you arranged. Where the pitch was booked through the app,
+        the captain reports the score and you take it from there.
+      </p>
     </div>
   );
 }

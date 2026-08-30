@@ -80,6 +80,8 @@ export type Fixture = {
   /** Where it is played. Null until an organiser has placed it. */
   venue_name: string | null;
   pitch_label: string | null;
+  /** True when a booking sits behind it. The organiser's business, not a player's. */
+  booked: boolean;
 };
 
 export type StandingRow = {
@@ -175,6 +177,10 @@ export type MyCupFixture = {
   state: 'scheduled' | 'played' | 'walkover' | 'cancelled';
   scoreHome: number | null;
   scoreAway: number | null;
+  /** The match behind it, once a result has been recorded. */
+  matchId: string | null;
+  /** True while this player can still rate the people they played against. */
+  canRate: boolean;
 };
 
 export async function myCupFixtures(limit = 20): Promise<MyCupFixture[]> {
@@ -195,6 +201,8 @@ export async function myCupFixtures(limit = 20): Promise<MyCupFixture[]> {
     state: r.state,
     scoreHome: r.score_home,
     scoreAway: r.score_away,
+    matchId: r.match_id,
+    canRate: r.can_rate,
   }));
 }
 

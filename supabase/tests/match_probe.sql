@@ -20,6 +20,8 @@ declare
   v_slot  timestamptz;
   v_bk    uuid;
   v_match uuid;
+  v_trn   uuid;
+  v_fix   uuid;
   v_n     integer;
   v_num   numeric;
   v_txt   text;
@@ -175,8 +177,36 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);
   perform submit_peer_rating(v_match, BASEL, '{"PAS":65,"DRI":60,"DEF":70}'::jsonb);
 
+  -- Three raters are necessary and no longer sufficient. A Tuesday kickabout
+  -- with three friends willing to rate each other is exactly what a card built
+  -- on league evidence must not accept, so a casual match stays `played`
+  -- however many people corroborate it.
   select state into v_txt from match where id = v_match;
-  return query select 'three independent raters do', v_txt, v_txt = 'verified';
+  return query select 'three raters alone no longer verify a casual match',
+                      v_txt, v_txt = 'played';
+
+  select count(*)::integer into v_n
+    from point_ledger where match_id = v_match and kind = 'match_verified';
+  return query select 'and nobody is paid for verifying it', v_n::text, v_n = 0;
+
+  -- The same match, now played inside a cup. Nothing about the ratings
+  -- changes; what changes is that a competition stands behind the result.
+  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+  select * into r from create_tournament(
+    (select venue_id from pitch where id = v_pitch), 'Evidence Cup', 'league', 4);
+  v_trn := r.tournament_id;
+
+  insert into fixture (tournament_id, round, sequence, booking_id, state)
+  values (v_trn, 1, 1, v_bk, 'scheduled')
+  returning id into v_fix;
+
+  select * into r from record_fixture_result(v_fix);
+  return query select 'the organiser can take the result off the match',
+                      coalesce(r.reason, 'taken'), r.ok;
+
+  select state into v_txt from match where id = v_match;
+  return query select 'and a cup match with three raters is verified',
+                      v_txt, v_txt = 'verified';
 
   select count(*)::integer into v_n
     from point_ledger where match_id = v_match and kind = 'match_verified';

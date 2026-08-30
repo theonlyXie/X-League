@@ -440,6 +440,9 @@ export const STRINGS = {
     drawTapOn: 'Tap to keep going',
     /** The `v` between two clubs. Kept short because it sits between crests. */
     versusShort: 'v',
+    /** A cup match is the only thing that makes a rating count, so this is the
+        prompt that turns a result into evidence. */
+    rateThisMatch: 'Rate the players',
     againstName: (name: string) => `v ${name}`,
     matchAtHome: 'At home',
     matchAway: 'Away',
@@ -1289,6 +1292,7 @@ export const STRINGS = {
     drawSeeFixtures: 'كل المباريات',
     drawTapOn: 'اضغط للمتابعة',
     versusShort: 'ضد',
+    rateThisMatch: 'قيِّم اللاعبين',
     againstName: (name: string) => `ضد ${name}`,
     matchAtHome: 'على أرضك',
     matchAway: 'خارج أرضك',

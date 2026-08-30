@@ -106,6 +106,12 @@ export type Fixture = {
   /** Where it is. Null until somebody places it — a real state, not a gap. */
   venue_name: string | null;
   pitch_label: string | null;
+  /**
+   * True when a booking sits behind this fixture. It decides which of the two
+   * result routes is the right one, so the console offers one button rather
+   * than two where one is always refused.
+   */
+  booked: boolean;
 };
 
 export type StandingRow = {
@@ -281,6 +287,22 @@ export const setState = (id: string, state: TournamentState) =>
 export const decideRegistration = (registrationId: string, accept: boolean) =>
   act('decide_registration', { p_registration_id: registrationId, p_accept: accept });
 
+/**
+ * Draw the round after the one just finished.
+ *
+ * A knockout's later rounds cannot be drawn in advance — who is in round two is
+ * decided by round one — so this is a button the organiser presses once the
+ * round is complete, not something that fires on the last result.
+ */
+export async function advanceKnockout(
+  id: string,
+): Promise<{ ok: true; created: number } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('advance_knockout', { p_tournament_id: id });
+  if (error) return { ok: false, reason: error.message };
+  const res = outcome<{ created: number }>(data);
+  return res.ok ? { ok: true, created: res.row.created } : { ok: false, reason: res.reason };
+}
+
 export async function generateFixtures(
   id: string,
 ): Promise<{ ok: true; created: number } | { ok: false; reason: string }> {
@@ -314,6 +336,19 @@ export const placeFixture = (fixtureId: string, pitchId: string, kicksOffAt: str
 
 export const recordFixtureResult = (fixtureId: string) =>
   act('record_fixture_result', { p_fixture_id: fixtureId });
+
+/**
+ * Write down the score for a fixture with no booking behind it.
+ *
+ * The team sheets come from the squads that entered, so the people who played
+ * can rate each other — which is what turns the fixture into evidence.
+ */
+export const reportFixtureResult = (fixtureId: string, home: number, away: number) =>
+  act('report_fixture_result', {
+    p_fixture_id: fixtureId,
+    p_score_home: home,
+    p_score_away: away,
+  });
 
 // ---------------------------------------------------------------------------
 // Entry money, and closing a cup

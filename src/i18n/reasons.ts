@@ -235,6 +235,22 @@ const AR: Record<string, string> = {
   'You do not have access to that venue.': 'ليس لك وصول إلى هذا الملعب.',
   'You do not have permission to do that.': 'ليس لديك صلاحية لفعل ذلك.',
   'You do not manage that cup.': 'أنت لا تدير هذه البطولة.',
+  'Only a knockout has rounds to draw.':
+    'بطولات خروج المغلوب وحدها هي التي تُسحب لها جولات تالية.',
+  'Make the draw first.': 'أجرِ القرعة أولًا.',
+  'Every match in the round has to be played first.':
+    'يجب أن تُلعب كل مباريات الجولة أولًا.',
+  'A knockout tie cannot be left level. Record the score that decided it.':
+    'لا يمكن أن تنتهي مباراة خروج المغلوب بالتعادل. سجّل النتيجة التي حسمتها.',
+  'That was the final. Settle the cup to award it.':
+    'تلك كانت المباراة النهائية. أغلق البطولة لتُمنح ألقابها.',
+  'That match was booked through the app. The captain reports it.':
+    'هذه المباراة محجوزة عبر التطبيق، والكابتن هو من يسجّل نتيجتها.',
+  'That result has already been recorded.': 'النتيجة مُسجَّلة بالفعل.',
+  'A bye has no result.': 'المباراة التي بلا خصم ليس لها نتيجة.',
+  'Put the match on a ground and an hour first.':
+    'حدِّد ملعب المباراة وموعدها أولًا.',
+  'Give both scores.': 'أدخل نتيجة الفريقين.',
   'Matches are already placed there. Move them first.':
     'هناك مباريات مُحدَّدة على هذا الملعب بالفعل. انقلها أولًا.',
   'That pitch is not at a ground this cup is played on.':

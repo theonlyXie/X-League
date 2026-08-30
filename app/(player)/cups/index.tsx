@@ -157,6 +157,21 @@ export default function Cups() {
                     {t.cupAndRound(m.cupName, t.roundN(num(m.round)))}
                   </Txt>
                 </Pressable>
+                {/* A cup match is now the only kind that becomes evidence, and
+                    it only becomes evidence once the people in it rate each
+                    other. This is the one route to that from the Cups tab. */}
+                {m.canRate && m.matchId ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t.rateThisMatch}
+                    onPress={() => router.push(`/play/rate?match=${m.matchId}`)}
+                    style={{ paddingVertical: 8, alignItems: 'center' }}
+                  >
+                    <Txt size={12} weight="semibold" color={gold.base}>
+                      {t.rateThisMatch}
+                    </Txt>
+                  </Pressable>
+                ) : null}
               </Reveal>
             ))}
           </View>
