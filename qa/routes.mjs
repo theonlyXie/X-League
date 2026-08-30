@@ -41,6 +41,7 @@ export const ROUTES = [
   // to say so rather than render a club-shaped empty shell.
   { path: '/clubs/00000000-0000-0000-0000-000000000000', name: 'Club detail' },
   { path: '/cups/enter/00000000-0000-0000-0000-000000000000', name: 'Enter a cup' },
+  { path: '/cups/draw/00000000-0000-0000-0000-000000000000', name: 'The draw' },
 
   // Owner
   { path: '/owner', name: 'Owner today', signedOut: 'showcase' },

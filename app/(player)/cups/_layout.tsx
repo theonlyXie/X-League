@@ -7,6 +7,7 @@ export default function CupsLayout() {
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="[id]" />
+      <Stack.Screen name="draw/[id]" />
     </Stack>
   );
 }

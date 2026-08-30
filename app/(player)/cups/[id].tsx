@@ -304,6 +304,29 @@ export default function CupDetail() {
             <StandingsTable rows={cup.standings} />
           ) : (
             <View style={{ gap: 18 }}>
+              {/* The pairings were drawn at random the moment entries closed.
+                  The list below is the record; this plays it back. */}
+              {cup.fixtures.length > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t.watchTheDraw}
+                  onPress={() => router.push(`/cups/draw/${cup.tournamentId}`)}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    borderRadius: radius.control,
+                    borderWidth: 1,
+                    borderColor: goldAlpha.frame,
+                    backgroundColor: goldAlpha.fill,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Txt size={13} weight="semibold" color={gold.base}>
+                    {t.watchTheDraw}
+                  </Txt>
+                </Pressable>
+              ) : null}
+
               {rounds.map((round) => (
                 <View key={round} style={{ gap: 8 }}>
                   <Eyebrow>{t.roundN(num(round))}</Eyebrow>
