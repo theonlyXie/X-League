@@ -139,7 +139,7 @@ function Cup() {
               <tbody>
                 {cup.teams.map((t) => (
                   <tr key={t.registration_id}>
-                    <td style={{ fontWeight: 600 }}>{t.team_name}</td>
+                    <td style={{ fontWeight: 600 }}>{t.entrant_name}</td>
                     <td>
                       <span
                         className={`chip ${
@@ -159,7 +159,7 @@ function Cup() {
                               onClick={() =>
                                 void run(
                                   () => decideRegistration(t.registration_id, true),
-                                  `${t.team_name} is in.`,
+                                  `${t.entrant_name} is in.`,
                                 )
                               }
                             >
@@ -171,7 +171,7 @@ function Cup() {
                               onClick={() =>
                                 void run(
                                   () => decideRegistration(t.registration_id, false),
-                                  `${t.team_name} was declined.`,
+                                  `${t.entrant_name} was declined.`,
                                 )
                               }
                             >
@@ -216,8 +216,8 @@ function Cup() {
               </thead>
               <tbody>
                 {cup.standings.map((s) => (
-                  <tr key={s.team_id}>
-                    <td style={{ fontWeight: 600 }}>{s.team_name}</td>
+                  <tr key={s.entrant_id}>
+                    <td style={{ fontWeight: 600 }}>{s.entrant_name}</td>
                     <td className="num">{s.played}</td>
                     <td className="num">{s.won}</td>
                     <td className="num">{s.drawn}</td>

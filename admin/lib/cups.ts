@@ -76,11 +76,19 @@ export async function listForOrganiser(): Promise<TournamentSummary[]> {
   }));
 }
 
+/**
+ * An entry in a cup. A club or a team is behind it, and which one is behind it
+ * is the entry's business rather than the table's — the name and the crest come
+ * off the entry, so a club renamed mid-season does not rewrite January's table.
+ */
 export type Entrant = {
   registration_id: string;
-  team_id: string;
-  team_name: string;
+  entrant_name: string;
+  club_id: string | null;
+  team_id: string | null;
+  crest_url: string | null;
   state: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+  paid: boolean;
 };
 
 export type Fixture = {
@@ -89,8 +97,8 @@ export type Fixture = {
   sequence: number;
   home: string | null;
   away: string | null;
-  home_team_id: string | null;
-  away_team_id: string | null;
+  home_entrant_id: string | null;
+  away_entrant_id: string | null;
   score_home: number | null;
   score_away: number | null;
   state: 'scheduled' | 'played' | 'walkover' | 'cancelled';
@@ -98,8 +106,10 @@ export type Fixture = {
 };
 
 export type StandingRow = {
-  team_id: string;
-  team_name: string;
+  entrant_id: string;
+  entrant_name: string;
+  club_id: string | null;
+  team_id: string | null;
   played: number;
   won: number;
   drawn: number;

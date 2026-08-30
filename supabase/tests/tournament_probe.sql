@@ -201,7 +201,7 @@ begin
   select * into r from generate_fixtures(v_trn);
   return query select 'fixtures cannot be drawn before entries are accepted',
                       coalesce(r.reason, '(allowed!)'),
-                      r.ok = false and r.reason = 'You need at least two accepted teams.';
+                      r.ok = false and r.reason = 'You need at least two accepted entrants.';
 
   for r in select id from tournament_registration where tournament_id = v_trn loop
     perform decide_registration(r.id, true);
@@ -223,16 +223,16 @@ begin
 
   -- Every unordered pair appears exactly once.
   select count(*)::integer into v_n from (
-    select least(home_team_id::text, away_team_id::text) as a,
-           greatest(home_team_id::text, away_team_id::text) as b
+    select least(home_entrant_id::text, away_entrant_id::text) as a,
+           greatest(home_entrant_id::text, away_entrant_id::text) as b
       from fixture where tournament_id = v_trn
      group by 1, 2 having count(*) > 1
   ) dup;
   return query select 'no pair is drawn twice', v_n::text, v_n = 0;
 
   select count(*)::integer into v_n from (
-    select least(home_team_id::text, away_team_id::text) as a,
-           greatest(home_team_id::text, away_team_id::text) as b
+    select least(home_entrant_id::text, away_entrant_id::text) as a,
+           greatest(home_entrant_id::text, away_entrant_id::text) as b
       from fixture where tournament_id = v_trn
      group by 1, 2
   ) pairs;
@@ -241,9 +241,9 @@ begin
   -- Nobody plays twice in a round.
   select count(*)::integer into v_n from (
     select round, team_id from (
-      select round, home_team_id as team_id from fixture where tournament_id = v_trn
+      select round, home_entrant_id as team_id from fixture where tournament_id = v_trn
       union all
-      select round, away_team_id from fixture where tournament_id = v_trn
+      select round, away_entrant_id from fixture where tournament_id = v_trn
     ) sides
      where team_id is not null
      group by round, team_id having count(*) > 1
@@ -274,7 +274,7 @@ begin
     v_bk    uuid;
     h       hold_outcome;
   begin
-    select f.id, f.home_team_id, f.away_team_id into v_fix, v_home, v_away
+    select f.id, f.home_entrant_id, f.away_entrant_id into v_fix, v_home, v_away
       from fixture f where f.tournament_id = v_trn and f.round = 1 and f.sequence = 1;
 
     select p.id into v_pitch from pitch p
@@ -290,7 +290,10 @@ begin
 
     -- The home captain's booking, set up directly because the fixture has to be
     -- in the past for a result to exist and hold_slot refuses to sell that.
-    select t.captain_id into v_cap from team t where t.id = v_home;
+    -- v_home is now the entry, not the team, so the captain comes through it.
+    select tm.captain_id into v_cap
+      from tournament_registration reg join team tm on tm.id = reg.team_id
+     where reg.id = v_home;
     v_bk := test_past_booking(v_pitch, v_slot, v_cap);
     perform set_config('request.jwt.claims', json_build_object('sub', v_cap)::text, true);
 
@@ -402,9 +405,9 @@ begin
 
     select count(*)::integer into v_n from (
       select round, team_id from (
-        select round, home_team_id as team_id from fixture where tournament_id = v_odd
+        select round, home_entrant_id as team_id from fixture where tournament_id = v_odd
         union all
-        select round, away_team_id from fixture where tournament_id = v_odd
+        select round, away_entrant_id from fixture where tournament_id = v_odd
       ) sides
        where team_id is not null
        group by round, team_id having count(*) > 1

@@ -335,7 +335,7 @@ function StandingsTable({ rows }: { rows: TournamentDetail['standings'] }) {
 
         {rows.map((r, i) => (
           <View
-            key={r.team_id}
+            key={r.entrant_id}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -355,7 +355,7 @@ function StandingsTable({ rows }: { rows: TournamentDetail['standings'] }) {
               numberOfLines={1}
               style={{ width: 130 }}
             >
-              {num(i + 1)}. {r.team_name}
+              {num(i + 1)}. {r.entrant_name}
             </Txt>
             <Cell>{num(r.played)}</Cell>
             <Cell>{num(r.won)}</Cell>
