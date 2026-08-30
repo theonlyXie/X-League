@@ -24,16 +24,22 @@ export type TournamentSummary = {
   entryFeeEgp: number;
   maxTeams: number;
   entered: number;
+  /** Where the cup is, falling back to the host venue's area. */
+  region: string | null;
 };
 
-export async function listTournaments(limit = 25): Promise<TournamentSummary[]> {
-  const { data, error } = await supabase().rpc('list_tournaments', { p_limit: limit });
+export async function listTournaments(limit = 25, region?: string | null): Promise<TournamentSummary[]> {
+  const { data, error } = await supabase().rpc('list_tournaments', {
+    p_limit: limit,
+    p_region: region ?? null,
+  });
   if (error) throw error;
   return (data as any[]).map((r) => ({
     tournamentId: r.tournament_id,
     name: r.name,
     venueName: r.venue_name,
     area: r.area,
+    region: r.region,
     format: r.format,
     state: r.state,
     startsOn: r.starts_on,

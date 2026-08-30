@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, TextInput, View } from 'react-native';
+import { Image, Pressable, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
@@ -18,6 +18,7 @@ import { CONFIDENCE_COPY } from '@/data/assessment';
 import { useI18n } from '@/i18n';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
+import { pickAndUpload, setMyPhoto } from '@/lib/upload';
 
 /**
  * P-08 Profile / P-09 Card detail — the persistent football identity (§4.3).
@@ -27,8 +28,8 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Me() {
   const router = useRouter();
-  const { signedIn, displayName, venues, signOut } = useSession();
-  const { card, evidence, matches, awaitingResult, loading, unreachable, isFixture } = useCard();
+  const { signedIn, session, displayName, venues, signOut } = useSession();
+  const { card, evidence, matches, awaitingResult, loading, unreachable, isFixture, reload } = useCard();
   const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
   // Three states, not two, and conflating them was the worst bug in the app.
@@ -78,6 +79,7 @@ export default function Me() {
       ) : (
         <VoidCard
           name={name}
+          photoUrl={live ? card.photoUrl : null}
           ovr={ovr}
           positionCode={positionCode}
           confidence={confidence}
@@ -185,13 +187,19 @@ export default function Me() {
       {/* RBAC-005 / §3.1: hold more than one role, switch without signing out.
           Which venues appear is the server's answer (`my_venues`), not a guess
           the client makes — RBAC-002 scoping is enforced on every call anyway. */}
+      {signedIn && live ? (
+        <PhotoControl userId={session?.user?.id ?? null} hasPhoto={!!card.photoUrl} onChanged={reload} />
+      ) : null}
+
       {/* The rooms that are not tabs: this player's own bookings, their squad's
           team, and what the product has told them. All reachable from here
           rather than hidden. */}
       {signedIn || !isLive ? (
         <View style={{ width: '100%', gap: 8 }}>
           <RowLink label={t.bookingsTitle} onPress={() => router.push('/bookings')} />
+          <RowLink label={t.clubs} onPress={() => router.push('/clubs')} />
           <RowLink label={t.teamsTitle} onPress={() => router.push('/teams')} />
+          <RowLink label={t.leaderboards} onPress={() => router.push('/leaderboard')} />
           <RowLink label={t.notifications} onPress={() => router.push('/notifications')} />
         </View>
       ) : null}
@@ -302,6 +310,7 @@ export default function Me() {
 /** The Void card itself — X-to-void geometry behind the numbers. */
 function VoidCard({
   name,
+  photoUrl,
   ovr,
   positionCode,
   confidence,
@@ -310,6 +319,7 @@ function VoidCard({
   level,
 }: {
   name: string;
+  photoUrl?: string | null;
   ovr: number;
   positionCode: string;
   confidence: string;
@@ -333,6 +343,27 @@ function VoidCard({
       }}
     >
       <View pointerEvents="none" style={{ position: 'absolute', inset: 0 }}>
+        {/* The face sits inside the inner ring and under the strokes, so the
+            card's geometry still reads as the frame rather than as decoration
+            laid over a photograph. Without one the rings enclose the void the
+            design intends, which is why nothing stands in for it. */}
+        {photoUrl ? (
+          <Image
+            source={{ uri: photoUrl }}
+            accessibilityIgnoresInvertColors
+            style={{
+              position: 'absolute',
+              top: 122,
+              left: '50%',
+              marginLeft: -56,
+              width: 112,
+              height: 112,
+              borderRadius: radius.pill,
+              opacity: 0.92,
+            }}
+            resizeMode="cover"
+          />
+        ) : null}
         <View
           style={{
             position: 'absolute',
@@ -793,6 +824,82 @@ function NoCardYet({ onStart }: { onStart: () => void }) {
         </Txt>
       </View>
       <Button label={t.buildMyCard} height={44} round={radius.row} size={14} onPress={onStart} />
+    </View>
+  );
+}
+
+/**
+ * Setting the photo on your own card.
+ *
+ * Two states, not three: there is a photo or there is not. "Uploading" is the
+ * label on the button rather than a spinner somewhere else, because the thing
+ * that is busy is the thing you pressed.
+ */
+function PhotoControl({
+  userId,
+  hasPhoto,
+  onChanged,
+}: {
+  userId: string | null;
+  hasPhoto: boolean;
+  onChanged: () => void | Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function choose() {
+    if (!userId || busy) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const picked = await pickAndUpload('avatars', userId);
+      if (picked.status === 'ok') {
+        const res = await setMyPhoto(picked.url);
+        if (!res.ok) setNotice(res.reason ?? t.uploadFailed);
+        else await onChanged();
+      } else if (picked.status === 'denied') setNotice(t.photoPermission);
+      else if (picked.status === 'too-large') setNotice(t.photoTooLarge);
+      else if (picked.status === 'failed') setNotice(t.uploadFailed);
+    } catch {
+      setNotice(t.uploadFailed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clear() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await setMyPhoto(null);
+      await onChanged();
+    } catch {
+      setNotice(t.uploadFailed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={{ width: '100%', gap: 8 }}>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Button
+          label={busy ? t.uploading : hasPhoto ? t.changePhoto : t.addPhoto}
+          variant="ghost"
+          flex={1}
+          disabled={busy || !userId}
+          onPress={choose}
+        />
+        {hasPhoto ? (
+          <Button label={t.removePhoto} variant="ghost" flex={1} disabled={busy} onPress={clear} />
+        ) : null}
+      </View>
+      {notice ? (
+        <Txt size={12} color={burgundy.action}>
+          {notice}
+        </Txt>
+      ) : null}
     </View>
   );
 }
