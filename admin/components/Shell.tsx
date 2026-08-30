@@ -15,6 +15,7 @@ const NAV = [
   { href: '/people', label: 'People' },
   { href: '/reports', label: 'Reports' },
   { href: '/cups', label: 'Cups' },
+  { href: '/cups/money', label: 'Entry money' },
   { href: '/money', label: 'Money' },
   { href: '/settings', label: 'Settings' },
   { href: '/audit', label: 'Audit' },
@@ -41,8 +42,13 @@ export function Shell({ children }: { children: ReactNode }) {
       <nav className="nav">
         {NAV.map((n) => {
           // `/` only matches exactly; everything else matches its subtree, so
-          // a cup's own page keeps Cups lit.
-          const on = n.href === '/' ? path === '/' : path.startsWith(n.href);
+          // a cup's own page keeps Cups lit. The longest match wins, or
+          // `/cups/money` would light Cups and Entry money at the same time
+          // and neither would tell you where you are.
+          const best = NAV.filter((c) => c.href !== '/' && path.startsWith(c.href)).sort(
+            (a, b) => b.href.length - a.href.length,
+          )[0];
+          const on = n.href === '/' ? path === '/' : best?.href === n.href;
           return (
             <Link key={n.href} href={n.href} className={on ? 'nav-on' : undefined}>
               {n.label}

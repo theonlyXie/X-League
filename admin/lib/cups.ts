@@ -253,3 +253,213 @@ export const scheduleFixture = (fixtureId: string, bookingId: string) =>
 
 export const recordFixtureResult = (fixtureId: string) =>
   act('record_fixture_result', { p_fixture_id: fixtureId });
+
+// ---------------------------------------------------------------------------
+// Entry money, and closing a cup
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a cup's entry money goes.
+ *
+ * `tournamentId` null is the platform default, shown for any cup that has named
+ * none of its own — so the usual accounts are entered once and a particular cup
+ * can still collect somewhere else without every other cup repeating itself.
+ */
+export type PaymentChannelKind = 'instapay' | 'bank' | 'wallet' | 'contact';
+
+export type PaymentChannel = {
+  id: string;
+  tournamentId: string | null;
+  tournamentName: string | null;
+  kind: PaymentChannelKind;
+  label: string;
+  value: string;
+  instructions: string | null;
+  active: boolean;
+  sort: number;
+};
+
+export async function paymentChannels(): Promise<PaymentChannel[]> {
+  const { data, error } = await supabase().rpc('admin_payment_channels');
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    id: r.id,
+    tournamentId: r.tournament_id,
+    tournamentName: r.tournament_name,
+    kind: r.kind,
+    label: r.label,
+    value: r.value,
+    instructions: r.instructions,
+    active: r.active,
+    sort: r.sort,
+  }));
+}
+
+export async function savePaymentChannel(input: {
+  id?: string | null;
+  tournamentId?: string | null;
+  kind: PaymentChannelKind;
+  label: string;
+  value: string;
+  instructions?: string | null;
+  active?: boolean;
+  sort?: number;
+}): Promise<Result> {
+  return act('admin_set_payment_channel', {
+    p_id: input.id ?? null,
+    p_tournament_id: input.tournamentId ?? null,
+    p_kind: input.kind,
+    p_label: input.label,
+    p_value: input.value,
+    p_instructions: input.instructions ?? null,
+    p_active: input.active ?? true,
+    p_sort: input.sort ?? 0,
+  });
+}
+
+export type PromoKind = 'amount' | 'percent' | 'free';
+
+export type PromoCode = {
+  id: string;
+  code: string;
+  kind: PromoKind;
+  amountEgp: number | null;
+  percent: number | null;
+  tournamentId: string | null;
+  tournamentName: string | null;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: string | null;
+  active: boolean;
+  note: string | null;
+  createdAt: string;
+};
+
+export async function promoCodes(): Promise<PromoCode[]> {
+  const { data, error } = await supabase().rpc('admin_promo_codes', { p_limit: 200 });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    id: r.id,
+    code: r.code,
+    kind: r.kind,
+    amountEgp: r.amount_egp,
+    percent: r.percent,
+    tournamentId: r.tournament_id,
+    tournamentName: r.tournament_name,
+    maxUses: r.max_uses,
+    usedCount: r.used_count,
+    expiresAt: r.expires_at,
+    active: r.active,
+    note: r.note,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function createPromoCode(input: {
+  kind: PromoKind;
+  amountEgp?: number | null;
+  percent?: number | null;
+  tournamentId?: string | null;
+  maxUses?: number;
+  expiresAt?: string | null;
+  note?: string | null;
+  code?: string | null;
+}): Promise<{ ok: true; code: string } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('admin_create_promo_code', {
+    p_kind: input.kind,
+    p_amount_egp: input.amountEgp ?? null,
+    p_percent: input.percent ?? null,
+    p_tournament_id: input.tournamentId ?? null,
+    p_max_uses: input.maxUses ?? 1,
+    p_expires_at: input.expiresAt ?? null,
+    p_note: input.note ?? null,
+    p_code: input.code ?? null,
+  });
+  if (error) return { ok: false, reason: error.message };
+  const res = outcome<{ code: string }>(data);
+  return res.ok ? { ok: true, code: res.row.code } : { ok: false, reason: res.reason };
+}
+
+export const setPromoActive = (id: string, active: boolean) =>
+  act('admin_set_promo_active', { p_id: id, p_active: active });
+
+/** Every entry in a cup, with what it owes and what its captain claims to have sent. */
+export type Entry = {
+  registrationId: string;
+  entrantName: string;
+  clubId: string | null;
+  teamId: string | null;
+  crestUrl: string | null;
+  state: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+  feeEgp: number;
+  promoOffEgp: number;
+  pointsOffEgp: number;
+  amountDueEgp: number;
+  paid: boolean;
+  paidAt: string | null;
+  paymentNote: string | null;
+  paymentClaimedAt: string | null;
+  createdAt: string;
+};
+
+export async function tournamentEntries(id: string): Promise<Entry[]> {
+  const { data, error } = await supabase().rpc('tournament_entries', { p_tournament_id: id });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    registrationId: r.registration_id,
+    entrantName: r.entrant_name,
+    clubId: r.club_id,
+    teamId: r.team_id,
+    crestUrl: r.crest_url,
+    state: r.state,
+    feeEgp: r.fee_egp,
+    promoOffEgp: r.promo_off_egp,
+    pointsOffEgp: r.points_off_egp,
+    amountDueEgp: r.amount_due_egp,
+    paid: r.paid,
+    paidAt: r.paid_at,
+    paymentNote: r.payment_note,
+    paymentClaimedAt: r.payment_claimed_at,
+    createdAt: r.created_at,
+  }));
+}
+
+export const setRegistrationPaid = (registrationId: string, paid: boolean) =>
+  act('set_registration_paid', { p_registration_id: registrationId, p_paid: paid });
+
+export const setRegion = (id: string, region: string | null) =>
+  act('set_tournament_region', { p_tournament_id: id, p_region: region });
+
+/** Close a cup and write down what it produced. */
+export async function settleTournament(
+  id: string,
+): Promise<{ ok: true; awards: number } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('settle_tournament', { p_tournament_id: id });
+  if (error) return { ok: false, reason: error.message };
+  const res = outcome<{ awards: number }>(data);
+  return res.ok ? { ok: true, awards: res.row.awards } : { ok: false, reason: res.reason };
+}
+
+export type AwardKind = 'champion' | 'runner_up' | 'top_scorer' | 'best_player' | 'best_goalkeeper';
+
+export type Award = {
+  kind: AwardKind;
+  displayName: string;
+  clubId: string | null;
+  playerId: string | null;
+  value: number | null;
+  note: string | null;
+};
+
+export async function tournamentAwards(id: string): Promise<Award[]> {
+  const { data, error } = await supabase().rpc('tournament_awards', { p_tournament_id: id });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    kind: r.kind,
+    displayName: r.display_name,
+    clubId: r.club_id,
+    playerId: r.player_id,
+    value: r.value,
+    note: r.note,
+  }));
+}

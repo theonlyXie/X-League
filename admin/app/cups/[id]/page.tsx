@@ -11,10 +11,17 @@ import {
   generateFixtures,
   recordFixtureResult,
   scheduleFixture,
+  setRegion,
+  setRegistrationPaid,
   setState,
+  settleTournament,
+  tournamentAwards,
   tournamentBookings,
   tournamentDetail,
+  tournamentEntries,
+  type Award,
   type BookableHour,
+  type Entry,
   type TournamentDetail,
   type TournamentState,
 } from '@/lib/cups';
@@ -40,6 +47,8 @@ function Cup() {
   const may = canAct(role);
 
   const [cup, setCup] = useState<TournamentDetail | null>(null);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [awards, setAwards] = useState<Award[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -47,8 +56,17 @@ function Cup() {
 
   const load = useCallback(async () => {
     try {
-      const t = await tournamentDetail(id);
+      // Three calls rather than one because they fail for different reasons: a
+      // cup that has not been settled has no awards, and an organiser who may
+      // read the cup may still be refused its money.
+      const [t, rows, won] = await Promise.all([
+        tournamentDetail(id),
+        tournamentEntries(id).catch(() => [] as Entry[]),
+        tournamentAwards(id).catch(() => [] as Award[]),
+      ]);
       setCup(t);
+      setEntries(rows);
+      setAwards(won);
       setError(t ? null : 'That cup no longer exists.');
     } catch (e) {
       setError((e as { message?: string }).message ?? 'Could not reach the server.');
@@ -82,8 +100,8 @@ function Cup() {
   if (loading) return <div className="empty">Loading…</div>;
   if (!cup) return <Notice text={error} />;
 
-  const pending = cup.teams.filter((t) => t.state === 'pending');
-  const accepted = cup.teams.filter((t) => t.state === 'accepted');
+  const pending = entries.filter((e) => e.state === 'pending');
+  const accepted = entries.filter((e) => e.state === 'accepted');
 
   return (
     <>
@@ -108,7 +126,7 @@ function Cup() {
       <Notice text={error} />
       <Notice text={note} kind="ok" />
 
-      {may ? <Lifecycle cup={cup} busy={busy} run={run} /> : null}
+      {may ? <Lifecycle cup={cup} awards={awards.length} busy={busy} run={run} /> : null}
 
       {/* Entries. TRN-004: an entry is a request until somebody decides on it. */}
       <div className="panel">
@@ -121,9 +139,9 @@ function Cup() {
           {pending.length ? <span className="chip warn">{pending.length} waiting</span> : null}
         </div>
 
-        {cup.teams.length === 0 ? (
+        {entries.length === 0 ? (
           <div className="empty">
-            No teams have entered yet.
+            Nobody has entered yet.
             {cup.state === 'draft' ? ' Open the cup so captains can enter.' : ''}
           </div>
         ) : (
@@ -131,54 +149,96 @@ function Cup() {
             <table>
               <thead>
                 <tr>
-                  <th>Team</th>
+                  <th>Entrant</th>
                   <th>State</th>
+                  <th className="num">Due</th>
+                  <th>Payment</th>
                   {may ? <th /> : null}
                 </tr>
               </thead>
               <tbody>
-                {cup.teams.map((t) => (
-                  <tr key={t.registration_id}>
-                    <td style={{ fontWeight: 600 }}>{t.entrant_name}</td>
+                {entries.map((e) => (
+                  <tr key={e.registrationId}>
+                    <td style={{ fontWeight: 600 }}>
+                      {e.entrantName}
+                      {e.clubId ? <span className="chip" style={{ marginLeft: 8 }}>club</span> : null}
+                    </td>
                     <td>
                       <span
                         className={`chip ${
-                          t.state === 'accepted' ? 'good' : t.state === 'pending' ? '' : 'warn'
+                          e.state === 'accepted' ? 'good' : e.state === 'pending' ? '' : 'warn'
                         }`}
                       >
-                        {t.state}
+                        {e.state}
                       </span>
+                    </td>
+                    <td className="num">
+                      {e.amountDueEgp} EGP
+                      {e.promoOffEgp > 0 || e.pointsOffEgp > 0 ? (
+                        <div className="faint" style={{ fontSize: 11 }}>
+                          {e.feeEgp} less{e.promoOffEgp > 0 ? ` ${e.promoOffEgp} code` : ''}
+                          {e.pointsOffEgp > 0 ? ` ${e.pointsOffEgp} points` : ''}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td>
+                      {e.paid ? (
+                        <span className="chip good">paid</span>
+                      ) : e.paymentClaimedAt ? (
+                        <span className="chip warn">claimed</span>
+                      ) : (
+                        <span className="faint">nothing said</span>
+                      )}
+                      {e.paymentNote ? (
+                        <div className="faint" style={{ fontSize: 11 }}>{e.paymentNote}</div>
+                      ) : null}
                     </td>
                     {may ? (
                       <td className="num">
-                        {t.state === 'pending' ? (
-                          <span className="row" style={{ justifyContent: 'flex-end' }}>
-                            <button
-                              className="small primary"
-                              disabled={busy}
-                              onClick={() =>
-                                void run(
-                                  () => decideRegistration(t.registration_id, true),
-                                  `${t.entrant_name} is in.`,
-                                )
-                              }
-                            >
-                              Accept
-                            </button>
-                            <button
-                              className="small danger"
-                              disabled={busy}
-                              onClick={() =>
-                                void run(
-                                  () => decideRegistration(t.registration_id, false),
-                                  `${t.entrant_name} was declined.`,
-                                )
-                              }
-                            >
-                              Decline
-                            </button>
-                          </span>
-                        ) : null}
+                        <span className="row" style={{ justifyContent: 'flex-end' }}>
+                          <button
+                            className="small"
+                            disabled={busy}
+                            onClick={() =>
+                              void run(
+                                () => setRegistrationPaid(e.registrationId, !e.paid),
+                                e.paid
+                                  ? `${e.entrantName} marked unpaid.`
+                                  : `${e.entrantName}'s payment recorded.`,
+                              )
+                            }
+                          >
+                            {e.paid ? 'Unmark paid' : 'Mark paid'}
+                          </button>
+                          {e.state === 'pending' ? (
+                            <>
+                              <button
+                                className="small primary"
+                                disabled={busy}
+                                onClick={() =>
+                                  void run(
+                                    () => decideRegistration(e.registrationId, true),
+                                    `${e.entrantName} is in.`,
+                                  )
+                                }
+                              >
+                                Admit
+                              </button>
+                              <button
+                                className="small danger"
+                                disabled={busy}
+                                onClick={() =>
+                                  void run(
+                                    () => decideRegistration(e.registrationId, false),
+                                    `${e.entrantName} was declined.`,
+                                  )
+                                }
+                              >
+                                Decline
+                              </button>
+                            </>
+                          ) : null}
+                        </span>
                       </td>
                     ) : null}
                   </tr>
@@ -188,6 +248,30 @@ function Cup() {
           </div>
         )}
       </div>
+
+      {awards.length ? (
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Roll of honour</h2>
+          </div>
+          <div className="scroll-x">
+            <table>
+              <tbody>
+                {awards.map((a) => (
+                  <tr key={a.kind}>
+                    <td className="faint" style={{ width: 160 }}>{a.kind.replace('_', ' ')}</td>
+                    <td style={{ fontWeight: 600 }}>{a.displayName}</td>
+                    <td className="num">
+                      {a.value != null ? a.value : ''}
+                      {a.note ? <div className="faint" style={{ fontSize: 11 }}>{a.note}</div> : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
 
       <Fixtures cup={cup} may={may} busy={busy} run={run} onReload={load} />
 
@@ -249,13 +333,16 @@ function Cup() {
  */
 function Lifecycle({
   cup,
+  awards,
   busy,
   run,
 }: {
   cup: TournamentDetail;
+  awards: number;
   busy: boolean;
   run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<void>;
 }) {
+  const [region, setRegionText] = useState('');
   const go = (state: TournamentState, said: string) => () =>
     void run(() => setState(cup.tournamentId, state), said);
 
@@ -299,6 +386,26 @@ function Lifecycle({
           </button>
         ) : null}
 
+        {/* Settling is not the same as finishing. Finishing changes the state;
+            settling writes down who won, which trophy the club keeps, and the
+            four awards — and it reads the standings the cup has been showing
+            rather than recomputing, so the table and the trophy agree. */}
+        {cup.state !== 'draft' && cup.state !== 'cancelled' && awards === 0 ? (
+          <button
+            className="primary"
+            disabled={busy || played === 0}
+            title={played === 0 ? 'Nothing has been played yet' : undefined}
+            onClick={() =>
+              void run(async () => {
+                const res = await settleTournament(cup.tournamentId);
+                return res.ok ? { ok: true } : { ok: false, reason: res.reason };
+              }, 'Settled. The champion and the awards are recorded.')
+            }
+          >
+            Settle and award
+          </button>
+        ) : null}
+
         {cup.state !== 'cancelled' && cup.state !== 'complete' ? (
           <button className="danger" disabled={busy} onClick={go('cancelled', 'The cup is cancelled.')}>
             Cancel
@@ -310,11 +417,34 @@ function Lifecycle({
           {cup.state === 'draft'
             ? 'Nobody can enter a draft, and players cannot see it.'
             : cup.state === 'open'
-              ? 'Captains can enter their teams now.'
+              ? 'Captains can enter their clubs now.'
               : cup.state === 'running'
                 ? 'Draw the fixtures below, then record results as they are played.'
                 : ''}
         </span>
+      </div>
+
+      {/* Where the cup is, for players filtering by place. Empty means "wherever
+          the venue is", which is right for almost every cup and why this is not
+          a required field on creation. */}
+      <div className="row" style={{ marginTop: 14 }}>
+        <input
+          value={region}
+          onChange={(e) => setRegionText(e.target.value)}
+          placeholder={cup.area ? `Place — defaults to ${cup.area}` : 'Place, e.g. Giza'}
+          style={{ maxWidth: 280 }}
+        />
+        <button
+          disabled={busy}
+          onClick={() =>
+            void run(
+              () => setRegion(cup.tournamentId, region.trim() || null),
+              region.trim() ? `Listed under ${region.trim()}.` : 'Back to the venue\u2019s own area.',
+            )
+          }
+        >
+          Set place
+        </button>
       </div>
     </div>
   );
