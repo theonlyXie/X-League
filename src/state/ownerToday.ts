@@ -3,6 +3,7 @@ import * as api from '@/data/api';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 import { today } from '@/data/venue';
+import { useI18n } from '@/i18n';
 
 /**
  * O-01's arrivals and tiles, from the venue's own calendar.
@@ -20,6 +21,7 @@ import { today } from '@/data/venue';
  * a person who does not exist.
  */
 export function useOwnerToday() {
+  const { t } = useI18n();
   const { activeVenue, signedIn } = useSession();
   const venue = activeVenue;
   const showcase = !isLive || !signedIn || !venue;
@@ -45,7 +47,10 @@ export function useOwnerToday() {
       setArrivals(a);
       setSummary(s);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not reach the venue calendar.');
+      // The Error branch used to surface the provider's own English, which is
+      // the one thing an operator cannot act on in either language.
+      if (__DEV__) console.warn('[owner]', e);
+      setError(t.errVenueCalendar);
       setArrivals(null);
       setSummary(null);
     } finally {

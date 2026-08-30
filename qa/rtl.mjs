@@ -46,7 +46,7 @@ async function useArabic(page) {
   await page.evaluate((key) => localStorage.setItem(key, 'ar'), STORAGE_KEY);
 }
 
-async function checkRoute(page, report, path, { sentinels, exempt, who }) {
+async function checkRoute(page, report, path, { sentinels, keyNames, exempt, who }) {
   const { text, errors } = await visit(page, path);
 
   const layout = await page.evaluate(() => ({
@@ -60,6 +60,19 @@ async function checkRoute(page, report, path, { sentinels, exempt, who }) {
 
   if (layout.dir !== 'rtl') {
     report.fail(label, `document direction is ${layout.dir ?? 'unset'}, not rtl`);
+    return;
+  }
+
+  // A key on screen instead of its copy. This is not an English leak — a key
+  // is not English — so no sentinel would ever catch it, and it passed every
+  // other assertion here while the onboarding questions were being converted
+  // to keys. It is checked in both languages because it is wrong in both.
+  const rawKeys = keyNames.filter((k) => text.includes(k));
+  if (rawKeys.length) {
+    report.fail(
+      `${who ? `${who} · ` : ''}${name(path)} (${path})`,
+      `string-table key rendered instead of its copy: ${rawKeys.slice(0, 4).join(', ')}`,
+    );
     return;
   }
 
@@ -88,7 +101,13 @@ async function main() {
 
   const strings = await loadStrings();
   const sentinels = englishSentinels(strings);
-  report.note(`${sentinels.length} English phrases must not appear while in Arabic`);
+  // Long enough not to collide with ordinary words on screen. A key like `back`
+  // would match the English word; `asOutSpdName` matches only itself.
+  const keyNames = Object.keys(strings.en).filter((k) => k.length >= 8);
+  report.note(
+    `${sentinels.length} English phrases must not appear while in Arabic, ` +
+      `and ${keyNames.length} key names must not appear in either`,
+  );
 
   const browser = await openBrowser();
   const page = await newPage(browser);
@@ -99,6 +118,7 @@ async function main() {
     // they read the same stored value, so they are checked like the rest.
     await checkRoute(page, report, route.path, {
       sentinels,
+      keyNames,
       // Named rather than skipped, so the exemption stays visible in every run
       // instead of quietly shrinking what the check covers.
       exempt: FIXTURE_COPY_WHEN_SIGNED_OUT.includes(route.path),
@@ -120,7 +140,7 @@ async function main() {
     // No exemption on this pass: signed in there is no sample shift to draw,
     // so every word on screen is the product's own and must be Arabic.
     for (const path of OWNER_SURFACES) {
-      await checkRoute(staff, report, path, { sentinels, exempt: false, who: 'owner' });
+      await checkRoute(staff, report, path, { sentinels, keyNames, exempt: false, who: 'owner' });
     }
     await staff.close();
   } else {

@@ -7,6 +7,7 @@ import {
   type SquadMember,
 } from '@/data/squad';
 import { bookingTerms, myBookings, type BookingTerms, type PastBooking } from '@/data/discovery';
+import { useI18n } from '@/i18n';
 import {
   conversationMessages,
   lobbyConversation,
@@ -41,6 +42,7 @@ export type LobbyState = {
 };
 
 export function useLobby(bookingId: string | null): LobbyState {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState<string | null>(null);
   const [squad, setSquad] = useState<SquadMember[]>([]);
@@ -99,8 +101,8 @@ export function useLobby(bookingId: string | null): LobbyState {
           const message = (e as { message?: string })?.message ?? '';
           setDenied(
             message.includes('not part of that match')
-              ? 'You are not part of that match.'
-              : 'Could not load this match.',
+              ? t.errNotPartOfMatch
+              : t.errThisMatchUnreadable,
           );
         }
       } finally {

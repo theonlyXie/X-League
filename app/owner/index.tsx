@@ -258,7 +258,7 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
         >
           <View style={{ width: 6, height: 6, borderRadius: radius.pill, backgroundColor: gold.base }} />
           <Txt size={10} weight="bold" em={0.14} color={gold.ink}>
-            BOOKED IN THE APP
+            {t.ownBookedInApp}
           </Txt>
           <View style={{ flex: 1 }} />
           <Txt size={10.5} color={gold.ink} style={{ fontFamily: mono }}>

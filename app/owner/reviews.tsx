@@ -113,7 +113,7 @@ export default function OwnerReviews() {
       <OpSection title={t.ownRecent}>
         {reviews.length === 0 && !loading ? (
           <Txt size={12.5} color={onOperative.dim}>
-            No reviews yet. Only players who checked in can leave one.
+            {t.ownNoReviewsYet}
           </Txt>
         ) : null}
         <View style={{ gap: 8 }}>

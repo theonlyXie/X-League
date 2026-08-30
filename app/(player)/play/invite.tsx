@@ -161,7 +161,7 @@ export default function Invite() {
 
       {full ? (
         <Txt size={12.5} color={burgundy.action}>
-          {slotKind === 'starter' ? 'The starting five is full.' : 'Both sub places are taken.'}
+          {slotKind === 'starter' ? t.errStartersFull : t.errSubsFull}
         </Txt>
       ) : null}
 

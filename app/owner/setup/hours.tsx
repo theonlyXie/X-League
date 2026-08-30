@@ -191,7 +191,7 @@ export default function Hours() {
                 label={t.ownPitchName}
                 value={newPitch}
                 onChangeText={setNewPitch}
-                placeholder="Pitch 2"
+                placeholder={t.ownEgPitchName}
               />
             </View>
             <OpButton label={t.ownAddAPitch} onPress={add} disabled={newPitch.trim().length === 0} />

@@ -67,8 +67,8 @@ export default function RateMatch() {
           const message = (e as { message?: string })?.message ?? '';
           setError(
             message.includes('did not play')
-              ? 'You did not play in that match.'
-              : 'Could not load that match.',
+              ? t.errNotInMatch
+              : t.errMatchUnreadable,
           );
         }
       } finally {

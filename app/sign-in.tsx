@@ -116,7 +116,7 @@ export default function SignIn() {
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t.back}
           hitSlop={10}
           onPress={() => router.back()}
           style={{

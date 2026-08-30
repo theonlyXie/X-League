@@ -73,7 +73,7 @@ export default function Points() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           hitSlop={8}
           style={{

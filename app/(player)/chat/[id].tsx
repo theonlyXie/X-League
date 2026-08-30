@@ -53,7 +53,7 @@ export default function Thread() {
       setMessages(rows);
       void markConversationRead(conversationId);
     } catch {
-      setNotice('You are not in that conversation.');
+      setNotice(t.errNotInConversation);
     }
   }, [conversationId]);
 

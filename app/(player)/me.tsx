@@ -171,12 +171,12 @@ export default function Me() {
         <EvidenceBar label={t.selfAssessment} pct={selfPct} color="rgba(198,163,75,.45)" />
         <Txt size={11.5} lh={1.55} color={onVoid.dim}>
           {live
-            ? CONFIDENCE_COPY[confidence]
-            : 'Individual raters stay anonymous. No single match can move an attribute more than ±2.'}
+            ? t[CONFIDENCE_COPY[confidence]]
+            : t.ratersAnonymous}
         </Txt>
         {live ? (
           <Txt size={11} color={onVoid.faint}>
-            Scoring rule {card.ruleVersion}
+            {t.scoringRule(card.ruleVersion)}
           </Txt>
         ) : null}
       </View>
@@ -225,7 +225,7 @@ export default function Me() {
               detail={
                 platformRole
                   ? `Platform operations · ${platformRole} · audited`
-                  : 'Platform operations · audited'
+                  : t.platformOpsAudited
               }
               onPress={() => router.push('/admin')}
             />
@@ -250,7 +250,7 @@ export default function Me() {
               </Txt>
               {needsRestart ? (
                 <Txt size={11.5} color={gold.base}>
-                  Restart the app to mirror the layout
+                  {t.restartToMirror}
                 </Txt>
               ) : null}
             </View>
@@ -294,7 +294,7 @@ export default function Me() {
           {signedIn ? (
             <WorkspaceRow
               title={t.signOut}
-              detail={displayName ? `Signed in as ${displayName}` : 'End this session'}
+              detail={displayName ? `Signed in as ${displayName}` : t.endThisSession}
               onPress={() => void signOut()}
             />
           ) : null}

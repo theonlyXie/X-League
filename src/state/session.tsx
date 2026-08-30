@@ -1,6 +1,8 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isLive, supabase } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
+import type { STRINGS } from '@/i18n/strings';
 
 /**
  * Who is signed in, and what they are allowed to operate.
@@ -96,30 +98,39 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+/** The resolved string table for the current language. */
+type Copy = (typeof STRINGS)['en'];
+
 /**
  * Auth errors reach the player, so they say what happened in words rather than
  * passing a provider's error code through to someone standing at a pitch gate.
  */
-function explain(error: { message: string; code?: string }): string {
+function explain(error: { message: string; code?: string }, t: Copy): string {
   // Match the code where supabase-js provides one and the message otherwise:
   // which field carries the reason varies by endpoint and client version, and
   // a player at a pitch gate should never be shown a raw provider string.
   const hay = `${error.code ?? ''} ${error.message}`.toLowerCase();
   const has = (...needles: string[]) => needles.some((n) => hay.includes(n));
 
-  if (has('invalid_credentials', 'invalid login'))
-    return 'That number and password do not match. Check them and try again.';
-  if (has('email_not_confirmed'))
-    return 'That account is not usable yet. Ask an administrator to check it.';
+  if (has('invalid_credentials', 'invalid login')) return t.authBadCredentials;
+  if (has('email_not_confirmed')) return t.authNotUsable;
   // MSG-006: rate limits are real; the player should wait rather than retry.
-  if (has('rate limit', 'over_request_rate_limit'))
-    return 'Too many attempts. Wait a minute before trying again.';
-  if (has('user_already_exists', 'already registered'))
-    return 'That number already has an account. Sign in instead.';
-  return error.message;
+  if (has('rate limit', 'over_request_rate_limit')) return t.authRateLimited;
+  if (has('user_already_exists', 'already registered')) return t.authAlreadyExists;
+
+  // The fallback used to return `error.message`, which is the provider's own
+  // English — the exact thing the comment above says never to show, arrived at
+  // by falling off the end of the list. It is not actionable by somebody at a
+  // gate in either language, so they get a sentence they can act on and the
+  // detail goes to the console for whoever can.
+  if (__DEV__) console.warn('[auth] unmapped error:', error.code, error.message);
+  return t.authUnknown;
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  // `I18nProvider` wraps this one in the root layout, so the copy is available
+  // here and the auth messages below are the player's own language.
+  const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [venues, setVenues] = useState<StaffVenue[]>([]);
@@ -264,29 +275,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (phone: string, password: string) => {
-      if (!isLive) return 'No database configured.';
+      if (!isLive) return t.authNoDatabase;
       try {
         const found = await addressFor(phone);
-        if (!found) return 'That does not look like a valid mobile number.';
+        if (!found) return t.authBadNumber;
         // Said before asking GoTrue, because "no account" and "wrong password"
         // are different problems and only one of them is fixed by trying again.
-        if (!found.exists_already)
-          return 'No account for that number yet. Create one below.';
+        if (!found.exists_already) return t.authNoAccountYet;
 
         const { error } = await supabase().auth.signInWithPassword({
           email: found.auth_email,
           password,
         });
-        return error ? explain(error) : null;
+        return error ? explain(error, t) : null;
       } catch (e) {
-        return explain(e as { message: string; code?: string });
+        return explain(e as { message: string; code?: string }, t);
       }
     },
-    [addressFor],
+    [addressFor, t],
   );
 
   const signUp = useCallback(async (input: SignUpInput) => {
-    if (!isLive) return 'No database configured.';
+    if (!isLive) return t.authNoDatabase;
     try {
       const { data, error } = await supabase().rpc('sign_up', {
         p_phone: input.phone,
@@ -296,7 +306,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         p_venue_name: input.venueName ?? null,
         p_venue_area: input.venueArea ?? null,
       });
-      if (error) return explain(error);
+      if (error) return explain(error, t);
 
       const row = (data as { ok: boolean; auth_email: string | null; reason: string | null }[])[0];
       // Every rule about what makes an account valid is the server's, so this
@@ -307,11 +317,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         email: row.auth_email!,
         password: input.password,
       });
-      return signInError ? explain(signInError) : null;
+      return signInError ? explain(signInError, t) : null;
     } catch (e) {
-      return explain(e as { message: string; code?: string });
+      return explain(e as { message: string; code?: string }, t);
     }
-  }, []);
+    // `t` is a dependency now that the messages come from it: without it a
+    // language switch would leave the previous language's copy in the closure.
+  }, [t]);
 
   const signOut = useCallback(async () => {
     if (!isLive) return;

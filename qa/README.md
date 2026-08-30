@@ -95,7 +95,12 @@ renders without opening a connection is a failure rather than a pass. That last
 rule is the one that catches a screen quietly falling back to a fixture after
 somebody has renamed the sample player out of `fixtures.mjs`.
 
-It also prints each screen's call map, which is where it earns its keep beyond
+`rtl` also asserts that no key name is on screen in either language. A screen
+rendering `asOutSpdName` instead of its copy is not an English leak — a key is
+not English — so no sentinel catches it, and that is exactly what nearly
+shipped while the assessment questions were being converted to keys.
+
+`wire` also prints each screen's call map, which is where it earns its keep beyond
 the pass line. Its first run was green on all twenty surfaces and still showed
 `my_profile`, `my_venues` and `my_platform_role` going out three times apiece on
 every load — GoTrue emits both `SIGNED_IN` and `INITIAL_SESSION` for one
@@ -148,8 +153,11 @@ Honest list.
   done; the exemption list names exactly where it shows.
 - **Hardcoded English with no key at all is invisible to `rtl`.** The sentinels
   are the string table, so a phrase that was never added to it cannot be
-  matched. Several were found by reading the money screen rather than by the
-  check, and there are likely more.
+  matched. A sweep by hand found around fifty of them — every auth failure, most
+  screen error messages, and the whole anchored self-assessment, which meant an
+  Arabic player's first minute in the product was in English. They have keys
+  now, but the check still cannot find the next one: only reading the source
+  can.
 - **Mirroring is checked, not reviewed.** "Does not scroll sideways" catches a
   layout that breaks outright. It says nothing about an icon that should have
   flipped and did not, or a chevron still pointing the wrong way.

@@ -97,7 +97,7 @@ export default function Closures() {
       <OpSection title={t.ownBookedOff}>
         {rows.length === 0 && !loading ? (
           <Txt size={12.5} color={onOperative.dim}>
-            Nothing closed from today onwards.
+            {t.ownNothingClosed}
           </Txt>
         ) : null}
         <View style={{ gap: 8 }}>
@@ -225,7 +225,7 @@ export default function Closures() {
           ))}
           {slots.length === 0 ? (
             <Txt size={12} color={onOperative.dim}>
-              Nothing open on that date.
+              {t.ownNothingOpenThatDate}
             </Txt>
           ) : null}
         </View>
