@@ -23,6 +23,15 @@ type CardContextValue = {
   /** The matches themselves, for P-09's list and the rating prompt. */
   matches: MatchEvidence[];
   /**
+   * Every booking this player captained, most recent first.
+   *
+   * Already fetched here for `awaitingResult` below and, until the history
+   * screen existed, thrown away immediately afterwards. Exposing it means
+   * `/bookings` paints from state the app is holding anyway rather than
+   * opening a second connection for rows it already has.
+   */
+  bookings: PastBooking[];
+  /**
    * Bookings this player captained that were played and never reported. They
    * are not evidence yet and never will be until somebody says how it ended,
    * which is why the card screen asks rather than leaving them invisible.
@@ -43,6 +52,7 @@ export function CardProvider({ children }: { children: ReactNode }) {
   const [card, setCard] = useState<api.Card | null>(null);
   const [evidence, setEvidence] = useState<CardEvidence | null>(null);
   const [matches, setMatches] = useState<MatchEvidence[]>([]);
+  const [bookings, setBookings] = useState<PastBooking[]>([]);
   const [awaitingResult, setAwaitingResult] = useState<PastBooking[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -52,6 +62,7 @@ export function CardProvider({ children }: { children: ReactNode }) {
       setCard(null);
       setEvidence(null);
       setMatches([]);
+      setBookings([]);
       setAwaitingResult([]);
       return;
     }
@@ -68,6 +79,7 @@ export function CardProvider({ children }: { children: ReactNode }) {
       setCard(c);
       setEvidence(e);
       setMatches(m);
+      setBookings(past);
       setAwaitingResult(past.filter((b) => b.awaitingResult));
       setUnreachable(false);
     } catch {
@@ -79,6 +91,7 @@ export function CardProvider({ children }: { children: ReactNode }) {
       setCard(null);
       setEvidence(null);
       setMatches([]);
+      setBookings([]);
       setAwaitingResult([]);
     } finally {
       setLoading(false);
@@ -94,13 +107,14 @@ export function CardProvider({ children }: { children: ReactNode }) {
       card,
       evidence,
       matches,
+      bookings,
       awaitingResult,
       loading,
       unreachable,
       isFixture: !isLive || !signedIn,
       reload,
     }),
-    [card, evidence, matches, awaitingResult, loading, unreachable, signedIn, reload],
+    [card, evidence, matches, bookings, awaitingResult, loading, unreachable, signedIn, reload],
   );
 
   return <CardContext.Provider value={value}>{children}</CardContext.Provider>;

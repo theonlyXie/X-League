@@ -15,6 +15,10 @@ export const ROUTES = [
   { path: '/me', name: 'Card', signedOut: 'showcase' },
   { path: '/points', name: 'XP ledger' },
   { path: '/notifications', name: 'Notifications' },
+  { path: '/bookings', name: 'Booking history' },
+  // Reached cold with a code that belongs to nobody, which is the case that
+  // has to say so rather than render an empty shell.
+  { path: '/bookings/XL-NONE', name: 'Booking detail' },
   { path: '/onboarding', name: 'Onboarding' },
   { path: '/sign-in', name: 'Sign in' },
   { path: '/chat', name: 'Chat' },
@@ -65,7 +69,17 @@ export const ROUTES = [
 export const FIXTURE_COPY_WHEN_SIGNED_OUT = ['/owner', '/owner/calendar', '/play/confirmation'];
 
 /** The surfaces a signed-in player should never see a fixture on. */
-export const PLAYER_SURFACES = ['/', '/me', '/play', '/points', '/notifications', '/chat', '/teams', '/cups'];
+export const PLAYER_SURFACES = [
+  '/',
+  '/me',
+  '/play',
+  '/points',
+  '/notifications',
+  '/bookings',
+  '/chat',
+  '/teams',
+  '/cups',
+];
 
 /** The surfaces a signed-in venue owner should never see a fixture on. */
 export const OWNER_SURFACES = [
@@ -100,6 +114,7 @@ export const MUST_REACH_BACKEND = [
   '/play',
   '/points',
   '/notifications',
+  '/bookings',
   '/chat',
   '/teams',
   '/cups',

@@ -185,10 +185,12 @@ export default function Me() {
       {/* RBAC-005 / §3.1: hold more than one role, switch without signing out.
           Which venues appear is the server's answer (`my_venues`), not a guess
           the client makes — RBAC-002 scoping is enforced on every call anyway. */}
-      {/* The rooms that are not tabs: a squad's team, and what the product has
-          told this player. Both are reachable from here rather than hidden. */}
+      {/* The rooms that are not tabs: this player's own bookings, their squad's
+          team, and what the product has told them. All reachable from here
+          rather than hidden. */}
       {signedIn || !isLive ? (
         <View style={{ width: '100%', gap: 8 }}>
+          <RowLink label={t.bookingsTitle} onPress={() => router.push('/bookings')} />
           <RowLink label={t.teamsTitle} onPress={() => router.push('/teams')} />
           <RowLink label={t.notifications} onPress={() => router.push('/notifications')} />
         </View>
