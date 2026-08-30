@@ -83,6 +83,61 @@ begin
   select kind::text into v_code from tournament_payment_channels(v_trn) limit 1;
   return query select 'which is the cup''s own', v_code, v_code = 'wallet';
 
+  -- The number on a cup's channel changes from cup to cup, so changing it is
+  -- the ordinary case rather than the exception.
+  declare
+    v_ch uuid;
+    v_seen text;
+    v_raised boolean := false;
+  begin
+    select id into v_ch from payment_channel where tournament_id = v_trn limit 1;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+    select * into r from admin_set_payment_channel(
+      v_ch, v_trn, 'wallet'::payment_channel_kind, 'Vodafone Cash', '01011112222', 'Send before Friday');
+    return query select 'an admin can change a cup''s wallet number',
+                        coalesce(r.reason, 'changed'), r.ok;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
+    select value into v_seen from tournament_payment_channels(v_trn) limit 1;
+    return query select 'and the captain sees the new one', coalesce(v_seen, '(none)'),
+                        v_seen = '01011112222';
+    select instructions into v_seen from tournament_payment_channels(v_trn) limit 1;
+    return query select 'along with whatever they were told to do',
+                        coalesce(v_seen, '(silent)'), v_seen = 'Send before Friday';
+
+    -- The console functions refuse by raising, not by answering false: they are
+    -- only reachable from a console, and the console shows the error. Asserted
+    -- the way it actually behaves rather than the way the player-facing
+    -- functions do.
+    begin
+      perform admin_delete_payment_channel(v_ch);
+    exception when insufficient_privilege then
+      v_raised := true;
+    end;
+    return query select 'a captain cannot remove a channel',
+                        case when v_raised then 'refused' else '(allowed!)' end, v_raised;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+    select * into r from admin_delete_payment_channel(v_ch);
+    return query select 'an admin can', coalesce(r.reason, 'removed'), r.ok;
+
+    select count(*)::integer into v_n
+      from audit_log where action = 'payment_channel.removed' and subject_id = v_ch;
+    return query select 'and what was removed is audited', v_n::text, v_n = 1;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
+    select kind::text into v_seen from tournament_payment_channels(v_trn) limit 1;
+    return query select 'the cup falls back to the platform default again',
+                        coalesce(v_seen, '(none)'), v_seen = 'instapay';
+
+    -- Put it back, because the entry cases below are about a cup that names
+    -- its own destination.
+    perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+    perform admin_set_payment_channel(null, v_trn, 'wallet', 'Vodafone Cash', '01000000000');
+    perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
+  end;
+
   -- -------------------------------------------------------------------------
   -- The quote
   -- -------------------------------------------------------------------------

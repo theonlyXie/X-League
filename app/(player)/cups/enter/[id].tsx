@@ -47,6 +47,7 @@ export default function EnterCup() {
   const [code, setCode] = useState('');
   const [points, setPoints] = useState(0);
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteFailed, setQuoteFailed] = useState(false);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(isLive);
   const [unreachable, setUnreachable] = useState(false);
@@ -87,11 +88,18 @@ export default function EnterCup() {
       try {
         const q = await registrationQuote(id, withCode.trim() || null, withPoints);
         setQuote(q);
+        setQuoteFailed(q === null);
       } catch {
         setQuote(null);
+        setQuoteFailed(true);
       }
     },
-    [id],
+    // `signedIn` belongs here. Without it this closure kept the value it was
+    // built with — false, because the session had not been restored yet — and
+    // the effect below re-ran with the stale one when the session arrived. The
+    // quote was never asked for, so the captain reached checkout with no fee,
+    // no points and no total, and nothing said why.
+    [id, signedIn],
   );
 
   useEffect(() => {
@@ -340,6 +348,12 @@ export default function EnterCup() {
                 </Txt>
               </PressScale>
             </View>
+          ) : null}
+
+          {!quote && quoteFailed ? (
+            <Txt size={13} lh={1.5} color={burgundy.action}>
+              {t.priceUnreadable}
+            </Txt>
           ) : null}
 
           {quote ? (

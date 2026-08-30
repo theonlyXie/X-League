@@ -7,10 +7,13 @@ import { Gate, canAct } from '@/components/Gate';
 import { Notice, Shell, StateChip, dayText, whenText } from '@/components/Shell';
 import { useSession } from '@/lib/session';
 import {
+  deletePaymentChannel,
   decideRegistration,
   generateFixtures,
   recordFixtureResult,
   scheduleFixture,
+  paymentChannels,
+  savePaymentChannel,
   setRegion,
   setRegistrationPaid,
   setState,
@@ -22,6 +25,8 @@ import {
   type Award,
   type BookableHour,
   type Entry,
+  type PaymentChannel,
+  type PaymentChannelKind,
   type TournamentDetail,
   type TournamentState,
 } from '@/lib/cups';
@@ -49,6 +54,7 @@ function Cup() {
   const [cup, setCup] = useState<TournamentDetail | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [awards, setAwards] = useState<Award[]>([]);
+  const [channels, setChannels] = useState<PaymentChannel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -59,14 +65,16 @@ function Cup() {
       // Three calls rather than one because they fail for different reasons: a
       // cup that has not been settled has no awards, and an organiser who may
       // read the cup may still be refused its money.
-      const [t, rows, won] = await Promise.all([
+      const [t, rows, won, money] = await Promise.all([
         tournamentDetail(id),
         tournamentEntries(id).catch(() => [] as Entry[]),
         tournamentAwards(id).catch(() => [] as Award[]),
+        paymentChannels().catch(() => [] as PaymentChannel[]),
       ]);
       setCup(t);
       setEntries(rows);
       setAwards(won);
+      setChannels(money);
       setError(t ? null : 'That cup no longer exists.');
     } catch (e) {
       setError((e as { message?: string }).message ?? 'Could not reach the server.');
@@ -127,6 +135,14 @@ function Cup() {
       <Notice text={note} kind="ok" />
 
       {may ? <Lifecycle cup={cup} awards={awards.length} busy={busy} run={run} /> : null}
+
+      <Money
+        cup={cup}
+        channels={channels}
+        may={may}
+        busy={busy}
+        run={run}
+      />
 
       {/* Entries. TRN-004: an entry is a request until somebody decides on it. */}
       <div className="panel">
@@ -715,6 +731,189 @@ function SchedulePicker({
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+const KINDS: { value: PaymentChannelKind; label: string; hint: string }[] = [
+  { value: 'instapay', label: 'InstaPay', hint: 'Handle or address' },
+  { value: 'bank', label: 'Bank transfer', hint: 'Account number or IBAN' },
+  { value: 'wallet', label: 'Mobile wallet', hint: 'Number' },
+  { value: 'contact', label: 'Call to arrange', hint: 'Number to call' },
+];
+
+/**
+ * Where this cup's entry money goes.
+ *
+ * On the cup's own page rather than only on the shared settings page, because
+ * that is where the question comes up: the handle collecting for one cup is
+ * rarely the handle collecting for the next, and somebody who has just made a
+ * cup is about to be asked where its money goes.
+ *
+ * A cup that names nothing shows the platform default instead, and says which —
+ * an empty list here would read as "nobody can pay", when in fact the captain
+ * is shown the usual account.
+ */
+function Money({
+  cup,
+  channels,
+  may,
+  busy,
+  run,
+}: {
+  cup: TournamentDetail;
+  channels: PaymentChannel[];
+  may: boolean;
+  busy: boolean;
+  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<void>;
+}) {
+  const mine = channels.filter((c) => c.tournamentId === cup.tournamentId);
+  const fallback = channels.filter((c) => c.tournamentId === null && c.active);
+
+  const [editing, setEditing] = useState<string | null>(null);
+  const [kind, setKind] = useState<PaymentChannelKind>('instapay');
+  const [label, setLabel] = useState('');
+  const [value, setValue] = useState('');
+  const [instructions, setInstructions] = useState('');
+
+  const start = (c: PaymentChannel) => {
+    setEditing(c.id);
+    setKind(c.kind);
+    setLabel(c.label);
+    setValue(c.value);
+    setInstructions(c.instructions ?? '');
+  };
+
+  const clear = () => {
+    setEditing(null);
+    setKind('instapay');
+    setLabel('');
+    setValue('');
+    setInstructions('');
+  };
+
+  const hint = KINDS.find((k) => k.value === kind)?.hint ?? 'Number';
+
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <h2>Where the money goes</h2>
+        <span className="spacer" />
+        <span className="faint">
+          {cup.entryFeeEgp > 0
+            ? `Captains are asked for ${cup.entryFeeEgp} EGP`
+            : 'This cup is free to enter'}
+        </span>
+      </div>
+
+      {mine.length === 0 ? (
+        <div className="empty">
+          {fallback.length
+            ? `This cup names no account of its own, so captains are shown the platform default (${fallback[0].label} · ${fallback[0].value}).`
+            : 'Nothing is set. A captain reaching checkout is told this cup has not said where to send the money.'}
+        </div>
+      ) : (
+        <div className="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Kind</th>
+                <th>Label</th>
+                <th>Number or account</th>
+                <th>Note to the captain</th>
+                {may ? <th /> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {mine.map((c) => (
+                <tr key={c.id}>
+                  <td>{KINDS.find((k) => k.value === c.kind)?.label ?? c.kind}</td>
+                  <td style={{ fontWeight: 600 }}>{c.label}</td>
+                  <td style={{ fontFamily: 'ui-monospace, monospace' }}>{c.value}</td>
+                  <td className="faint">{c.instructions ?? ''}</td>
+                  {may ? (
+                    <td className="num">
+                      <span className="row" style={{ justifyContent: 'flex-end' }}>
+                        <button className="small" disabled={busy} onClick={() => start(c)}>
+                          Change
+                        </button>
+                        <button
+                          className="small danger"
+                          disabled={busy}
+                          onClick={() =>
+                            void run(async () => {
+                              const res = await deletePaymentChannel(c.id);
+                              if (res.ok && editing === c.id) clear();
+                              return res;
+                            }, `${c.label} removed.`)
+                          }
+                        >
+                          Remove
+                        </button>
+                      </span>
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {may ? (
+        <div className="row" style={{ marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
+          <select value={kind} onChange={(e) => setKind(e.target.value as PaymentChannelKind)}>
+            {KINDS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Whose account — X League, Vodafone Cash"
+            style={{ minWidth: 240 }}
+          />
+          <input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={hint}
+            style={{ minWidth: 220 }}
+          />
+          <input
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            placeholder="Anything the captain needs to know (optional)"
+            style={{ minWidth: 260 }}
+          />
+          <button
+            className="primary"
+            disabled={busy || label.trim().length < 2 || value.trim().length < 2}
+            onClick={() =>
+              void run(async () => {
+                const res = await savePaymentChannel({
+                  id: editing,
+                  tournamentId: cup.tournamentId,
+                  kind,
+                  label: label.trim(),
+                  value: value.trim(),
+                  instructions: instructions.trim() || null,
+                });
+                if (res.ok) clear();
+                return res;
+              }, editing ? 'Changed. Captains see the new details now.' : 'Added.')
+            }
+          >
+            {editing ? 'Save the change' : 'Add an account'}
+          </button>
+          {editing ? (
+            <button disabled={busy} onClick={clear}>
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

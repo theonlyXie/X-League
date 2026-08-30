@@ -380,6 +380,9 @@ export async function createPromoCode(input: {
   return res.ok ? { ok: true, code: res.row.code } : { ok: false, reason: res.reason };
 }
 
+export const deletePaymentChannel = (id: string) =>
+  act('admin_delete_payment_channel', { p_id: id });
+
 export const setPromoActive = (id: string, active: boolean) =>
   act('admin_set_promo_active', { p_id: id, p_active: active });
 

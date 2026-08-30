@@ -806,6 +806,7 @@ export const STRINGS = {
     oneFewer: 'One fewer',
     setRoleFor: (name: string, role: string) => `Set ${name} to ${role}`,
     liveFrom: (date: string) => `From ${date}`,
+    priceUnreadable: 'What this costs could not be read. Pull down or try again in a moment.',
     signInToSee: 'Sign in to see this.',
     noSuchClub: 'That club does not exist, or is not yours to see.',
 
@@ -1589,6 +1590,7 @@ export const STRINGS = {
     oneFewer: 'واحد أقل',
     setRoleFor: (name: string, role: string) => `اجعل ${name} ${role}`,
     liveFrom: (date: string) => `من ${date}`,
+    priceUnreadable: 'تعذّرت قراءة التكلفة. حاول مرة أخرى بعد قليل.',
     signInToSee: 'سجّل الدخول لعرض هذا.',
     noSuchClub: 'هذا النادي غير موجود، أو ليس من حقك رؤيته.',
 
