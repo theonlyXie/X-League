@@ -27,10 +27,18 @@ declare
   -- an account that already has a password, and the reset needs a hashed
   -- recovery code and locks after five failures. The list is exact so that
   -- growing it is a decision somebody writes down.
+  --
+  -- The record widens it again, and on purpose. Who won what, who is scoring
+  -- and where the cups are is the reason somebody opens this before they have
+  -- an account: a roll of honour behind a sign-in is not a roll of honour.
+  -- None of the six reads anything a person did not choose to put on a public
+  -- card, and none of them writes.
   v_want text[] := array[
-    'auth_email_for_sign_in', 'hold_slot', 'list_tournaments', 'nearest_alternatives',
-    'search_availability', 'search_venues', 'sign_up', 'staff_auth_status',
-    'staff_reset_password', 'staff_set_first_password', 'tournament_detail',
+    'auth_email_for_sign_in', 'club_honours', 'featured_clubs', 'hold_slot',
+    'keeper_leaderboard', 'leaderboard', 'list_tournaments',
+    'nearest_alternatives', 'search_availability', 'search_venues', 'sign_up',
+    'staff_auth_status', 'staff_reset_password', 'staff_set_first_password',
+    'tournament_awards', 'tournament_detail', 'tournament_regions',
     'venue_detail', 'venue_reviews'
   ];
   v_open text;
