@@ -297,7 +297,7 @@ export default function Me() {
           {signedIn ? (
             <WorkspaceRow
               title={t.signOut}
-              detail={displayName ? `Signed in as ${displayName}` : t.endThisSession}
+              detail={displayName ? t.signedInAs(displayName) : t.endThisSession}
               onPress={() => void signOut()}
             />
           ) : null}

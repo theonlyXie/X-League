@@ -389,6 +389,7 @@ function CalendarCell({
   pitch: string;
   onPress?: () => void;
 }) {
+  const { t } = useI18n();
   const spec = SOURCE[cell.source];
   return (
     <View
@@ -403,7 +404,7 @@ function CalendarCell({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${time}, Pitch ${pitch}: ${cell.title}, ${cell.detail}`}
+        accessibilityLabel={t.ownCellAt(time, pitch, cell.title, cell.detail)}
         onPress={onPress}
         disabled={!onPress}
         style={({ pressed }) => ({

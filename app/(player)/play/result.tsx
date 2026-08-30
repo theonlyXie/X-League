@@ -313,10 +313,11 @@ function Step({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label === '+' ? 'One more' : 'One fewer'}
+      accessibilityLabel={label === '+' ? t.oneMore : t.oneFewer}
       onPress={onPress}
       disabled={disabled}
       hitSlop={10}

@@ -143,7 +143,7 @@ export default function Pricing() {
                   {r.pitchLabel} · {r.startHour}:00–{r.endHour}:00
                 </Txt>
                 <Txt size={10.5} color="rgba(20,18,16,.45)">
-                  {r.live ? `From ${r.validFrom}` : `${r.validFrom} → ${r.validTo ?? '—'}`}
+                  {r.live ? t.liveFrom(r.validFrom) : `${r.validFrom} → ${r.validTo ?? '—'}`}
                 </Txt>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 2 }}>

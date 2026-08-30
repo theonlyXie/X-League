@@ -101,7 +101,7 @@ export default function Checkout() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back to pitch"
+          accessibilityLabel={t.backToPitch}
           onPress={() => router.back()}
           hitSlop={8}
           style={{

@@ -11,8 +11,9 @@
     "typecheck": "tsc --noEmit",
     "build:web": "expo export --platform web",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "check": "npm run typecheck && npm run check:i18n && npm run check:reasons",
-    "check:reasons": "node scripts/check-reasons.mjs"
+    "check": "npm run typecheck && npm run check:i18n && npm run check:copy && npm run check:reasons",
+    "check:reasons": "node scripts/check-reasons.mjs",
+    "check:copy": "node scripts/check-copy.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",

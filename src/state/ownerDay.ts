@@ -27,7 +27,7 @@ export type DayRow = { hour: number; time: string; cells: Cell[] };
  *     screen whose whole job is showing every hour it owns.
  */
 export function useOwnerDay(date: string = today()) {
-  const { t } = useI18n();
+  const { t, money, hourLabel } = useI18n();
   const { activeVenue, signedIn } = useSession();
   const venue = activeVenue;
   const showcase = !isLive || !signedIn || !venue;
@@ -62,11 +62,24 @@ export function useOwnerDay(date: string = today()) {
     void load();
   }, [load]);
 
+  const copy = useMemo<Copy>(
+    () => ({
+      open: t.ownChannelOpen,
+      booked: t.ownCellBooked,
+      blocked: t.ownCellBlocked,
+      arrived: t.ownCellArrived,
+      holding: t.ownCellHolding,
+      money,
+      hourLabel,
+    }),
+    [t, money, hourLabel],
+  );
+
   const { pitches, rows } = useMemo(() => {
-    if (cells) return toGrid(cells);
-    if (showcase) return showcaseGrid();
+    if (cells) return toGrid(cells, copy);
+    if (showcase) return showcaseGrid(copy);
     return { pitches: [] as string[], rows: [] as DayRow[] };
-  }, [cells, showcase]);
+  }, [cells, showcase, copy]);
 
   return {
     pitches,
@@ -87,7 +100,7 @@ export function useOwnerDay(date: string = today()) {
  * Columns come from the cells themselves rather than from a constant, so a
  * venue with one pitch gets one column and a venue with six gets six.
  */
-function toGrid(cells: api.OwnerCell[]): { pitches: string[]; rows: DayRow[] } {
+function toGrid(cells: api.OwnerCell[], copy: Copy): { pitches: string[]; rows: DayRow[] } {
   const pitches = [...new Set(cells.map((c) => c.pitchLabel))].sort((a, b) => a.localeCompare(b));
 
   const byHour = new Map<number, Map<string, api.OwnerCell>>();
@@ -101,32 +114,59 @@ function toGrid(cells: api.OwnerCell[]): { pitches: string[]; rows: DayRow[] } {
     .sort((a, b) => a[0] - b[0])
     .map(([hour, row]) => ({
       hour,
-      time: `${hour > 12 ? hour - 12 : hour === 0 ? 12 : hour} ${hour >= 12 ? 'PM' : 'AM'}`,
-      cells: pitches.map((label) => toCell(row.get(label))),
+      time: copy.hourLabel(hour),
+      cells: pitches.map((label) => toCell(row.get(label), copy)),
     }));
 
   return { pitches, rows };
 }
 
-/** The design's sample evening, for the demo build and the signed-out visitor. */
-function showcaseGrid(): { pitches: string[]; rows: DayRow[] } {
+/**
+ * The design's sample evening, for the demo build and the signed-out visitor.
+ *
+ * The cells are the fixture's, drawn in English on purpose. The hour is not:
+ * a clock is the product's own chrome, and the fixture's `6 PM` rendered as
+ * `PM ٦` beside a column of Arabic — so it comes from the same formatter the
+ * live grid uses.
+ */
+function showcaseGrid(copy: Copy): { pitches: string[]; rows: DayRow[] } {
   return {
     pitches: ['A', 'B', 'C'],
     rows: CALENDAR.map((row, i) => ({
       hour: 18 + i,
-      time: row.time,
+      time: copy.hourLabel(18 + i),
       cells: [row.a, row.b, row.c],
     })),
   };
 }
 
-function toCell(cell: api.OwnerCell | undefined): Cell {
-  if (!cell) return { source: 'open', title: 'Open', detail: '' };
+/**
+ * What the grid needs to say a cell in words.
+ *
+ * Threaded in rather than reached for, because this module builds the grid for
+ * the demo build as well as the live one and neither should be able to render
+ * an English word on an Arabic screen. It used to: an Arabic owner's calendar
+ * said "Open", "Booked", "arrived" and "EGP 250" — the last with Western digits
+ * and a Latin currency, in an app that renders every other number in
+ * Arabic-Indic.
+ */
+type Copy = {
+  open: string;
+  booked: string;
+  blocked: string;
+  arrived: string;
+  holding: string;
+  money: (egp: number) => string;
+  hourLabel: (hour: number) => string;
+};
+
+function toCell(cell: api.OwnerCell | undefined, copy: Copy): Cell {
+  if (!cell) return { source: 'open', title: copy.open, detail: '' };
   if (!cell.state) {
     return {
       source: 'open',
-      title: 'Open',
-      detail: `EGP ${cell.priceEgp}`,
+      title: copy.open,
+      detail: copy.money(cell.priceEgp),
       startsAt: cell.startsAt,
       pitchId: cell.pitchId,
       pitchLabel: cell.pitchLabel,
@@ -140,16 +180,16 @@ function toCell(cell: api.OwnerCell | undefined): Cell {
 
   const detail =
     cell.source === 'block'
-      ? 'blocked'
+      ? copy.blocked
       : cell.state === 'checked_in'
-        ? 'arrived'
+        ? copy.arrived
         : cell.state === 'held'
-          ? 'holding'
+          ? copy.holding
           : (cell.code ?? cell.state);
 
   return {
     source,
-    title: cell.captainName ?? 'Booked',
+    title: cell.captainName ?? copy.booked,
     detail,
     startsAt: cell.startsAt,
     pitchId: cell.pitchId,

@@ -108,7 +108,7 @@ export default function Staff() {
                   <Pressable
                     key={r}
                     accessibilityRole="button"
-                    accessibilityLabel={`Set ${m.displayName} to ${r}`}
+                    accessibilityLabel={t.setRoleFor(m.displayName, r)}
                     onPress={() => set(m.userId, r, true)}
                     style={{
                       paddingVertical: 6,

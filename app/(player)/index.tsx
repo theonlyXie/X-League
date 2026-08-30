@@ -220,7 +220,7 @@ export default function Home() {
           <Eyebrow>{t.liveNearYou}</Eyebrow>
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel={`See all ${home.liveSlots} live slots`}
+            accessibilityLabel={t.seeAllSlots(num(home.liveSlots))}
             hitSlop={12}
             onPress={() => router.push('/play')}
           >
