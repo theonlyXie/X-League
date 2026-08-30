@@ -31,6 +31,7 @@ Then, with the app running (`npm run web` from the repository root):
 
 ```
 npm run smoke               # no account, no writes — run this on every change
+npm run rtl                 # no account needed, no writes — Arabic and mirrored
 npm run wire                # needs accounts, reads only
 npm run leak                # needs accounts, reads only
 npm run spine               # needs accounts, MAKES A REAL BOOKING
@@ -41,13 +42,13 @@ npm run spine               # needs accounts, MAKES A REAL BOOKING
 | `QA_BASE_URL` | Defaults to `http://localhost:8081` |
 | `QA_CHROMIUM` | A browser binary, when Playwright's own is not installed |
 | `QA_PLAYER_PHONE` / `QA_PLAYER_PASSWORD` | `wire`, `leak`, `spine` |
-| `QA_OWNER_PHONE` / `QA_OWNER_PASSWORD` | `wire`, `leak` — an account on a venue's staff |
+| `QA_OWNER_PHONE` / `QA_OWNER_PASSWORD` | `wire`, `leak` — an account on a venue's staff. Optional for `rtl`, which uses it to check Owner Mode's live screens as well as its showcase ones. |
 | `QA_VENUE` | `spine` — the venue to book at, as it appears in search |
 | `QA_SLOT` | `spine`, optional — e.g. `8:00 PM` |
 | `QA_SETTLE_MS` | How long a route may take to paint before it counts as blank. A ceiling, not a wait — default 5000, and CI raises it because a hosted runner is slower. |
 | `QA_QUIET_MS` | How long after first paint to keep listening for console errors. Default 900. Lowering it turns the console assertion into a coin flip. |
 
-## The four checks
+## The five checks
 
 **`smoke`** visits all 28 routes signed out and asserts each one rendered
 something and left the console quiet. It needs no account and writes nothing,
@@ -56,6 +57,30 @@ people skip, and it is the half that caught the worst bug of the review pass:
 a React duplicate-key warning was the slot grid reporting that it had drawn two
 chips with the same identity — a venue open from ten in the morning showed
 `10:00` twice, and tapping the evening one held the morning hour.
+
+**`rtl`** puts the app in Arabic and walks every route mirrored, asserting the
+document really is in RTL, that the page does not scroll sideways, and that no
+English from the app's own string table is on screen. The sentinels are read
+out of `src/i18n/strings.ts` rather than copied, so they cannot go stale when
+somebody rewords a button.
+
+`npm run check:i18n` already proves both locales carry the same keys. What it
+cannot prove is that a screen *reaches* for one — a hardcoded English label
+passes key parity perfectly, because there is no key for it to be missing. The
+first run failed 11 of 28 routes on exactly that: the Owner Mode tab bar, the
+whole Setup menu and most of the money screen rendered English in both
+languages, with correct Arabic sitting unused in the table beside them.
+
+Give it `QA_OWNER_PHONE` and it runs Owner Mode a second time signed in. That
+pass is not extra thoroughness — Owner Mode draws the design's sample shift
+when signed out and the venue's real one when signed in, and they are different
+code. `OCCUPANCY`, `CASH DUE` and `CONFLICTS` were hardcoded on the live branch
+only, where no signed-out run could ever have reached them.
+
+The three routes in `FIXTURE_COPY_WHEN_SIGNED_OUT` are exempt from the copy
+assertion alone, and the exemption is printed on every run rather than applied
+quietly. Direction and mirroring are still checked there. See the honest list
+below for what that leaves undone.
 
 **`wire`** signs in and asserts that every screen meant to show you your own
 data actually asked the database for it, and that the database answered. It is
@@ -115,8 +140,19 @@ Honest list.
 - **Writes, apart from the booking spine.** Recording a closure, changing a
   price, adding staff, replying in chat, registering for a cup — every one of
   those is a button no check has ever pressed.
-- **Arabic and RTL.** `npm run check:i18n` proves both locales carry the same
-  keys; nothing here has ever looked at a mirrored layout.
+- **The design's sample copy is still English.** `rtl` covers the app's own
+  words. The showcase arrivals, gate notes and KPI figures that Owner Mode and
+  the confirmation screen draw when reached without an account were written in
+  English and stayed that way, so an Arabic visitor gets Arabic chrome around
+  English sample content. Translating that data set is real work nobody has
+  done; the exemption list names exactly where it shows.
+- **Hardcoded English with no key at all is invisible to `rtl`.** The sentinels
+  are the string table, so a phrase that was never added to it cannot be
+  matched. Several were found by reading the money screen rather than by the
+  check, and there are likely more.
+- **Mirroring is checked, not reviewed.** "Does not scroll sideways" catches a
+  layout that breaks outright. It says nothing about an icon that should have
+  flipped and did not, or a chevron still pointing the wrong way.
 - **Anything after the match.** Reporting a result needs a booking in the past,
   which needs either waiting or reaching into the database — the walk in the
   review pass moved a booking's time by hand to get there, and that is not

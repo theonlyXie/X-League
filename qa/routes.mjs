@@ -47,6 +47,23 @@ export const ROUTES = [
   { path: '/admin', name: 'Admin console' },
 ];
 
+/**
+ * Routes that draw the design's sample content when reached without an
+ * account, and so are exempt from the Arabic-copy assertion only.
+ *
+ * The distinction `rtl` needs is between the app's own chrome — tabs, labels,
+ * hints, buttons, every word the product writes — which must be Arabic, and
+ * the design's sample arrivals and gate notes, which are English because they
+ * were drawn in English. Holding the fixtures to the same standard would fail
+ * these three routes forever on content no real user's data ever passes
+ * through, and a permanently red check is one people learn to skip.
+ *
+ * Direction and mirrored layout are still asserted here, and the exemption is
+ * printed rather than applied silently. Translating the sample data set is
+ * real work that has not been done — see the README's honest list.
+ */
+export const FIXTURE_COPY_WHEN_SIGNED_OUT = ['/owner', '/owner/calendar', '/play/confirmation'];
+
 /** The surfaces a signed-in player should never see a fixture on. */
 export const PLAYER_SURFACES = ['/', '/me', '/play', '/points', '/notifications', '/chat', '/teams', '/cups'];
 

@@ -16,7 +16,7 @@ import { useI18n } from '@/i18n';
  * the number a venue reconciles against at the end of a week is the second one.
  */
 export default function OwnerMoney() {
-  const { t } = useI18n();
+  const { t, num } = useI18n();
   const { activeVenue } = useSession();
   const venue = activeVenue;
 
@@ -56,19 +56,19 @@ export default function OwnerMoney() {
   return (
     <OpScreen>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <OpTile label={t.ownCollected} value={`${total.collected}`} sub="EGP · 30 days" accent />
-        <OpTile label={t.ownOutstanding} value={`${total.outstanding}`} sub="EGP at the gate" />
-        <OpTile label={t.ownForfeited} value={`${total.forfeited}`} sub="late or no-show" />
+        <OpTile label={t.ownCollected} value={num(total.collected)} sub={t.ownEgp30Days} accent />
+        <OpTile label={t.ownOutstanding} value={num(total.outstanding)} sub={t.ownEgpAtGate} />
+        <OpTile label={t.ownForfeited} value={num(total.forfeited)} sub={t.ownForfeitedSub} />
       </View>
 
       <OpNotice text={error} />
 
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title={t.ownByEvening} hint="Gross is what the pitch-hours were sold for. Collected is what the gate actually took.">
+      <OpSection title={t.ownByEvening} hint={t.ownGrossHint}>
         {rows.length === 0 && !loading ? (
           <Txt size={12.5} color={onOperative.dim}>
-            Nothing booked in this window yet.
+            {t.ownNothingBooked}
           </Txt>
         ) : null}
 
@@ -80,7 +80,7 @@ export default function OwnerMoney() {
                   {r.onDate}
                 </Txt>
                 <Txt size={10.5} color="rgba(20,18,16,.45)">
-                  {r.bookings} bookings · {r.grossEgp} gross
+                  {t.ownDayLine(num(r.bookings), num(r.grossEgp))}
                 </Txt>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 3 }}>

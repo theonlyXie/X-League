@@ -33,18 +33,18 @@ export default function OwnerToday() {
   const tiles = summary
     ? [
         {
-          label: 'OCCUPANCY',
+          label: t.ownOccupancy,
           value: `${num(summary.occupancyPct)}%`,
           sub: t.ownSlotsOpenToday(num(summary.openSlots)),
           accent: false,
         },
         {
-          label: 'CASH DUE',
+          label: t.ownCashDue,
           value: money(summary.cashDueEgp),
           sub: `${num(summary.cashGates)} · ${t.ownAtTheGate}`,
           accent: true,
         },
-        { label: 'CONFLICTS', value: num(summary.conflicts), sub: 'one calendar', accent: false },
+        { label: t.ownConflicts, value: num(summary.conflicts), sub: t.ownOneCalendar, accent: false },
       ]
     : showcase
       ? OWNER_KPIS
