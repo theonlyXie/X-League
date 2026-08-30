@@ -20,7 +20,7 @@ import { useSession } from '@/state/session';
 export default function Teams() {
   const { signedIn } = useSession();
   const router = useRouter();
-  const { t, num } = useI18n();
+  const { reason, t, num } = useI18n();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(isLive);
@@ -243,7 +243,7 @@ export default function Teams() {
                 setNotice(null);
                 reload();
               } else {
-                setNotice(res.reason ?? null);
+                setNotice(reason(res.reason) ?? null);
               }
             }}
           />

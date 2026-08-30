@@ -115,7 +115,7 @@ export default function Confirmation() {
             borderColor: 'rgba(198,163,75,.35)',
           }}
         >
-          <View style={{ gap: 4 }} accessibilityLabel={`Booking code ${code}`}>
+          <View style={{ gap: 4 }} accessibilityLabel={t.bookingCodeIs(code)}>
             <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
               {t.bookingCode}
             </Txt>

@@ -32,7 +32,7 @@ export function ReportSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { reason: say, t } = useI18n();
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -61,7 +61,7 @@ export function ReportSheet({
       setSent(true);
       setNotice(t.reportSent);
     } else {
-      setNotice(res.reason ?? t.reportFailed);
+      setNotice(say(res.reason) ?? t.reportFailed);
     }
   };
 

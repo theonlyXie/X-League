@@ -24,7 +24,7 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Home() {
   const router = useRouter();
-  const { t, num, money, hour, longDate } = useI18n();
+  const { reason, t, num, money, hour, longDate } = useI18n();
   const { signedIn, displayName } = useSession();
   const home = useHome();
 
@@ -54,7 +54,7 @@ export default function Home() {
       ok: false,
       reason: t.offline,
     }));
-    if (!result.ok) setInviteNotice(result.reason ?? t.offline);
+    if (!result.ok) setInviteNotice(reason(result.reason) ?? t.offline);
     home.reload();
   };
 
@@ -220,7 +220,7 @@ export default function Home() {
           <Eyebrow>{t.liveNearYou}</Eyebrow>
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel={`See all ${home.liveSlots} live slots`}
+            accessibilityLabel={t.seeAllSlots(num(home.liveSlots))}
             hitSlop={12}
             onPress={() => router.push('/play')}
           >
@@ -268,7 +268,7 @@ export default function Home() {
                     ? venue.minPriceEgp > 0
                       ? t.venueMeta(num(venue.distanceKm), money(venue.minPriceEgp))
                       : t.venueMetaNoPrice(num(venue.distanceKm))
-                    : [venue.area, venue.minPriceEgp > 0 ? `${money(venue.minPriceEgp)}/hr` : null]
+                    : [venue.area, venue.minPriceEgp > 0 ? t.perHour(money(venue.minPriceEgp)) : null]
                         .filter(Boolean)
                         .join(' · ')}
                 </Txt>

@@ -25,7 +25,7 @@ export default function Invite() {
   const router = useRouter();
   const params = useLocalSearchParams<{ booking?: string }>();
   const bookingId = params.booking ?? null;
-  const { t, num } = useI18n();
+  const { reason, t, num } = useI18n();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoundPlayer[]>([]);
@@ -86,7 +86,7 @@ export default function Invite() {
       if (who.guestName) setGuest('');
       void refreshCounts();
     } else {
-      setNotice(res.reason ?? null);
+      setNotice(reason(res.reason) ?? null);
     }
   };
 

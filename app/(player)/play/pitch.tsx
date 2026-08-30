@@ -49,7 +49,7 @@ export default function PitchDetail() {
     pitchId,
   } = useBooking();
   const { signedIn } = useSession();
-  const { t, num, hourLabel } = useI18n();
+  const { reason, t, num, hourLabel } = useI18n();
 
   const [venue, setVenue] = useState<VenueDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -198,7 +198,7 @@ export default function PitchDetail() {
             {conflict ? (
               <Pressable
                 accessibilityRole="alert"
-                accessibilityLabel={conflict.reason}
+                accessibilityLabel={reason(conflict.reason) ?? undefined}
                 onPress={clearConflict}
                 style={{
                   paddingVertical: 12,
@@ -211,7 +211,7 @@ export default function PitchDetail() {
                 }}
               >
                 <Txt size={12.5} weight="semibold" color={burgundy.action}>
-                  {conflict.reason}
+                  {reason(conflict.reason)}
                 </Txt>
                 {conflict.alternatives.length ? (
                   <Txt size={11.5} color={onVoid.muted}>
@@ -349,7 +349,7 @@ export default function PitchDetail() {
  * number for the whole evening would misquote it.
  */
 function PriceForSlot() {
-  const { t, money } = useI18n();
+  const { reason, t, money } = useI18n();
   const { slot, slotPrices } = useBooking();
   return (
     <View style={{ gap: 2 }}>
@@ -365,6 +365,7 @@ function PriceForSlot() {
 
 /** Where verified venue media goes (VEN-005); marked as a placeholder, not faked. */
 function PhotoPlaceholder() {
+  const { t } = useI18n();
   return (
     <View
       style={{
@@ -392,7 +393,7 @@ function PhotoPlaceholder() {
         />
       ))}
       <Txt size={10.5} em={0.12} color="rgba(243,238,229,.3)" style={{ fontFamily: mono }}>
-        venue photo · 16:9
+        {t.venuePhotoSlot}
       </Txt>
       <View style={{ position: 'absolute', bottom: 12, left: 12, flexDirection: 'row', gap: 6 }}>
         {[0, 1, 2].map((i) => (

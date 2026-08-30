@@ -33,7 +33,7 @@ const SOURCE: Record<BookingSource, { bg: string; border: string; dashed: boolea
 };
 
 export default function OwnerCalendar() {
-  const { t, longDate, slot } = useI18n();
+  const { reason, t, longDate, slot } = useI18n();
   const router = useRouter();
   const [date, setDate] = useState(today());
   const { pitches, rows, live, loading, error, showcase, venueName, reload } = useOwnerDay(date);
@@ -164,7 +164,7 @@ export default function OwnerCalendar() {
           : error
             ? error
             : live
-              ? `Live from ${venueName}'s calendar`
+              ? t.ownLiveFrom(venueName ?? '')
               : showcase
                 ? t.ownSampleDay
                 : ''}
@@ -255,7 +255,7 @@ function RecordBookingSheet({
   onClose: () => void;
   onRecorded: () => void;
 }) {
-  const { t, hour } = useI18n();
+  const { reason, t, hour } = useI18n();
   const [name, setName] = useState('');
   const [channel, setChannel] = useState<'phone' | 'walk_in'>('phone');
   const [busy, setBusy] = useState(false);
@@ -270,7 +270,7 @@ function RecordBookingSheet({
       reason: t.ownCalendarUnreachable,
     }));
     setBusy(false);
-    if (!result.ok) setFailed(result.reason ?? t.ownRecordFailed);
+    if (!result.ok) setFailed(reason(result.reason) ?? t.ownRecordFailed);
     else {
       setName('');
       onRecorded();
@@ -389,6 +389,7 @@ function CalendarCell({
   pitch: string;
   onPress?: () => void;
 }) {
+  const { t } = useI18n();
   const spec = SOURCE[cell.source];
   return (
     <View
@@ -403,7 +404,7 @@ function CalendarCell({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${time}, Pitch ${pitch}: ${cell.title}, ${cell.detail}`}
+        accessibilityLabel={t.ownCellAt(time, pitch, cell.title, cell.detail)}
         onPress={onPress}
         disabled={!onPress}
         style={({ pressed }) => ({

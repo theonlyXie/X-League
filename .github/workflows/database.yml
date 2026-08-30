@@ -65,10 +65,21 @@ jobs:
       - name: Run every suite
         run: supabase/tests/run_all.sh
 
+      # A refusal added to a migration is English until somebody translates it,
+      # and this is the workflow that runs when migrations change — so it is the
+      # one that has to notice. Needs no database, only the files.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Every refusal has an Arabic translation
+        run: node scripts/check-reasons.mjs
+
       - name: Summarise
         if: always()
         run: |
           echo "### SQL suites" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Booking spine, RBAC, card, squad, matches, cancellation," >> "$GITHUB_STEP_SUMMARY"
-          echo "messaging, tournaments, owner/admin, and the access surface." >> "$GITHUB_STEP_SUMMARY"
+          echo "messaging, tournaments, clubs, entry money, honours, and the" >> "$GITHUB_STEP_SUMMARY"
+          echo "access surface — plus every refusal having Arabic copy." >> "$GITHUB_STEP_SUMMARY"

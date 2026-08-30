@@ -201,7 +201,7 @@ begin
   select * into r from generate_fixtures(v_trn);
   return query select 'fixtures cannot be drawn before entries are accepted',
                       coalesce(r.reason, '(allowed!)'),
-                      r.ok = false and r.reason = 'You need at least two accepted teams.';
+                      r.ok = false and r.reason = 'You need at least two accepted entrants.';
 
   for r in select id from tournament_registration where tournament_id = v_trn loop
     perform decide_registration(r.id, true);
@@ -223,16 +223,16 @@ begin
 
   -- Every unordered pair appears exactly once.
   select count(*)::integer into v_n from (
-    select least(home_team_id::text, away_team_id::text) as a,
-           greatest(home_team_id::text, away_team_id::text) as b
+    select least(home_entrant_id::text, away_entrant_id::text) as a,
+           greatest(home_entrant_id::text, away_entrant_id::text) as b
       from fixture where tournament_id = v_trn
      group by 1, 2 having count(*) > 1
   ) dup;
   return query select 'no pair is drawn twice', v_n::text, v_n = 0;
 
   select count(*)::integer into v_n from (
-    select least(home_team_id::text, away_team_id::text) as a,
-           greatest(home_team_id::text, away_team_id::text) as b
+    select least(home_entrant_id::text, away_entrant_id::text) as a,
+           greatest(home_entrant_id::text, away_entrant_id::text) as b
       from fixture where tournament_id = v_trn
      group by 1, 2
   ) pairs;
@@ -241,9 +241,9 @@ begin
   -- Nobody plays twice in a round.
   select count(*)::integer into v_n from (
     select round, team_id from (
-      select round, home_team_id as team_id from fixture where tournament_id = v_trn
+      select round, home_entrant_id as team_id from fixture where tournament_id = v_trn
       union all
-      select round, away_team_id from fixture where tournament_id = v_trn
+      select round, away_entrant_id from fixture where tournament_id = v_trn
     ) sides
      where team_id is not null
      group by round, team_id having count(*) > 1
@@ -274,7 +274,7 @@ begin
     v_bk    uuid;
     h       hold_outcome;
   begin
-    select f.id, f.home_team_id, f.away_team_id into v_fix, v_home, v_away
+    select f.id, f.home_entrant_id, f.away_entrant_id into v_fix, v_home, v_away
       from fixture f where f.tournament_id = v_trn and f.round = 1 and f.sequence = 1;
 
     select p.id into v_pitch from pitch p
@@ -290,7 +290,10 @@ begin
 
     -- The home captain's booking, set up directly because the fixture has to be
     -- in the past for a result to exist and hold_slot refuses to sell that.
-    select t.captain_id into v_cap from team t where t.id = v_home;
+    -- v_home is now the entry, not the team, so the captain comes through it.
+    select tm.captain_id into v_cap
+      from tournament_registration reg join team tm on tm.id = reg.team_id
+     where reg.id = v_home;
     v_bk := test_past_booking(v_pitch, v_slot, v_cap);
     perform set_config('request.jwt.claims', json_build_object('sub', v_cap)::text, true);
 
@@ -402,9 +405,9 @@ begin
 
     select count(*)::integer into v_n from (
       select round, team_id from (
-        select round, home_team_id as team_id from fixture where tournament_id = v_odd
+        select round, home_entrant_id as team_id from fixture where tournament_id = v_odd
         union all
-        select round, away_team_id from fixture where tournament_id = v_odd
+        select round, away_entrant_id from fixture where tournament_id = v_odd
       ) sides
        where team_id is not null
        group by round, team_id having count(*) > 1
@@ -419,6 +422,235 @@ begin
     case when has_function_privilege('authenticated', 'rebuild_standings(uuid)', 'execute')
          then '(reachable!)' else 'closed' end,
     not has_function_privilege('authenticated', 'rebuild_standings(uuid)', 'execute');
+
+  -- -------------------------------------------------------------------------
+  -- A knockout that reaches a final
+  -- -------------------------------------------------------------------------
+  -- Nothing tested a knockout at all, which is how a format the product offers
+  -- in its own dropdown came to stop dead after one round.
+  declare
+    v_ko    uuid;
+    v_kfix  uuid;
+    v_pid   uuid;
+  begin
+    perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+    select * into r from create_tournament(v_venue, 'Knockout Probe Cup', 'knockout', 8);
+    v_ko := r.tournament_id;
+
+    select * into r from advance_knockout(v_ko);
+    return query select 'a knockout with no draw yet has no round to draw',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason = 'Make the draw first.';
+
+    perform set_tournament_state(v_ko, 'open');
+    -- Only a team's own captain may enter it, which is a1..a4 rather than the
+    -- organiser.
+    for v_i in 1 .. 4 loop
+      perform set_config('request.jwt.claims', json_build_object('sub',
+        ('a0000000-0000-0000-0000-00000000000' || v_i)::uuid)::text, true);
+      perform register_team(v_ko, v_teams[v_i]);
+    end loop;
+    perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+    for r in select id from tournament_registration where tournament_id = v_ko loop
+      perform decide_registration(r.id, true);
+    end loop;
+
+    select * into r from generate_fixtures(v_ko);
+    return query select 'four teams make two ties', r.created::text, r.created = 2;
+
+    select * into r from advance_knockout(v_ko);
+    return query select 'and the next round waits for them to be played',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason like '%has to be played first%';
+
+    -- Both ties played, one of them level.
+    select p.id into v_pid from pitch p where p.venue_id = v_venue limit 1;
+    for r in select id, sequence from fixture where tournament_id = v_ko and round = 1 loop
+      perform place_fixture(r.id, v_pid, now() - interval '3 hours');
+      perform report_fixture_result(r.id, case when r.sequence = 1 then 2 else 1 end, 1);
+    end loop;
+
+    select * into r from advance_knockout(v_ko);
+    return query select 'a tie left level cannot send anybody through',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason like '%cannot be left level%';
+
+    -- Penalties, written down the way an amateur cup writes them down.
+    select id into v_kfix from fixture where tournament_id = v_ko and round = 1 and sequence = 2;
+    select * into r from report_fixture_result(v_kfix, 4, 3);
+    return query select 'the organiser can correct the score', coalesce(r.reason, 'corrected'), r.ok;
+
+    select count(*)::integer into v_n
+      from match m join fixture f on f.match_id = m.id where f.id = v_kfix;
+    return query select 'and correcting does not make a second match', v_n::text, v_n = 1;
+
+    select * into r from advance_knockout(v_ko);
+    return query select 'the winners meet in the next round', r.created::text,
+                        r.ok and r.created = 1;
+
+    select count(*)::integer into v_n from fixture where tournament_id = v_ko and round = 2;
+    return query select 'which is one final', v_n::text, v_n = 1;
+
+    -- The two teams in the final are the two that won, not the two that lost.
+    select count(*)::integer into v_n
+      from fixture f2
+     where f2.tournament_id = v_ko and f2.round = 2
+       and f2.home_entrant_id in (
+         select case when f.score_home > f.score_away
+                     then f.home_entrant_id else f.away_entrant_id end
+           from fixture f where f.tournament_id = v_ko and f.round = 1)
+       and f2.away_entrant_id in (
+         select case when f.score_home > f.score_away
+                     then f.home_entrant_id else f.away_entrant_id end
+           from fixture f where f.tournament_id = v_ko and f.round = 1);
+    return query select 'contested by the two winners', v_n::text, v_n = 1;
+
+    select id into v_kfix from fixture where tournament_id = v_ko and round = 2;
+    perform place_fixture(v_kfix, v_pid, now() - interval '1 hour');
+    perform report_fixture_result(v_kfix, 3, 0);
+
+    select * into r from advance_knockout(v_ko);
+    return query select 'and after the final there is nothing left to draw',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason like '%That was the final%';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+    select * into r from advance_knockout(v_ko);
+    return query select 'and a stranger cannot draw a round at all',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason = 'You do not manage that cup.';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+    select * into r from advance_knockout(v_trn);
+    return query select 'nor is there a next round in a league',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason = 'Only a knockout has rounds to draw.';
+  end;
+
+  -- -------------------------------------------------------------------------
+  -- A cup across several grounds, and a draw that is a draw
+  -- -------------------------------------------------------------------------
+  declare
+    v_box   uuid;
+    v_bpitch uuid;
+    v_fix2  uuid;
+    v_when  timestamptz := (current_date + 3 + interval '19 hours') at time zone 'Africa/Cairo';
+    v_orders text[] := '{}';
+    v_k integer;
+  begin
+    select id into v_box from venue where name = 'The Box';
+    select p.id into v_bpitch from pitch p where p.venue_id = v_box limit 1;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+
+    select count(*)::integer into v_n from tournament_venues(v_trn);
+    return query select 'a cup starts at its host ground', v_n::text, v_n = 1;
+
+    select * into r from place_fixture(
+      (select id from fixture where tournament_id = v_trn limit 1), v_bpitch, v_when);
+    return query select 'a match cannot be put at a ground the cup is not played on',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason like '%not at a ground%';
+
+    select * into r from add_tournament_venue(v_trn, v_box);
+    return query select 'a second ground can be added', coalesce(r.reason, 'added'), r.ok;
+
+    select count(*)::integer into v_n from tournament_venues(v_trn);
+    return query select 'and the cup now lists both', v_n::text, v_n = 2;
+
+    select is_host into r from tournament_venues(v_trn) limit 1;
+    return query select 'with the host first', r.is_host::text, r.is_host;
+
+    -- The fixture this player is actually in. `limit 1` over the whole round
+    -- used to pick an arbitrary one, and once the draw became random that was a
+    -- coin flip: half the time it chose the tie between two teams the player
+    -- has nothing to do with, and `my_cup_fixtures` correctly returned nothing.
+    select f.id into v_fix2
+      from fixture f
+      join tournament_registration reg
+        on reg.id in (f.home_entrant_id, f.away_entrant_id)
+      join team_membership tm on tm.team_id = reg.team_id
+     where f.tournament_id = v_trn
+       and tm.player_id = 'b0000001-0000-0000-0000-000000000001'
+       and tm.state = 'active'
+     limit 1;
+    select * into r from place_fixture(v_fix2, v_bpitch, v_when);
+    return query select 'and a match can be put there', coalesce(r.reason, 'placed'), r.ok;
+
+    select count(*)::integer into v_n
+      from fixture where id = v_fix2 and pitch_id = v_bpitch and kicks_off_at = v_when;
+    return query select 'the ground and the hour are recorded', v_n::text, v_n = 1;
+
+    -- The cup page has to carry it, or the player cannot be told.
+    -- The fixture we placed, not the first one in the list: the draw is random,
+    -- so which tie holds sequence 1 is not ours to assume.
+    select (fx ->> 'venue_name') into v_txt
+      from tournament_detail(v_trn), jsonb_array_elements(fixtures) fx
+     where (fx ->> 'fixture_id')::uuid = v_fix2;
+    return query select 'the cup page names the ground',
+                        coalesce(v_txt, '(missing)'), v_txt = 'The Box';
+
+    select jsonb_array_length(venues)::integer into v_n from tournament_detail(v_trn);
+    return query select 'and lists the grounds it is played on', v_n::text, v_n = 2;
+
+    -- Placing a match means picking from every pitch the cup may use, in one
+    -- list rather than one call per ground.
+    select count(*)::integer into v_n from tournament_pitches(v_trn);
+    return query select 'the pitches of both grounds come back together',
+                        v_n::text, v_n >= 2;
+
+    select count(*)::integer into v_n
+      from tournament_pitches(v_trn) where pitch_id = v_bpitch and venue_name = 'The Box';
+    return query select 'each pitch says which ground it is at', v_n::text, v_n = 1;
+
+    select is_host into r from tournament_pitches(v_trn) limit 1;
+    return query select 'and the host ground leads that list too', r.is_host::text, r.is_host;
+
+    select * into r from remove_tournament_venue(v_trn, v_box);
+    return query select 'a ground with matches on it cannot be dropped',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason like '%already placed%';
+
+    select * into r from remove_tournament_venue(v_trn, v_venue);
+    return query select 'nor can the home ground',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason = 'That is the cup''s home ground.';
+
+    -- The player whose match it is can find out where and when.
+    perform set_config('request.jwt.claims', json_build_object('sub',
+      'b0000001-0000-0000-0000-000000000001')::text, true);
+    select count(*)::integer into v_n from my_cup_fixtures();
+    return query select 'a player in an entered club sees their match', v_n::text, v_n >= 1;
+
+    select venue_name, kicks_off_at into r from my_cup_fixtures() where fixture_id = v_fix2;
+    return query select 'and is told the ground',
+                        coalesce(r.venue_name, '(missing)'), r.venue_name = 'The Box';
+    return query select 'and the hour',
+                        case when r.kicks_off_at is null then '(missing)' else 'set' end,
+                        r.kicks_off_at is not null;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+    select count(*)::integer into v_n from my_cup_fixtures();
+    return query select 'somebody not in the cup sees none of it', v_n::text, v_n = 0;
+
+    -- The draw is a draw. Ten draws over the same four entrants should not all
+    -- produce the same opening pair; one that does is the old behaviour, where
+    -- the order of entry decided the tournament.
+    perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+    for v_k in 1 .. 10 loop
+      delete from fixture where tournament_id = v_trn;
+      update tournament set state = 'open' where id = v_trn;
+      perform generate_fixtures(v_trn);
+      select (coalesce(home_entrant_id::text, '-') || '/' || coalesce(away_entrant_id::text, '-'))
+        into v_txt from fixture
+       where tournament_id = v_trn and round = 1 and sequence = 1;
+      v_orders := v_orders || v_txt;
+    end loop;
+    select count(distinct x)::integer into v_n from unnest(v_orders) x;
+    return query select 'ten draws do not all pair the same two first',
+                        v_n::text || ' different openings', v_n > 1;
+  end;
+
 end;
 $$;
 

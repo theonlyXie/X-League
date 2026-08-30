@@ -226,6 +226,14 @@ is no service-role key in this repository.
 an hour to sale the moment it commits, with no sweeper in the loop, because
 the constraint only counts live states.
 
+**A cup is what verifies a stat.** A booked match is still a match: it earns
+points and shows in the form strip. It is not evidence. A match becomes
+evidence only when a cup fixture stands behind it *and* three independent
+people who played rated in it — the competition says the result was real and
+adjudicated, the ratings say what happened inside it. Where the organiser
+arranged the ground themselves there is no booking to point at, so they write
+the score down and the two squads that entered become the team sheet.
+
 **Money is a ledger.** A confirmed booking raises an obligation; the gate
 collects it; a late cancellation forfeits it; a waived one stays as a record
 that it existed. Nothing is deleted to make a report tidy.
@@ -247,9 +255,6 @@ Honest list, as of this pass:
 - **Date picker.** The third day chip is "Day after", not a picker.
 - **Realtime.** Nothing is pushed. The owner surfaces pull to refresh and the
   notification badge polls; a busy gate will want a subscription eventually.
-- **Later knockout rounds.** `generate_fixtures` draws a league in full and a
-  knockout's first round; rounds after the first are meant to be drawn as
-  results come in, and nothing draws them yet.
 - **A second pitch has no price.** `add_pitch` inherits the venue's opening
   hours but not its price rules, so a newly added pitch shows EGP 0 until
   somebody sets one in Pricing. It is visible and correctable on the screen

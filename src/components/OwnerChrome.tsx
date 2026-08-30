@@ -136,7 +136,7 @@ export function OwnerHeader() {
             </Txt>
           )}
           <Txt size={11} color={onOperative.muted}>
-            {venue ? longDate(new Date().toISOString()) : VENUE.shift}
+            {venue ? longDate(new Date().toISOString()) : t.shShift}
           </Txt>
         </View>
         <Pressable
@@ -165,7 +165,7 @@ export function OwnerHeader() {
             }}
           />
           <Txt size={10} weight="bold" em={0.12} color={gold.base}>
-            OWNER
+            {t.ownerBadge}
           </Txt>
         </Pressable>
       </View>

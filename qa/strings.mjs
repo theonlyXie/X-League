@@ -39,12 +39,25 @@ export async function loadStrings() {
  *   - only phrases long enough to be unmistakable, so a short word cannot
  *     match inside a venue name that genuinely is in Latin script.
  */
+/**
+ * Phrases short and ordinary enough to be somebody's data.
+ *
+ * A venue recording a walk-in types a name, and at Stadium One that name is
+ * literally "Walk-in" — nine bookings of it. The customer list then shows a
+ * customer called Walk-in, which is the venue's own data and reads to this
+ * check as untranslated chrome. Excluding the key is more honest than loosening
+ * the rule for everything: these are the words a person might plausibly type
+ * into a field the app later prints back.
+ */
+const COULD_BE_DATA = new Set(['ownWalkIn', 'ownChannelWalkIn', 'ownChannelApp', 'ownChannelPhone']);
+
 export function englishSentinels(strings) {
   return Object.entries(strings.en)
     .filter(([key, value]) => {
       const arabic = strings.ar[key];
       return typeof value === 'string' && typeof arabic === 'string' && arabic !== value;
     })
+    .filter(([key]) => !COULD_BE_DATA.has(key))
     .filter(([, value]) => value.length >= 7 && /[A-Za-z]{4}/.test(value))
     .map(([key, value]) => ({ key, value }));
 }

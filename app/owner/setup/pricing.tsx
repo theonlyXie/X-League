@@ -29,7 +29,7 @@ import { useI18n } from '@/i18n';
  * closes the old one rather than replacing it.
  */
 export default function Pricing() {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
@@ -85,7 +85,7 @@ export default function Pricing() {
       setNotice(null);
       void load();
     } else {
-      setNotice(res.reason ?? null);
+      setNotice(reason(res.reason) ?? null);
     }
   };
 
@@ -143,7 +143,7 @@ export default function Pricing() {
                   {r.pitchLabel} · {r.startHour}:00–{r.endHour}:00
                 </Txt>
                 <Txt size={10.5} color="rgba(20,18,16,.45)">
-                  {r.live ? `From ${r.validFrom}` : `${r.validFrom} → ${r.validTo ?? '—'}`}
+                  {r.live ? t.liveFrom(r.validFrom) : `${r.validFrom} → ${r.validTo ?? '—'}`}
                 </Txt>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 2 }}>

@@ -24,16 +24,22 @@ export type TournamentSummary = {
   entryFeeEgp: number;
   maxTeams: number;
   entered: number;
+  /** Where the cup is, falling back to the host venue's area. */
+  region: string | null;
 };
 
-export async function listTournaments(limit = 25): Promise<TournamentSummary[]> {
-  const { data, error } = await supabase().rpc('list_tournaments', { p_limit: limit });
+export async function listTournaments(limit = 25, region?: string | null): Promise<TournamentSummary[]> {
+  const { data, error } = await supabase().rpc('list_tournaments', {
+    p_limit: limit,
+    p_region: region ?? null,
+  });
   if (error) throw error;
   return (data as any[]).map((r) => ({
     tournamentId: r.tournament_id,
     name: r.name,
     venueName: r.venue_name,
     area: r.area,
+    region: r.region,
     format: r.format,
     state: r.state,
     startsOn: r.starts_on,
@@ -44,11 +50,19 @@ export async function listTournaments(limit = 25): Promise<TournamentSummary[]> 
   }));
 }
 
+/**
+ * An entry in a cup. A club or a team is behind it, and which one is behind it
+ * is the entry's business rather than the table's — the name and the crest come
+ * off the entry, so a club renamed mid-season does not rewrite January's table.
+ */
 export type Entrant = {
   registration_id: string;
-  team_id: string;
-  team_name: string;
+  entrant_name: string;
+  club_id: string | null;
+  team_id: string | null;
+  crest_url: string | null;
   state: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+  paid: boolean;
 };
 
 export type Fixture = {
@@ -57,17 +71,24 @@ export type Fixture = {
   sequence: number;
   home: string | null;
   away: string | null;
-  home_team_id: string | null;
-  away_team_id: string | null;
+  home_entrant_id: string | null;
+  away_entrant_id: string | null;
   score_home: number | null;
   score_away: number | null;
   state: 'scheduled' | 'played' | 'walkover' | 'cancelled';
   kicks_off_at: string | null;
+  /** Where it is played. Null until an organiser has placed it. */
+  venue_name: string | null;
+  pitch_label: string | null;
+  /** True when a booking sits behind it. The organiser's business, not a player's. */
+  booked: boolean;
 };
 
 export type StandingRow = {
-  team_id: string;
-  team_name: string;
+  entrant_id: string;
+  entrant_name: string;
+  club_id: string | null;
+  team_id: string | null;
   played: number;
   won: number;
   drawn: number;
@@ -76,6 +97,14 @@ export type StandingRow = {
   ga: number;
   gd: number;
   points: number;
+};
+
+/** One of the grounds a cup is played on. */
+export type CupVenue = {
+  venue_id: string;
+  name: string;
+  area: string | null;
+  is_host: boolean;
 };
 
 export type TournamentDetail = {
@@ -93,6 +122,8 @@ export type TournamentDetail = {
   teams: Entrant[];
   fixtures: Fixture[];
   standings: StandingRow[];
+  /** Every ground the cup is played across, the host first. */
+  venues: CupVenue[];
 };
 
 export async function tournamentDetail(tournamentId: string): Promise<TournamentDetail | null> {
@@ -118,7 +149,61 @@ export async function tournamentDetail(tournamentId: string): Promise<Tournament
     teams: r.teams ?? [],
     fixtures: r.fixtures ?? [],
     standings: r.standings ?? [],
+    venues: r.venues ?? [],
   };
+}
+
+/**
+ * A match this player is in: who, where and when.
+ *
+ * The cup page can only say where a *fixture* is; this is the other question —
+ * a player opening the app wants their own next match, not to remember which
+ * cup it is in and find themselves in the list. `venueName` and `kicksOffAt`
+ * are both nullable because a drawn match that nobody has placed yet is a real
+ * state, and the screen says so rather than showing a blank.
+ */
+export type MyCupFixture = {
+  fixtureId: string;
+  tournamentId: string;
+  cupName: string;
+  round: number;
+  mySide: 'home' | 'away';
+  myEntrant: string;
+  opponent: string | null;
+  venueName: string | null;
+  area: string | null;
+  pitchLabel: string | null;
+  kicksOffAt: string | null;
+  state: 'scheduled' | 'played' | 'walkover' | 'cancelled';
+  scoreHome: number | null;
+  scoreAway: number | null;
+  /** The match behind it, once a result has been recorded. */
+  matchId: string | null;
+  /** True while this player can still rate the people they played against. */
+  canRate: boolean;
+};
+
+export async function myCupFixtures(limit = 20): Promise<MyCupFixture[]> {
+  const { data, error } = await supabase().rpc('my_cup_fixtures', { p_limit: limit });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    fixtureId: r.fixture_id,
+    tournamentId: r.tournament_id,
+    cupName: r.cup_name,
+    round: r.round,
+    mySide: r.my_side,
+    myEntrant: r.my_entrant,
+    opponent: r.opponent,
+    venueName: r.venue_name,
+    area: r.area,
+    pitchLabel: r.pitch_label,
+    kicksOffAt: r.kicks_off_at,
+    state: r.state,
+    scoreHome: r.score_home,
+    scoreAway: r.score_away,
+    matchId: r.match_id,
+    canRate: r.can_rate,
+  }));
 }
 
 export type MyTournament = {

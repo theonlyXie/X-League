@@ -241,6 +241,8 @@ export async function ownerDay(venueId: string, date: string): Promise<OwnerCell
 
 export type Card = {
   displayName: string;
+  /** Null is a real answer; every surface renders initials for it. */
+  photoUrl: string | null;
   ovr: number;
   position: string;
   /** Attribute key -> 1..99, in the order the position's rule weights them. */
@@ -256,6 +258,7 @@ export type Card = {
 
 type CardRow = {
   display_name: string;
+  photo_url: string | null;
   ovr: number;
   position_code: string;
   attributes: Record<string, number>;
@@ -277,6 +280,7 @@ const toCard = (r: CardRow): Card => {
   const keys = [...new Set([...order.filter((k) => k in r.attributes), ...Object.keys(r.attributes)])];
   return {
     displayName: r.display_name,
+    photoUrl: r.photo_url ?? null,
     ovr: r.ovr,
     position: r.position_code,
     attributes: keys.map((key) => ({ key, value: r.attributes[key] })),

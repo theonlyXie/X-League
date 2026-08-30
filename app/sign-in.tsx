@@ -34,7 +34,7 @@ export default function SignIn() {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string }>();
   const { signIn, signUp } = useSession();
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
 
   const [mode, setMode] = useState<Mode>('in');
   const [role, setRole] = useState<Role>('player');
@@ -112,7 +112,10 @@ export default function SignIn() {
           });
     setBusy(false);
     if (problem) {
-      setError(problem);
+      // `signIn` and `signUp` hand back whatever the server said. Most of it is
+      // already translated by `explain`; a refusal that came straight out of a
+      // function is not, and goes through the same table as every other one.
+      setError(reason(problem) ?? problem);
       return;
     }
     await land();

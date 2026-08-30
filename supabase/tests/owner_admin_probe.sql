@@ -493,6 +493,71 @@ begin
     case when has_function_privilege('authenticated', 'write_audit(text,text,uuid,jsonb)', 'execute')
          then '(reachable!)' else 'closed' end,
     not has_function_privilege('authenticated', 'write_audit(text,text,uuid,jsonb)', 'execute');
+
+  -- -------------------------------------------------------------------------
+  -- Rotating a console password
+  --
+  -- The claim worth proving is the refusal: the recovery flow only resolves an
+  -- account that holds an active platform role, so rotating anybody else would
+  -- lock them out with no route to a new password.
+  -- -------------------------------------------------------------------------
+  declare
+    v_code text;
+    v_before text;
+    v_after text;
+  begin
+    -- The seeded admin was made with a phone and no address, and the recovery
+    -- flow resolves a username to an address. Given one here so the route this
+    -- is about can actually be walked; the whole probe rolls back after.
+    update auth.users set email = 'probeadmin@xleague.app' where id = ADMIN;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+
+    select * into r from admin_rotate_console_password(BASEL);
+    return query select 'a player cannot be rotated, because there is no way back',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason like 'That is not a console account%';
+
+    select * into r from admin_rotate_console_password(
+      '00000000-0000-0000-0000-0000000000ff'::uuid);
+    return query select 'nor an account that does not exist',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason = 'No such account.';
+
+    -- The admin rotates their own, which is the leaked-password case.
+    select encrypted_password into v_before from auth.users where id = ADMIN;
+    select * into r from admin_rotate_console_password(ADMIN);
+    v_code := r.recovery_code;
+    return query select 'a console account can be rotated', coalesce(r.reason, 'rotated'), r.ok;
+    return query select 'and hands back a recovery code',
+                        coalesce(v_code, '(none)'),
+                        v_code is not null and length(v_code) = 19;
+
+    select encrypted_password into v_after from auth.users where id = ADMIN;
+    return query select 'the stored password actually changed',
+                        case when v_after is distinct from v_before then 'changed' else '(same!)' end,
+                        v_after is distinct from v_before;
+
+    -- Nothing anywhere knows what it was set to. The only route back is the
+    -- code, and it is the code the caller was just handed.
+    select * into r from staff_reset_password('probeadmin', v_code, 'a-new-password-8');
+    return query select 'the code opens the reset', coalesce(r.reason, 'reset'), r.ok;
+
+    select * into r from staff_reset_password('probeadmin', v_code, 'another-password');
+    return query select 'and is spent once used',
+                        coalesce(r.reason, '(allowed!)'), r.ok = false;
+
+    select count(*)::integer into v_n
+      from audit_log where action = 'account.password_rotated' and subject_id = ADMIN;
+    return query select 'the rotation is audited', v_n::text, v_n = 1;
+
+    -- A moderator may read people and may not take an account away.
+    perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);
+    select * into r from admin_rotate_console_password(ADMIN);
+    return query select 'somebody below admin cannot rotate at all',
+                        coalesce(r.reason, '(allowed!)'), r.ok = false;
+  end;
+
 end;
 $$;
 

@@ -24,7 +24,7 @@ const ROLES: VenueRole[] = ['staff', 'manager', 'owner'];
  * former staff member stays on the list, inactive.
  */
 export default function Staff() {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
@@ -79,7 +79,7 @@ export default function Staff() {
   const set = async (userId: string, role: VenueRole, active: boolean) => {
     if (!venue) return;
     const res = await setVenueStaff(venue.venueId, userId, role, active);
-    if (!res.ok) setNotice(res.reason ?? null);
+    if (!res.ok) setNotice(reason(res.reason) ?? null);
     else setNotice(null);
     void load();
   };
@@ -108,7 +108,7 @@ export default function Staff() {
                   <Pressable
                     key={r}
                     accessibilityRole="button"
-                    accessibilityLabel={`Set ${m.displayName} to ${r}`}
+                    accessibilityLabel={t.setRoleFor(m.displayName, r)}
                     onPress={() => set(m.userId, r, true)}
                     style={{
                       paddingVertical: 6,

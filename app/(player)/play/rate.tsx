@@ -42,7 +42,7 @@ export default function RateMatch() {
   const router = useRouter();
   const params = useLocalSearchParams<{ match?: string }>();
   const matchId = params.match ?? null;
-  const { t, num } = useI18n();
+  const { reason, t, num } = useI18n();
   const { reload: reloadCard } = useCard();
 
   const [targets, setTargets] = useState<RateTarget[]>([]);
@@ -91,7 +91,7 @@ export default function RateMatch() {
     const res = await submitPeerRating(matchId, subject.playerId, values);
     setSaving(false);
     if (!res.ok) {
-      setError(res.reason ?? null);
+      setError(reason(res.reason) ?? null);
       return;
     }
     setError(null);

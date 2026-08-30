@@ -4,6 +4,9 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Divider, Eyebrow } from '@/components/ui';
+import { Avatar } from '@/components/Avatar';
+import { CapacityBar, Reveal } from '@/components/motion';
+import { tournamentAwards, type Award } from '@/data/board';
 import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
@@ -25,12 +28,13 @@ export default function CupDetail() {
   const params = useLocalSearchParams<{ id?: string }>();
   const tournamentId = params.id ?? null;
   const { signedIn } = useSession();
-  const { t, num, money, shortDate } = useI18n();
+  const { reason, t, num, money, shortDate, moment } = useI18n();
 
   const [cup, setCup] = useState<TournamentDetail | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(isLive);
   const [tab, setTab] = useState<'standings' | 'fixtures'>('standings');
+  const [awards, setAwards] = useState<Award[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce((n) => n + 1), []);
@@ -44,12 +48,16 @@ export default function CupDetail() {
     (async () => {
       setLoading(true);
       try {
-        const [detail, mine] = await Promise.all([
+        const [detail, mine, won] = await Promise.all([
           tournamentDetail(tournamentId),
           signedIn ? myTeams().catch(() => [] as Team[]) : Promise.resolve([]),
+          // Its own call, and its own failure: a cup nobody has settled has no
+          // awards, which is an answer rather than an error.
+          tournamentAwards(tournamentId).catch(() => [] as Award[]),
         ]);
         if (cancelled) return;
         setCup(detail);
+        setAwards(won);
         // Only teams this player captains can be entered (TRN-003), so only
         // those are offered.
         setTeams(mine.filter((team) => team.role === 'captain' && team.state === 'active'));
@@ -121,16 +129,84 @@ export default function CupDetail() {
             </Txt>
           ) : null}
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <Txt size={11.5} color={onVoid.faint}>
-              {t.teamsEntered(num(cup.teams.length), num(cup.maxTeams))}
-            </Txt>
-            {cup.entryFeeEgp > 0 ? (
+          <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <Txt size={11.5} color={onVoid.faint}>
-                {t.entryFee(money(cup.entryFeeEgp))}
+                {cup.teams.length >= cup.maxTeams
+                  ? t.cupFull
+                  : t.placesTaken(num(cup.teams.length), num(cup.maxTeams))}
               </Txt>
-            ) : null}
+              {cup.entryFeeEgp > 0 ? (
+                <Txt size={11.5} color={onVoid.faint}>
+                  {t.entryFee(money(cup.entryFeeEgp))}
+                </Txt>
+              ) : null}
+            </View>
+            <CapacityBar
+              filled={cup.teams.length}
+              capacity={cup.maxTeams}
+              track={onVoid.edge}
+              fill={gold.base}
+              full={onVoid.line}
+            />
           </View>
+
+          {awards.length ? (
+            <View style={{ gap: 10 }}>
+              <Eyebrow>{t.roll}</Eyebrow>
+              {awards.map((award, i) => (
+                <Reveal key={award.kind} index={i}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      borderRadius: radius.control,
+                      borderWidth: 1,
+                      borderColor: award.kind === 'champion' ? goldAlpha.frame : goldAlpha.edgeSoft,
+                      backgroundColor: award.kind === 'champion' ? 'rgba(198,163,75,.08)' : void_.surface,
+                      padding: 12,
+                    }}
+                  >
+                    <Avatar
+                      name={award.displayName}
+                      url={award.crestUrl ?? award.photoUrl}
+                      size={38}
+                      radius={award.clubId ? radius.chip : undefined}
+                      background={void_.raised}
+                      border={goldAlpha.edge}
+                      color={gold.base}
+                    />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Txt size={10} weight="bold" em={0.09} upper color={onVoid.dim}>
+                        {awardLabel(award.kind, t)}
+                      </Txt>
+                      <Txt size={14} weight="semibold" color={onVoid.primary}>
+                        {award.displayName}
+                      </Txt>
+                      {award.note ? (
+                        <Txt size={11} color={onVoid.faint}>
+                          {award.note}
+                        </Txt>
+                      ) : null}
+                    </View>
+                    {award.value != null ? (
+                      <Txt size={18} weight="bold" color={gold.base}>
+                        {num(award.value)}
+                      </Txt>
+                    ) : null}
+                  </View>
+                </Reveal>
+              ))}
+            </View>
+          ) : null}
+
+          {cup.state === 'open' && signedIn ? (
+            <Button
+              label={t.enterCup}
+              onPress={() => router.push(`/cups/enter/${tournamentId}`)}
+            />
+          ) : null}
 
           {/* TRN-003: a team enters, and only its captain may enter it. */}
           {cup.state === 'open' && signedIn ? (
@@ -177,7 +253,7 @@ export default function CupDetail() {
                             setNotice(null);
                             reload();
                           } else {
-                            setNotice(res.reason ?? null);
+                            setNotice(reason(res.reason) ?? null);
                           }
                         }}
                       />
@@ -228,6 +304,29 @@ export default function CupDetail() {
             <StandingsTable rows={cup.standings} />
           ) : (
             <View style={{ gap: 18 }}>
+              {/* The pairings were drawn at random the moment entries closed.
+                  The list below is the record; this plays it back. */}
+              {cup.fixtures.length > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t.watchTheDraw}
+                  onPress={() => router.push(`/cups/draw/${cup.tournamentId}`)}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    borderRadius: radius.control,
+                    borderWidth: 1,
+                    borderColor: goldAlpha.frame,
+                    backgroundColor: goldAlpha.fill,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Txt size={13} weight="semibold" color={gold.base}>
+                    {t.watchTheDraw}
+                  </Txt>
+                </Pressable>
+              ) : null}
+
               {rounds.map((round) => (
                 <View key={round} style={{ gap: 8 }}>
                   <Eyebrow>{t.roundN(num(round))}</Eyebrow>
@@ -237,9 +336,7 @@ export default function CupDetail() {
                       <View
                         key={f.fixture_id}
                         style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 10,
+                          gap: 8,
                           paddingVertical: 11,
                           paddingHorizontal: 14,
                           borderRadius: radius.control,
@@ -248,6 +345,7 @@ export default function CupDetail() {
                           borderColor: onVoid.edgeFaint,
                         }}
                       >
+                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <Txt
                           size={13}
                           weight="semibold"
@@ -284,6 +382,29 @@ export default function CupDetail() {
                         <Txt size={13} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
                           {f.away ?? t.bye}
                         </Txt>
+                       </View>
+
+                        {/* A cup across a city means each match has its own
+                            ground and hour. A match nobody has placed yet says
+                            so — it is a real state, not a blank. */}
+                        {f.state !== 'walkover' ? (
+                          <Txt
+                            size={11}
+                            color={f.venue_name || f.kicks_off_at ? onVoid.secondary : onVoid.faint}
+                            style={{ textAlign: 'center' }}
+                          >
+                            {f.venue_name || f.kicks_off_at
+                              ? t.whereAndWhen(
+                                  f.venue_name
+                                    ? f.pitch_label
+                                      ? t.groundAndPitch(f.venue_name, f.pitch_label)
+                                      : f.venue_name
+                                    : t.whereTbc,
+                                  f.kicks_off_at ? moment(f.kicks_off_at) : t.whenTbc,
+                                )
+                              : t.whereWhenTbc}
+                          </Txt>
+                        ) : null}
                       </View>
                     ))}
                 </View>
@@ -297,8 +418,24 @@ export default function CupDetail() {
 }
 
 /** P-17's table. Horizontal scroll rather than squeezing eight columns. */
+/** The five award kinds, named the way the app names them. */
+function awardLabel(kind: Award['kind'], t: ReturnType<typeof useI18n>['t']): string {
+  switch (kind) {
+    case 'champion':
+      return t.champion;
+    case 'runner_up':
+      return t.runnerUp;
+    case 'top_scorer':
+      return t.topScorer;
+    case 'best_player':
+      return t.bestPlayer;
+    default:
+      return t.bestGoalkeeper;
+  }
+}
+
 function StandingsTable({ rows }: { rows: TournamentDetail['standings'] }) {
-  const { t, num } = useI18n();
+  const { reason, t, num } = useI18n();
 
   if (rows.length === 0) {
     return (
@@ -335,7 +472,7 @@ function StandingsTable({ rows }: { rows: TournamentDetail['standings'] }) {
 
         {rows.map((r, i) => (
           <View
-            key={r.team_id}
+            key={r.entrant_id}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -355,7 +492,7 @@ function StandingsTable({ rows }: { rows: TournamentDetail['standings'] }) {
               numberOfLines={1}
               style={{ width: 130 }}
             >
-              {num(i + 1)}. {r.team_name}
+              {num(i + 1)}. {r.entrant_name}
             </Txt>
             <Cell>{num(r.played)}</Cell>
             <Cell>{num(r.won)}</Cell>

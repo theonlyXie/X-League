@@ -31,7 +31,7 @@ const KINDS: Closure['kind'][] = ['maintenance', 'private', 'holiday', 'closure'
  * the server: the venue has to speak to them, and cancelling is the honest way.
  */
 export default function Closures() {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
@@ -123,7 +123,7 @@ export default function Closures() {
                 tone="quiet"
                 onPress={async () => {
                   const res = await reopenSlot(c.exceptionId);
-                  if (!res.ok) setNotice(res.reason ?? null);
+                  if (!res.ok) setNotice(reason(res.reason) ?? null);
                   void load();
                 }}
               />
@@ -202,7 +202,7 @@ export default function Closures() {
               onPress={async () => {
                 if (!pitchId) return;
                 const res = await closeSlot(pitchId, s.startsAt, { kind, note: note || undefined });
-                if (!res.ok) setNotice(res.reason ?? null);
+                if (!res.ok) setNotice(reason(res.reason) ?? null);
                 else setNotice(null);
                 void load();
               }}

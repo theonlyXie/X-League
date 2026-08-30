@@ -33,7 +33,7 @@ import { useI18n } from '@/i18n';
  * would show it twice.
  */
 export default function Hours() {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
@@ -86,7 +86,7 @@ export default function Hours() {
       ok: false,
       reason: t.ownCalendarUnreachable,
     }));
-    setNotice(res.ok ? null : (res.reason ?? null));
+    setNotice(res.ok ? null : (reason(res.reason) ?? null));
     if (res.ok) void load();
   };
 
@@ -101,7 +101,7 @@ export default function Hours() {
       setNotice(null);
       void load();
     } else {
-      setNotice(res.reason ?? null);
+      setNotice(reason(res.reason) ?? null);
     }
   };
 
@@ -110,7 +110,7 @@ export default function Hours() {
       ok: false,
       reason: t.ownCalendarUnreachable,
     }));
-    setNotice(res.ok ? null : (res.reason ?? null));
+    setNotice(res.ok ? null : (reason(res.reason) ?? null));
     if (res.ok) void load();
   };
 
@@ -217,7 +217,7 @@ function DayRow({
   closeHour: number | null;
   onSave: (open: number, close: number) => void;
 }) {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const [open, setOpen] = useState(String(openHour ?? 10));
   const [close, setClose] = useState(String(closeHour ?? 24));
 

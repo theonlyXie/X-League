@@ -1,17 +1,32 @@
 import Svg, { Path, Polyline } from 'react-native-svg';
+import { useI18n } from '@/i18n';
 
 /**
  * Stroke-based icons on a 20px grid, drawn rather than borrowed from a glyph
  * font so they scale and recolour with the rest of the design.
  *
  * The design's own `←`, `›` and `···` marks are these.
+ *
+ * The three that point along the reading direction flip in Arabic. Nothing else
+ * does: a star, a tick and a rising trend mean the same thing in both
+ * directions, and mirroring them would only make them look wrong.
+ *
+ * This was found by looking at the screens rather than by any check. The RTL
+ * walk asserts direction, overflow and copy, and every one of those passed
+ * while the back button on every screen in the app pointed the wrong way.
  */
 
 type IconProps = { size?: number; color: string };
 
+/** `scaleX: -1` in Arabic, applied to the SVG so the stroke geometry mirrors. */
+function useFlip() {
+  const { rtl } = useI18n();
+  return rtl ? ([{ scaleX: -1 }] as const) : undefined;
+}
+
 export function ArrowLeft({ size = 20, color }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={{ transform: useFlip() }}>
       <Path d="M16 10H4" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
       <Polyline points="9,5 4,10 9,15" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </Svg>
@@ -20,7 +35,7 @@ export function ArrowLeft({ size = 20, color }: IconProps) {
 
 export function ChevronRight({ size = 20, color }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={{ transform: useFlip() }}>
       <Polyline points="8,4 14,10 8,16" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </Svg>
   );
@@ -28,7 +43,7 @@ export function ChevronRight({ size = 20, color }: IconProps) {
 
 export function ChevronLeft({ size = 20, color }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={{ transform: useFlip() }}>
       <Polyline points="12,4 6,10 12,16" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </Svg>
   );

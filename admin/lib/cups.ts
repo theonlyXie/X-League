@@ -76,11 +76,19 @@ export async function listForOrganiser(): Promise<TournamentSummary[]> {
   }));
 }
 
+/**
+ * An entry in a cup. A club or a team is behind it, and which one is behind it
+ * is the entry's business rather than the table's — the name and the crest come
+ * off the entry, so a club renamed mid-season does not rewrite January's table.
+ */
 export type Entrant = {
   registration_id: string;
-  team_id: string;
-  team_name: string;
+  entrant_name: string;
+  club_id: string | null;
+  team_id: string | null;
+  crest_url: string | null;
   state: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+  paid: boolean;
 };
 
 export type Fixture = {
@@ -89,17 +97,28 @@ export type Fixture = {
   sequence: number;
   home: string | null;
   away: string | null;
-  home_team_id: string | null;
-  away_team_id: string | null;
+  home_entrant_id: string | null;
+  away_entrant_id: string | null;
   score_home: number | null;
   score_away: number | null;
   state: 'scheduled' | 'played' | 'walkover' | 'cancelled';
   kicks_off_at: string | null;
+  /** Where it is. Null until somebody places it — a real state, not a gap. */
+  venue_name: string | null;
+  pitch_label: string | null;
+  /**
+   * True when a booking sits behind this fixture. It decides which of the two
+   * result routes is the right one, so the console offers one button rather
+   * than two where one is always refused.
+   */
+  booked: boolean;
 };
 
 export type StandingRow = {
-  team_id: string;
-  team_name: string;
+  entrant_id: string;
+  entrant_name: string;
+  club_id: string | null;
+  team_id: string | null;
   played: number;
   won: number;
   drawn: number;
@@ -108,6 +127,14 @@ export type StandingRow = {
   ga: number;
   gd: number;
   points: number;
+};
+
+/** A ground this cup is played on. The host is the one that says who runs it. */
+export type CupVenue = {
+  venue_id: string;
+  name: string;
+  area: string | null;
+  is_host: boolean;
 };
 
 export type TournamentDetail = {
@@ -125,6 +152,7 @@ export type TournamentDetail = {
   teams: Entrant[];
   fixtures: Fixture[];
   standings: StandingRow[];
+  venues: CupVenue[];
 };
 
 /** Entrants, fixtures and the table arrive together, so they cannot disagree. */
@@ -149,6 +177,7 @@ export async function tournamentDetail(id: string): Promise<TournamentDetail | n
     teams: (r.teams as Entrant[]) ?? [],
     fixtures: (r.fixtures as Fixture[]) ?? [],
     standings: (r.standings as StandingRow[]) ?? [],
+    venues: (r.venues as CupVenue[]) ?? [],
   };
 }
 
@@ -180,6 +209,35 @@ export async function tournamentBookings(id: string, date?: string): Promise<Boo
     captainName: (r.captain_name as string) ?? null,
     reported: r.reported as boolean,
     fixtureId: (r.fixture_id as string) ?? null,
+  }));
+}
+
+/**
+ * Every pitch the cup may use, across every ground it is played on.
+ *
+ * The placer groups by `venueName` rather than asking for a venue and then its
+ * pitches: a cup in Giza across four grounds is one list an organiser reads
+ * down, not four screens they have to hold in their head.
+ */
+export type CupPitch = {
+  pitchId: string;
+  label: string;
+  venueId: string;
+  venueName: string;
+  area: string | null;
+  isHost: boolean;
+};
+
+export async function tournamentPitches(id: string): Promise<CupPitch[]> {
+  const { data, error } = await supabase().rpc('tournament_pitches', { p_tournament_id: id });
+  if (error) throw error;
+  return (data as Array<Record<string, unknown>>).map((r) => ({
+    pitchId: r.pitch_id as string,
+    label: r.label as string,
+    venueId: r.venue_id as string,
+    venueName: r.venue_name as string,
+    area: (r.area as string) ?? null,
+    isHost: r.is_host as boolean,
   }));
 }
 
@@ -229,6 +287,22 @@ export const setState = (id: string, state: TournamentState) =>
 export const decideRegistration = (registrationId: string, accept: boolean) =>
   act('decide_registration', { p_registration_id: registrationId, p_accept: accept });
 
+/**
+ * Draw the round after the one just finished.
+ *
+ * A knockout's later rounds cannot be drawn in advance — who is in round two is
+ * decided by round one — so this is a button the organiser presses once the
+ * round is complete, not something that fires on the last result.
+ */
+export async function advanceKnockout(
+  id: string,
+): Promise<{ ok: true; created: number } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('advance_knockout', { p_tournament_id: id });
+  if (error) return { ok: false, reason: error.message };
+  const res = outcome<{ created: number }>(data);
+  return res.ok ? { ok: true, created: res.row.created } : { ok: false, reason: res.reason };
+}
+
 export async function generateFixtures(
   id: string,
 ): Promise<{ ok: true; created: number } | { ok: false; reason: string }> {
@@ -241,5 +315,250 @@ export async function generateFixtures(
 export const scheduleFixture = (fixtureId: string, bookingId: string) =>
   act('schedule_fixture', { p_fixture_id: fixtureId, p_booking_id: bookingId });
 
+export const addTournamentVenue = (tournamentId: string, venueId: string) =>
+  act('add_tournament_venue', { p_tournament_id: tournamentId, p_venue_id: venueId });
+
+export const removeTournamentVenue = (tournamentId: string, venueId: string) =>
+  act('remove_tournament_venue', { p_tournament_id: tournamentId, p_venue_id: venueId });
+
+/**
+ * Put a match at a pitch and an hour without a booking behind it.
+ *
+ * `kicksOffAt` is an ISO instant. The picker builds it from a local date and
+ * time in Cairo, which is the clock the organiser and everybody playing is on.
+ */
+export const placeFixture = (fixtureId: string, pitchId: string, kicksOffAt: string) =>
+  act('place_fixture', {
+    p_fixture_id: fixtureId,
+    p_pitch_id: pitchId,
+    p_kicks_off_at: kicksOffAt,
+  });
+
 export const recordFixtureResult = (fixtureId: string) =>
   act('record_fixture_result', { p_fixture_id: fixtureId });
+
+/**
+ * Write down the score for a fixture with no booking behind it.
+ *
+ * The team sheets come from the squads that entered, so the people who played
+ * can rate each other — which is what turns the fixture into evidence.
+ */
+export const reportFixtureResult = (fixtureId: string, home: number, away: number) =>
+  act('report_fixture_result', {
+    p_fixture_id: fixtureId,
+    p_score_home: home,
+    p_score_away: away,
+  });
+
+// ---------------------------------------------------------------------------
+// Entry money, and closing a cup
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a cup's entry money goes.
+ *
+ * `tournamentId` null is the platform default, shown for any cup that has named
+ * none of its own — so the usual accounts are entered once and a particular cup
+ * can still collect somewhere else without every other cup repeating itself.
+ */
+export type PaymentChannelKind = 'instapay' | 'bank' | 'wallet' | 'contact';
+
+export type PaymentChannel = {
+  id: string;
+  tournamentId: string | null;
+  tournamentName: string | null;
+  kind: PaymentChannelKind;
+  label: string;
+  value: string;
+  instructions: string | null;
+  active: boolean;
+  sort: number;
+};
+
+export async function paymentChannels(): Promise<PaymentChannel[]> {
+  const { data, error } = await supabase().rpc('admin_payment_channels');
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    id: r.id,
+    tournamentId: r.tournament_id,
+    tournamentName: r.tournament_name,
+    kind: r.kind,
+    label: r.label,
+    value: r.value,
+    instructions: r.instructions,
+    active: r.active,
+    sort: r.sort,
+  }));
+}
+
+export async function savePaymentChannel(input: {
+  id?: string | null;
+  tournamentId?: string | null;
+  kind: PaymentChannelKind;
+  label: string;
+  value: string;
+  instructions?: string | null;
+  active?: boolean;
+  sort?: number;
+}): Promise<Result> {
+  return act('admin_set_payment_channel', {
+    p_id: input.id ?? null,
+    p_tournament_id: input.tournamentId ?? null,
+    p_kind: input.kind,
+    p_label: input.label,
+    p_value: input.value,
+    p_instructions: input.instructions ?? null,
+    p_active: input.active ?? true,
+    p_sort: input.sort ?? 0,
+  });
+}
+
+export type PromoKind = 'amount' | 'percent' | 'free';
+
+export type PromoCode = {
+  id: string;
+  code: string;
+  kind: PromoKind;
+  amountEgp: number | null;
+  percent: number | null;
+  tournamentId: string | null;
+  tournamentName: string | null;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: string | null;
+  active: boolean;
+  note: string | null;
+  createdAt: string;
+};
+
+export async function promoCodes(): Promise<PromoCode[]> {
+  const { data, error } = await supabase().rpc('admin_promo_codes', { p_limit: 200 });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    id: r.id,
+    code: r.code,
+    kind: r.kind,
+    amountEgp: r.amount_egp,
+    percent: r.percent,
+    tournamentId: r.tournament_id,
+    tournamentName: r.tournament_name,
+    maxUses: r.max_uses,
+    usedCount: r.used_count,
+    expiresAt: r.expires_at,
+    active: r.active,
+    note: r.note,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function createPromoCode(input: {
+  kind: PromoKind;
+  amountEgp?: number | null;
+  percent?: number | null;
+  tournamentId?: string | null;
+  maxUses?: number;
+  expiresAt?: string | null;
+  note?: string | null;
+  code?: string | null;
+}): Promise<{ ok: true; code: string } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('admin_create_promo_code', {
+    p_kind: input.kind,
+    p_amount_egp: input.amountEgp ?? null,
+    p_percent: input.percent ?? null,
+    p_tournament_id: input.tournamentId ?? null,
+    p_max_uses: input.maxUses ?? 1,
+    p_expires_at: input.expiresAt ?? null,
+    p_note: input.note ?? null,
+    p_code: input.code ?? null,
+  });
+  if (error) return { ok: false, reason: error.message };
+  const res = outcome<{ code: string }>(data);
+  return res.ok ? { ok: true, code: res.row.code } : { ok: false, reason: res.reason };
+}
+
+export const deletePaymentChannel = (id: string) =>
+  act('admin_delete_payment_channel', { p_id: id });
+
+export const setPromoActive = (id: string, active: boolean) =>
+  act('admin_set_promo_active', { p_id: id, p_active: active });
+
+/** Every entry in a cup, with what it owes and what its captain claims to have sent. */
+export type Entry = {
+  registrationId: string;
+  entrantName: string;
+  clubId: string | null;
+  teamId: string | null;
+  crestUrl: string | null;
+  state: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+  feeEgp: number;
+  promoOffEgp: number;
+  pointsOffEgp: number;
+  amountDueEgp: number;
+  paid: boolean;
+  paidAt: string | null;
+  paymentNote: string | null;
+  paymentClaimedAt: string | null;
+  createdAt: string;
+};
+
+export async function tournamentEntries(id: string): Promise<Entry[]> {
+  const { data, error } = await supabase().rpc('tournament_entries', { p_tournament_id: id });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    registrationId: r.registration_id,
+    entrantName: r.entrant_name,
+    clubId: r.club_id,
+    teamId: r.team_id,
+    crestUrl: r.crest_url,
+    state: r.state,
+    feeEgp: r.fee_egp,
+    promoOffEgp: r.promo_off_egp,
+    pointsOffEgp: r.points_off_egp,
+    amountDueEgp: r.amount_due_egp,
+    paid: r.paid,
+    paidAt: r.paid_at,
+    paymentNote: r.payment_note,
+    paymentClaimedAt: r.payment_claimed_at,
+    createdAt: r.created_at,
+  }));
+}
+
+export const setRegistrationPaid = (registrationId: string, paid: boolean) =>
+  act('set_registration_paid', { p_registration_id: registrationId, p_paid: paid });
+
+export const setRegion = (id: string, region: string | null) =>
+  act('set_tournament_region', { p_tournament_id: id, p_region: region });
+
+/** Close a cup and write down what it produced. */
+export async function settleTournament(
+  id: string,
+): Promise<{ ok: true; awards: number } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('settle_tournament', { p_tournament_id: id });
+  if (error) return { ok: false, reason: error.message };
+  const res = outcome<{ awards: number }>(data);
+  return res.ok ? { ok: true, awards: res.row.awards } : { ok: false, reason: res.reason };
+}
+
+export type AwardKind = 'champion' | 'runner_up' | 'top_scorer' | 'best_player' | 'best_goalkeeper';
+
+export type Award = {
+  kind: AwardKind;
+  displayName: string;
+  clubId: string | null;
+  playerId: string | null;
+  value: number | null;
+  note: string | null;
+};
+
+export async function tournamentAwards(id: string): Promise<Award[]> {
+  const { data, error } = await supabase().rpc('tournament_awards', { p_tournament_id: id });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    kind: r.kind,
+    displayName: r.display_name,
+    clubId: r.club_id,
+    playerId: r.player_id,
+    value: r.value,
+    note: r.note,
+  }));
+}
