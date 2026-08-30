@@ -48,8 +48,6 @@ export const ROUTES = [
   { path: '/owner/setup/staff', name: 'Staff' },
   { path: '/owner/setup/profile', name: 'Venue profile' },
 
-  // Platform
-  { path: '/admin', name: 'Admin console' },
 ];
 
 /**

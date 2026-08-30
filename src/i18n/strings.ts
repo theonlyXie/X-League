@@ -111,7 +111,6 @@ export const STRINGS = {
     workspace: 'Workspace',
     account: 'Account',
     ownerMode: 'Owner mode',
-    adminConsole: 'Admin console',
     signIn: 'Sign in',
     signOut: 'Sign out',
     noCardYet: 'No card yet',
@@ -331,7 +330,6 @@ export const STRINGS = {
     createMyCard: 'Create my card',
     ratersAnonymous:
       'Individual raters stay anonymous. No single match can move an attribute more than ±2.',
-    platformOpsAudited: 'Platform operations · audited',
     endThisSession: 'End this session',
     restartToMirror: 'Restart the app to mirror the layout',
 
@@ -799,7 +797,6 @@ export const STRINGS = {
     workspace: 'مساحة العمل',
     account: 'الحساب',
     ownerMode: 'وضع المالك',
-    adminConsole: 'لوحة الإدارة',
     signIn: 'تسجيل الدخول',
     signOut: 'تسجيل الخروج',
     noCardYet: 'لا يوجد كارت بعد',
@@ -1005,7 +1002,6 @@ export const STRINGS = {
     buildingCard: 'بنجهّز كارتك…',
     createMyCard: 'اعمل كارتي',
     ratersAnonymous: 'اللي بيقيّموا بيفضلوا مجهولين. ومفيش ماتش واحد يقدر يحرّك أي صفة أكتر من ٢±.',
-    platformOpsAudited: 'عمليات المنصة · مُدقّقة',
     endThisSession: 'إنهاء الجلسة دي',
     restartToMirror: 'اقفل التطبيق وافتحه عشان الشكل يتعكس',
 

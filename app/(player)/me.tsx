@@ -27,7 +27,7 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Me() {
   const router = useRouter();
-  const { signedIn, displayName, venues, platformRole, signOut } = useSession();
+  const { signedIn, displayName, venues, signOut } = useSession();
   const { card, evidence, matches, awaitingResult, loading, unreachable, isFixture } = useCard();
   const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
@@ -216,20 +216,15 @@ export default function Me() {
             />
           ))}
 
-          {/* RBAC-003: offered only to somebody who actually holds a console
-              role. The console refuses everyone else anyway, but a door that
-              always says no is worse than no door. */}
-          {!isLive || platformRole ? (
-            <WorkspaceRow
-              title={t.adminConsole}
-              detail={
-                platformRole
-                  ? `Platform operations · ${platformRole} · audited`
-                  : t.platformOpsAudited
-              }
-              onPress={() => router.push('/admin')}
-            />
-          ) : null}
+          {/* The admin console is a desktop web app now, at its own
+              deployment. Platform work is monitoring and adjudication done
+              sitting down — a verification queue and a policy table are not
+              phone work — and a second implementation on a 390-point screen
+              was one more place for the two to disagree.
+
+              `platformRole` is no longer read here as a result. It is still on
+              the session, because `identityFailed` needs it to tell a dropped
+              connection apart from a demotion, and Owner Mode still shows. */}
 
           <View
             style={{

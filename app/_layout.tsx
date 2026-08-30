@@ -49,7 +49,6 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
             <Stack.Screen name="(player)" />
             <Stack.Screen name="owner" />
-            <Stack.Screen name="admin" />
             <Stack.Screen name="teams" />
             <Stack.Screen name="bookings" />
             <Stack.Screen name="notifications" />
