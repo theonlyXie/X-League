@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { canAct } from '@/components/Gate';
 import { Empty, Messages, Page, useSection, when } from '@/components/Page';
 import { useSession } from '@/lib/session';
-import { findUsers, resetPassword, suspendUser, type User } from '@/lib/admin';
+import { findUsers, resetPassword, rotateConsolePassword, suspendUser, type User } from '@/lib/admin';
 
 /**
  * Accounts, and the two things that are ever done to one.
@@ -94,13 +94,23 @@ function PersonRow({
   const [open, setOpen] = useState(false);
   const [days, setDays] = useState(7);
   const [password, setPassword] = useState('');
+  /** Shown once, right after a rotation. Never fetched again — it cannot be. */
+  const [code, setCode] = useState<string | null>(null);
+  const [rotating, setRotating] = useState(false);
 
   const suspended = u.suspendedUntil && new Date(u.suspendedUntil) > new Date();
 
   return (
     <>
       <tr>
-        <td style={{ fontWeight: 600 }}>{u.displayName}</td>
+        <td style={{ fontWeight: 600 }}>
+          {u.displayName}
+          {u.consoleRole ? (
+            <span className="chip" style={{ marginLeft: 8 }}>
+              {u.consoleRole}
+            </span>
+          ) : null}
+        </td>
         <td className="muted">{u.area ?? '—'}</td>
         <td className="num">{u.bookings}</td>
         <td className="num">{u.noShows}</td>
@@ -194,6 +204,67 @@ function PersonRow({
                 </button>
                 <span className="faint">Audited. Tell them in person, not in writing.</span>
               </div>
+
+              {/*
+                Rotation is a different job from the reset above, and the
+                difference is who ends up knowing the password: after a reset,
+                you do. This sets one nobody will ever see and hands back a
+                single-use code instead, which is what a leaked password needs.
+
+                Offered only on console accounts. The `Su` recovery flow
+                resolves a username through an active platform role, so anybody
+                else would be locked out with no route back — the server refuses
+                it, and there is no reason to show a control that will be.
+              */}
+              {u.consoleRole ? (
+                <div className="row" style={{ gap: 10, width: '100%' }}>
+                  <button
+                    className="small danger"
+                    disabled={busy || rotating}
+                    onClick={async () => {
+                      setRotating(true);
+                      setCode(null);
+                      const res = await rotateConsolePassword(u.playerId);
+                      setRotating(false);
+                      if (res.ok) setCode(res.recoveryCode);
+                      else window.alert(res.reason);
+                    }}
+                  >
+                    {rotating ? 'Rotating…' : 'Rotate password'}
+                  </button>
+                  <span className="faint">
+                    Kills the current password immediately. Nobody sees the new one — they get back
+                    in with the code below.
+                  </span>
+                </div>
+              ) : null}
+
+              {code ? (
+                <div
+                  className="row"
+                  style={{
+                    gap: 10,
+                    padding: '10px 12px',
+                    border: '1px solid var(--gold, #b08f35)',
+                    borderRadius: 8,
+                    width: '100%',
+                  }}
+                >
+                  <strong>Recovery code</strong>
+                  <code style={{ fontSize: 15, letterSpacing: 1 }}>{code}</code>
+                  <button
+                    className="small"
+                    onClick={() => void navigator.clipboard?.writeText(code)}
+                  >
+                    Copy
+                  </button>
+                  <span className="faint">
+                    Shown once — it is stored hashed and cannot be read again. Give it to{' '}
+                    {u.displayName} to sign in with <code>Su</code>, and they choose their own
+                    password. Any earlier code for this account has stopped working.
+                  </span>
+                </div>
+              ) : null}
             </div>
           </td>
         </tr>

@@ -127,6 +127,8 @@ export type User = {
   bookings: number;
   noShows: number;
   joined: string;
+  /** The platform role this account holds, or null for an ordinary player. */
+  consoleRole: string | null;
 };
 
 export async function findUsers(query?: string, limit = 50): Promise<User[]> {
@@ -139,6 +141,7 @@ export async function findUsers(query?: string, limit = 50): Promise<User[]> {
     bookings: r.bookings as number,
     noShows: r.no_shows as number,
     joined: r.joined as string,
+    consoleRole: (r.console_role as string) ?? null,
   }));
 }
 
@@ -152,6 +155,27 @@ export const suspendUser = (playerId: string, days: number, reason?: string) =>
 
 export const resetPassword = (playerId: string, newPassword: string) =>
   act('admin_reset_password', { p_user_id: playerId, p_new_password: newPassword });
+
+/**
+ * Rotate a console password without anybody learning one.
+ *
+ * Different from `resetPassword` in the way that matters: nothing is typed and
+ * nothing comes back except a single-use recovery code. Use it when a password
+ * has leaked — the reset above is for helping somebody who is locked out, and
+ * leaves the person doing the resetting knowing the account's password.
+ */
+export async function rotateConsolePassword(
+  playerId: string,
+): Promise<{ ok: true; recoveryCode: string } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('admin_rotate_console_password', {
+    p_user_id: playerId,
+  });
+  if (error) return { ok: false, reason: error.message };
+  const row = (data as { ok: boolean; reason: string | null; recovery_code: string | null }[])[0];
+  return row?.ok
+    ? { ok: true, recoveryCode: row.recovery_code! }
+    : { ok: false, reason: row?.reason ?? 'That was refused.' };
+}
 
 // ---------------------------------------------------------------------------
 // Reports

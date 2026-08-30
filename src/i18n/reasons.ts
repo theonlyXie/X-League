@@ -166,6 +166,8 @@ const AR: Record<string, string> = {
   'That invitation is not yours.': 'هذه الدعوة ليست لك.',
   'That invitation no longer exists.': 'هذه الدعوة لم تعد موجودة.',
   'That is not a day of the week.': 'هذا ليس يومًا من أيام الأسبوع.',
+  'That is not a console account, so there would be no way back into it.':
+    'هذا ليس حساب لوحة تحكم، فلن تكون هناك طريقة للعودة إليه.',
   'That is not a resolution.': 'هذا ليس قرارًا صالحًا.',
   'That is not a valid range of hours.': 'هذا ليس نطاق ساعات صالحًا.',
   'That is not a verification state.': 'هذه ليست حالة توثيق صالحة.',
