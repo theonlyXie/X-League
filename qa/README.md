@@ -37,6 +37,20 @@ npm run leak                # needs accounts, reads only
 npm run spine               # needs accounts, MAKES A REAL BOOKING
 ```
 
+### When the browser cannot reach the database
+
+A sandbox that reaches the internet only through an HTTP proxy will not let the
+browser talk to `*.supabase.co` — every page then renders the offline state and
+every check quietly becomes a check of that. `qa/forward.mjs` listens on
+localhost and forwards through `curl`, which does honour the proxy:
+
+```
+node qa/forward.mjs &
+EXPO_PUBLIC_SUPABASE_URL=http://localhost:3200 npm run web
+```
+
+It is scaffolding. Nothing in the app knows it exists.
+
 | Variable | For |
 |---|---|
 | `QA_BASE_URL` | Defaults to `http://localhost:8081` |
