@@ -174,7 +174,7 @@ export default function OwnerCalendar() {
         {CALENDAR_LEGEND.map((entry) => {
           const spec = SOURCE[entry.source];
           return (
-            <View key={entry.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View key={entry.source} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <View
                 style={{
                   width: 10,
@@ -187,7 +187,7 @@ export default function OwnerCalendar() {
                 }}
               />
               <Txt size={11} color={onOperative.muted}>
-                {entry.label}
+                {t[entry.label]}
               </Txt>
             </View>
           );

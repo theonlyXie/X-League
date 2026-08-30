@@ -9,6 +9,7 @@ import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens
 import { OUTFIELD_QUESTIONS, POSITIONS, Position, questionsFor } from '@/data/assessment';
 import { submitSelfAssessment } from '@/data/api';
 import { useCard } from '@/state/card';
+import { useI18n } from '@/i18n';
 
 /**
  * P-01 Onboarding, after the number is verified: pick a football identity and
@@ -18,6 +19,7 @@ import { useCard } from '@/state/card';
  * DISTINCTION" is that a self-assessment is a starting point, not a claim.
  */
 export default function Onboarding() {
+  const { t } = useI18n();
   const router = useRouter();
   const { reload } = useCard();
 
@@ -45,7 +47,8 @@ export default function Onboarding() {
       await reload();
       router.replace('/me');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your assessment.');
+      if (__DEV__) console.warn('[onboarding]', e);
+      setError(t.errAssessmentUnsaved);
     } finally {
       setBusy(false);
     }
@@ -58,11 +61,10 @@ export default function Onboarding() {
         <Header onBack={() => router.back()} />
         <View style={{ gap: 8 }}>
           <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
-            Where do you play?
+            {t.onbWhereDoYouPlay}
           </Txt>
           <Txt size={13} lh={1.6} color={onVoid.muted}>
-            Your position decides which attributes carry your rating. You can
-            change it later, but it takes a new assessment.
+            {t.onbPositionBlurb}
           </Txt>
         </View>
 
@@ -72,7 +74,7 @@ export default function Onboarding() {
               key={p.code}
               accessibilityRole="radio"
               accessibilityState={{ selected: false }}
-              accessibilityLabel={`${p.label}. ${p.blurb}`}
+              accessibilityLabel={`${t[p.label]}. ${t[p.blurb]}`}
               onPress={() => {
                 setPosition(p.code);
                 setIndex(0);
@@ -105,10 +107,10 @@ export default function Onboarding() {
               </View>
               <View style={{ flex: 1, gap: 3 }}>
                 <Txt size={15} weight="semibold" color={onVoid.primary}>
-                  {p.label}
+                  {t[p.label]}
                 </Txt>
                 <Txt size={11.5} lh={1.4} color={onVoid.faint}>
-                  {p.blurb}
+                  {t[p.blurb]}
                 </Txt>
               </View>
             </Pressable>
@@ -130,7 +132,7 @@ export default function Onboarding() {
 
       <View style={{ gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Eyebrow>{question.name}</Eyebrow>
+          <Eyebrow>{t[question.name]}</Eyebrow>
           <Txt size={11.5} color={onVoid.faint}>
             {index + 1} of {questions.length}
           </Txt>
@@ -156,7 +158,7 @@ export default function Onboarding() {
       </View>
 
       <Txt size={20} weight="bold" em={-0.02} lh={1.35} color={onVoid.primary}>
-        {question.prompt}
+        {t[question.prompt]}
       </Txt>
 
       <View style={{ gap: 9 }}>
@@ -167,7 +169,7 @@ export default function Onboarding() {
               key={anchor.label}
               accessibilityRole="radio"
               accessibilityState={{ selected: chosen }}
-              accessibilityLabel={anchor.label}
+              accessibilityLabel={t[anchor.label]}
               onPress={() => choose(question.attribute, anchor.score)}
               style={({ pressed }) => ({
                 flexDirection: 'row',
@@ -197,7 +199,7 @@ export default function Onboarding() {
                 ) : null}
               </View>
               <Txt size={14} lh={1.4} color={chosen ? onVoid.primary : onVoid.secondary} style={{ flex: 1 }}>
-                {anchor.label}
+                {t[anchor.label]}
               </Txt>
             </Pressable>
           );
@@ -224,7 +226,7 @@ export default function Onboarding() {
 
       {answeredAll ? (
         <Button
-          label={busy ? 'Building your card…' : 'Create my card'}
+          label={busy ? t.buildingCard : t.createMyCard}
           height={52}
           round={radius.control}
           size={15}
@@ -233,8 +235,7 @@ export default function Onboarding() {
         />
       ) : (
         <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-          There is no right answer here. The card you get is provisional — it
-          only becomes yours properly once verified matches back it up.
+          {t.onbNoRightAnswer}
         </Txt>
       )}
     </Screen>
@@ -242,11 +243,12 @@ export default function Onboarding() {
 }
 
 function Header({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel={t.back}
         hitSlop={10}
         onPress={onBack}
         style={{

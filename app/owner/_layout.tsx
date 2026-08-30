@@ -16,6 +16,11 @@ export default function OwnerLayout() {
         <Tabs.Screen name="money" />
         <Tabs.Screen name="reviews" />
         <Tabs.Screen name="setup" />
+        {/* Reachable, but not a sixth tab. `OwnerTabBar` draws its own five
+            items rather than iterating the navigator's routes, so a screen
+            registered here appears only when something navigates to it — which
+            is what the Money screen's link does. */}
+        <Tabs.Screen name="customers" />
       </Tabs>
     </View>
   );

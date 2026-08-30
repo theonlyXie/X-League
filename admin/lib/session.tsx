@@ -42,7 +42,17 @@ type SessionValue = {
    */
   signIn: (username: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+
+  /** Whether to ask for a password, or offer to set the first one. */
+  authStatus: (username: string) => Promise<{ exists: boolean; hasPassword: boolean }>;
+  /** The first password on an account that has never had one. Returns the recovery code. */
+  setFirstPassword: (username: string, password: string) => Promise<Claimed>;
+  /** A new password, for somebody holding the recovery code. Issues a fresh one. */
+  resetPassword: (username: string, code: string, password: string) => Promise<Claimed>;
 };
+
+/** Either it worked and there is a code to write down, or it did not. */
+export type Claimed = { ok: boolean; reason: string | null; recoveryCode: string | null };
 
 const Ctx = createContext<SessionValue | null>(null);
 
@@ -117,14 +127,42 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       : error.message;
   }, []);
 
+  const authStatus = useCallback(async (username: string) => {
+    const { data, error } = await supabase().rpc('staff_auth_status', { p_username: username });
+    if (error) return { exists: false, hasPassword: false };
+    const row = (data as { account_exists: boolean; has_password: boolean }[])[0];
+    return { exists: !!row?.account_exists, hasPassword: !!row?.has_password };
+  }, []);
+
+  const claim = async (fn: string, args: Record<string, string>): Promise<Claimed> => {
+    const { data, error } = await supabase().rpc(fn, args);
+    // `rpc` resolves with an error rather than rejecting, so this is checked
+    // rather than caught — the same mechanism that once hid a 403 in the app.
+    if (error) return { ok: false, reason: error.message, recoveryCode: null };
+    const row = (data as { ok: boolean; reason: string | null; recovery_code: string | null }[])[0];
+    return { ok: !!row?.ok, reason: row?.reason ?? null, recoveryCode: row?.recovery_code ?? null };
+  };
+
+  const setFirstPassword = useCallback(
+    (username: string, password: string) =>
+      claim('staff_set_first_password', { p_username: username, p_password: password }),
+    [],
+  );
+
+  const resetPassword = useCallback(
+    (username: string, code: string, password: string) =>
+      claim('staff_reset_password', { p_username: username, p_code: code, p_password: password }),
+    [],
+  );
+
   const signOut = useCallback(async () => {
     await supabase().auth.signOut();
     setRole(null);
   }, []);
 
   const value = useMemo<SessionValue>(
-    () => ({ session, restoring, role, roleLoading, signIn, signOut }),
-    [session, restoring, role, roleLoading, signIn, signOut],
+    () => ({ session, restoring, role, roleLoading, signIn, signOut, authStatus, setFirstPassword, resetPassword }),
+    [session, restoring, role, roleLoading, signIn, signOut, authStatus, setFirstPassword, resetPassword],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

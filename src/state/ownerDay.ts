@@ -4,6 +4,7 @@ import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 import { today } from '@/data/venue';
 import { CALENDAR, Cell, BookingSource } from '@/data/owner';
+import { useI18n } from '@/i18n';
 
 /** One row of the grid: an hour, and one cell per pitch the venue actually has. */
 export type DayRow = { hour: number; time: string; cells: Cell[] };
@@ -26,6 +27,7 @@ export type DayRow = { hour: number; time: string; cells: Cell[] };
  *     screen whose whole job is showing every hour it owns.
  */
 export function useOwnerDay(date: string = today()) {
+  const { t } = useI18n();
   const { activeVenue, signedIn } = useSession();
   const venue = activeVenue;
   const showcase = !isLive || !signedIn || !venue;
@@ -46,7 +48,10 @@ export function useOwnerDay(date: string = today()) {
     } catch (e) {
       // §4.7: an unreachable calendar says so rather than passing off stale
       // fixtures as this evening's real occupancy.
-      setError(e instanceof Error ? e.message : 'Could not reach the venue calendar.');
+      // The Error branch used to surface the provider's own English, which is
+      // the one thing an operator cannot act on in either language.
+      if (__DEV__) console.warn('[owner]', e);
+      setError(t.errVenueCalendar);
       setCells(null);
     } finally {
       setLoading(false);

@@ -12,6 +12,7 @@ import { useSession } from '@/state/session';
 import { useI18n } from '@/i18n';
 import { myCard } from '@/data/api';
 import { myVenues } from '@/data/manage';
+import { COUNTRY_CODE, isEgyptianMobile, nationalDigits, toE164 } from '@/lib/phone';
 
 /**
  * P-01 Onboarding — signing in, and joining.
@@ -37,7 +38,10 @@ export default function SignIn() {
 
   const [mode, setMode] = useState<Mode>('in');
   const [role, setRole] = useState<Role>('player');
-  const [phone, setPhone] = useState('+20');
+  // The national part only. The country code is fixed beside the field, so
+  // this never holds one and the value sent to the server is assembled once,
+  // in one place, rather than depending on how somebody typed it.
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [venueName, setVenueName] = useState('');
@@ -45,7 +49,10 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const phoneUsable = phone.replace(/\D/g, '').length >= 8;
+  // A real Egyptian mobile, not merely "enough digits". The old test accepted
+  // eight of anything, which passed `+20` followed by five stray characters
+  // straight through to GoTrue.
+  const phoneUsable = isEgyptianMobile(phone);
   const ready =
     mode === 'in'
       ? phoneUsable && password.length >= 8
@@ -94,9 +101,9 @@ export default function SignIn() {
     setError(null);
     const problem =
       mode === 'in'
-        ? await signIn(phone, password)
+        ? await signIn(toE164(phone), password)
         : await signUp({
-            phone,
+            phone: toE164(phone),
             password,
             displayName: name,
             role,
@@ -116,7 +123,7 @@ export default function SignIn() {
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t.back}
           hitSlop={10}
           onPress={() => router.back()}
           style={{
@@ -174,10 +181,20 @@ export default function SignIn() {
 
         <Field
           label={t.authMobile}
+          prefix={COUNTRY_CODE}
           value={phone}
-          onChangeText={setPhone}
-          placeholder="+20 100 000 0000"
+          // Normalised on the way in rather than on submit, so a pasted
+          // `+20 101 234 5678` or a habitual leading zero corrects itself in
+          // front of the person typing instead of failing later.
+          onChangeText={(text) => setPhone(nationalDigits(text))}
+          placeholder="100 000 0000"
+          hint={t.authMobileHint}
           keyboardType="phone-pad"
+          // No `maxLength`. It caps the raw text before `nationalDigits` ever
+          // sees it, so typing the habitual leading zero lost the last digit
+          // and a pasted international number was truncated to nonsense. The
+          // ten-digit limit belongs in the normaliser, which applies it after
+          // the country code and trunk zero have been taken off.
           autoComplete="tel"
         />
 
@@ -251,28 +268,81 @@ export default function SignIn() {
 
 function Field({
   label,
+  prefix,
+  hint,
   ...input
-}: { label: string } & React.ComponentProps<typeof TextInput>) {
+}: { label: string; prefix?: string; hint?: string } & React.ComponentProps<typeof TextInput>) {
+  const box = {
+    height: 52,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    borderColor: goldAlpha.edge,
+    backgroundColor: void_.surface,
+  } as const;
+
+  const text = {
+    color: onVoid.primary,
+    fontFamily: face.semibold,
+    fontSize: 16,
+  } as const;
+
   return (
     <View style={{ gap: 8 }}>
       <Eyebrow>{label}</Eyebrow>
-      <TextInput
-        placeholderTextColor="rgba(243,238,229,.25)"
-        autoCapitalize="none"
-        accessibilityLabel={label}
-        {...input}
-        style={{
-          height: 52,
-          borderRadius: radius.control,
-          borderWidth: 1,
-          borderColor: goldAlpha.edge,
-          backgroundColor: void_.surface,
-          paddingHorizontal: 16,
-          color: onVoid.primary,
-          fontFamily: face.semibold,
-          fontSize: 16,
-        }}
-      />
+
+      {prefix ? (
+        // The affix sits inside the field's border rather than beside it, so
+        // the two read as one control: the number is `+20 100 000 0000`, not a
+        // label and a number that happen to be adjacent.
+        <View style={{ ...box, flexDirection: 'row', alignItems: 'center' }}>
+          <View
+            style={{
+              paddingHorizontal: 14,
+              height: '100%',
+              justifyContent: 'center',
+              borderRightWidth: 1,
+              borderRightColor: goldAlpha.edge,
+            }}
+          >
+            {/* Not a field. It cannot be edited, cleared or tabbed into,
+                because every account here is Egyptian and a country code the
+                person can delete is one they can delete by accident. */}
+            <Txt size={16} weight="semibold" color={onVoid.secondary}>
+              {prefix}
+            </Txt>
+          </View>
+          <TextInput
+            placeholderTextColor="rgba(243,238,229,.25)"
+            autoCapitalize="none"
+            accessibilityLabel={label}
+            {...input}
+            style={{
+              ...text,
+              flex: 1,
+              height: '100%',
+              paddingHorizontal: 14,
+              // A phone number is read left to right in both languages, so it
+              // is not mirrored with the rest of the interface.
+              textAlign: 'left',
+              writingDirection: 'ltr',
+            }}
+          />
+        </View>
+      ) : (
+        <TextInput
+          placeholderTextColor="rgba(243,238,229,.25)"
+          autoCapitalize="none"
+          accessibilityLabel={label}
+          {...input}
+          style={{ ...box, ...text, paddingHorizontal: 16 }}
+        />
+      )}
+
+      {hint ? (
+        <Txt size={11.5} color={onVoid.faint}>
+          {hint}
+        </Txt>
+      ) : null}
     </View>
   );
 }

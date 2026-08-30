@@ -11,6 +11,9 @@ import * as api from '@/data/api';
 import { markNoShow, recordPayment } from '@/data/manage';
 import { useBooking } from '@/state/booking';
 import { useI18n } from '@/i18n';
+import { OpStanding } from '@/components/operative';
+import { useSession } from '@/state/session';
+import { useVenueStanding } from '@/state/standing';
 
 /**
  * O-01 Today — run the current shift (§4.5).
@@ -29,22 +32,24 @@ import { useI18n } from '@/i18n';
 export default function OwnerToday() {
   const { t, money, num } = useI18n();
   const { arrivals, summary, loading, error, live, showcase, venueName, reload } = useOwnerToday();
+  const { activeVenue } = useSession();
+  const standing = useVenueStanding(activeVenue?.verification);
 
   const tiles = summary
     ? [
         {
-          label: 'OCCUPANCY',
+          label: t.ownOccupancy,
           value: `${num(summary.occupancyPct)}%`,
           sub: t.ownSlotsOpenToday(num(summary.openSlots)),
           accent: false,
         },
         {
-          label: 'CASH DUE',
+          label: t.ownCashDue,
           value: money(summary.cashDueEgp),
           sub: `${num(summary.cashGates)} · ${t.ownAtTheGate}`,
           accent: true,
         },
-        { label: 'CONFLICTS', value: num(summary.conflicts), sub: 'one calendar', accent: false },
+        { label: t.ownConflicts, value: num(summary.conflicts), sub: t.ownOneCalendar, accent: false },
       ]
     : showcase
       ? OWNER_KPIS
@@ -65,6 +70,14 @@ export default function OwnerToday() {
       // 7 PM numbers were still on it at 11 PM.
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={ink} />}
     >
+      {/* Above the numbers, because a venue that has just signed up needs to
+          know where it stands before it needs to know its occupancy — and this
+          is the screen it lands on. It was only ever said four taps into Setup,
+          as a raw enum value. Nothing renders once verified. */}
+      {standing ? (
+        <OpStanding title={standing.title} blurb={standing.blurb} tone={standing.tone} />
+      ) : null}
+
       {tiles ? (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {tiles.map((kpi) => (
@@ -97,7 +110,7 @@ export default function OwnerToday() {
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <Txt size={10} weight="semibold" em={0.16} upper color={onOperative.faint}>
-            Next arrivals
+            {t.ownNextArrivals}
           </Txt>
         </View>
 
@@ -119,7 +132,12 @@ export default function OwnerToday() {
             : error
               ? error
               : live
-                ? `Live from ${venueName}'s calendar`
+                ? // Named only when there is a name. The old template literal
+                  // took the same nullable value and would have written "Live
+                  // from null's calendar" onto an operator's screen.
+                  venueName
+                  ? t.ownLiveFrom(venueName)
+                  : ''
                 : showcase
                   ? t.ownSampleShift
                   : ''}
@@ -240,7 +258,7 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
         >
           <View style={{ width: 6, height: 6, borderRadius: radius.pill, backgroundColor: gold.base }} />
           <Txt size={10} weight="bold" em={0.14} color={gold.ink}>
-            BOOKED IN THE APP
+            {t.ownBookedInApp}
           </Txt>
           <View style={{ flex: 1 }} />
           <Txt size={10.5} color={gold.ink} style={{ fontFamily: mono }}>

@@ -62,7 +62,7 @@ export default function ReportResult() {
         if (cancelled) return;
         setBooking(rows.find((b) => b.bookingId === bookingId) ?? null);
       } catch {
-        if (!cancelled) setError('Could not load that booking.');
+        if (!cancelled) setError(t.errBookingUnreadable);
       } finally {
         if (!cancelled) setLoading(false);
       }

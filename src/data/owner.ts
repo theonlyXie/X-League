@@ -126,9 +126,17 @@ export const CALENDAR: CalendarRow[] = [
   },
 ];
 
-export const CALENDAR_LEGEND: { source: BookingSource; label: string }[] = [
-  { source: 'app', label: 'App' },
-  { source: 'phone', label: 'Phone' },
-  { source: 'walk', label: 'Walk-in' },
-  { source: 'open', label: 'Open' },
+/**
+ * The legend is drawn on the live calendar as well as the showcase one, so its
+ * labels are keys rather than words — they were English on a venue's real
+ * Arabic screen, which is the one place in this file where that is a defect
+ * rather than sample data.
+ */
+export const CALENDAR_LEGEND: { source: BookingSource; label: OwnerChannelKey }[] = [
+  { source: 'app', label: 'ownChannelApp' },
+  { source: 'phone', label: 'ownChannelPhone' },
+  { source: 'walk', label: 'ownChannelWalkIn' },
+  { source: 'open', label: 'ownChannelOpen' },
 ];
+
+type OwnerChannelKey = 'ownChannelApp' | 'ownChannelPhone' | 'ownChannelWalkIn' | 'ownChannelOpen';

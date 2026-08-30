@@ -155,7 +155,7 @@ export default function Pricing() {
           ))}
           {shown.length === 0 && !loading ? (
             <Txt size={12.5} color={onOperative.dim}>
-              No price set for this pitch. Hours will quote as free until one is.
+              {t.ownNoPriceSet}
             </Txt>
           ) : null}
         </View>
@@ -163,7 +163,7 @@ export default function Pricing() {
 
       <OpSection
         title={t.ownSetPrice}
-        hint="Applies from today. Any rule it overlaps is closed, and the hours it does not cover keep their old price."
+        hint={t.ownPricingHint}
       >
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           <OpField label={t.ownFrom} value={from} onChangeText={setFrom} keyboardType="number-pad" width={72} />

@@ -70,7 +70,7 @@ export default function Teams() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))}
           hitSlop={8}
           style={{

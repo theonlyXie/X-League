@@ -12,6 +12,7 @@ import { DEFAULT_SLOT, HOLD_SECONDS, SLOT_TIMES, SLOTS_TAKEN, SlotTime, BOOKING 
 import { isLive } from '@/lib/supabase';
 import * as api from '@/data/api';
 import { DEMO_PITCH_ID, DEMO_VENUE_ID, today } from '@/data/venue';
+import { useI18n } from '@/i18n';
 
 /**
  * The booking spine's shared state.
@@ -108,6 +109,7 @@ const hourOf = (t: SlotTime) => parseInt(t, 10);
 const labelOf = (s: api.Slot) => String(s.hour) as SlotTime;
 
 export function BookingProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [pitchId, setPitchId] = useState<string>(DEMO_PITCH_ID);
   const [venueId, setVenueId] = useState<string>(DEMO_VENUE_ID);
   const [date, setDate] = useState<string>(() => today());
@@ -214,7 +216,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     // would address the wrong hour for part of the year.
     const chosen = slots.find((s) => labelOf(s) === slot);
     if (!chosen) {
-      setConflict({ reason: 'That hour is no longer on sale.', alternatives: [] });
+      setConflict({ reason: t.errHourGone, alternatives: [] });
       void refresh();
       return false;
     }
@@ -229,7 +231,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     } catch {
       // A hold we could not place is not a hold. Never advance to checkout on
       // the strength of a request that failed.
-      setConflict({ reason: 'Could not reach the venue calendar. Try again.', alternatives: [] });
+      setConflict({ reason: t.errVenueCalendarRetry, alternatives: [] });
       setUnreachable(true);
       return false;
     }
@@ -286,7 +288,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       setHold('confirmed');
       return true;
     } catch {
-      setConflict({ reason: 'Could not reach the venue calendar. Try again.', alternatives: [] });
+      setConflict({ reason: t.errVenueCalendarRetry, alternatives: [] });
       setUnreachable(true);
       return false;
     }

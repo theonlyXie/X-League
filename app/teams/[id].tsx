@@ -61,8 +61,8 @@ export default function TeamDetail() {
           const message = (e as { message?: string })?.message ?? '';
           setDenied(
             message.includes('not a member')
-              ? 'You are not a member of that team.'
-              : 'Could not load that team.',
+              ? t.errNotYourTeam
+              : t.errTeamUnreadable,
           );
         }
       } finally {
@@ -102,7 +102,7 @@ export default function TeamDetail() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/teams'))}
           hitSlop={8}
           style={{

@@ -19,9 +19,18 @@ declare
   -- `sign_up` is the only anon-callable function in the schema that writes, and
   -- what makes that acceptable is what it cannot write: it never touches
   -- platform_role, which auth_probe asserts directly.
+  --
+  -- The three `staff_*` functions widen this set deliberately. Somebody
+  -- recovering a console password has no session, so they cannot be reached any
+  -- other way, and what makes that acceptable is what they refuse: they act
+  -- only on accounts holding an active platform role, first-time setup declines
+  -- an account that already has a password, and the reset needs a hashed
+  -- recovery code and locks after five failures. The list is exact so that
+  -- growing it is a decision somebody writes down.
   v_want text[] := array[
     'auth_email_for_sign_in', 'hold_slot', 'list_tournaments', 'nearest_alternatives',
-    'search_availability', 'search_venues', 'sign_up', 'tournament_detail',
+    'search_availability', 'search_venues', 'sign_up', 'staff_auth_status',
+    'staff_reset_password', 'staff_set_first_password', 'tournament_detail',
     'venue_detail', 'venue_reviews'
   ];
   v_open text;

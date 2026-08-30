@@ -27,7 +27,7 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Me() {
   const router = useRouter();
-  const { signedIn, displayName, venues, platformRole, signOut } = useSession();
+  const { signedIn, displayName, venues, signOut } = useSession();
   const { card, evidence, matches, awaitingResult, loading, unreachable, isFixture } = useCard();
   const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
@@ -171,12 +171,12 @@ export default function Me() {
         <EvidenceBar label={t.selfAssessment} pct={selfPct} color="rgba(198,163,75,.45)" />
         <Txt size={11.5} lh={1.55} color={onVoid.dim}>
           {live
-            ? CONFIDENCE_COPY[confidence]
-            : 'Individual raters stay anonymous. No single match can move an attribute more than ±2.'}
+            ? t[CONFIDENCE_COPY[confidence]]
+            : t.ratersAnonymous}
         </Txt>
         {live ? (
           <Txt size={11} color={onVoid.faint}>
-            Scoring rule {card.ruleVersion}
+            {t.scoringRule(card.ruleVersion)}
           </Txt>
         ) : null}
       </View>
@@ -185,10 +185,12 @@ export default function Me() {
       {/* RBAC-005 / §3.1: hold more than one role, switch without signing out.
           Which venues appear is the server's answer (`my_venues`), not a guess
           the client makes — RBAC-002 scoping is enforced on every call anyway. */}
-      {/* The rooms that are not tabs: a squad's team, and what the product has
-          told this player. Both are reachable from here rather than hidden. */}
+      {/* The rooms that are not tabs: this player's own bookings, their squad's
+          team, and what the product has told them. All reachable from here
+          rather than hidden. */}
       {signedIn || !isLive ? (
         <View style={{ width: '100%', gap: 8 }}>
+          <RowLink label={t.bookingsTitle} onPress={() => router.push('/bookings')} />
           <RowLink label={t.teamsTitle} onPress={() => router.push('/teams')} />
           <RowLink label={t.notifications} onPress={() => router.push('/notifications')} />
         </View>
@@ -214,20 +216,15 @@ export default function Me() {
             />
           ))}
 
-          {/* RBAC-003: offered only to somebody who actually holds a console
-              role. The console refuses everyone else anyway, but a door that
-              always says no is worse than no door. */}
-          {!isLive || platformRole ? (
-            <WorkspaceRow
-              title={t.adminConsole}
-              detail={
-                platformRole
-                  ? `Platform operations · ${platformRole} · audited`
-                  : 'Platform operations · audited'
-              }
-              onPress={() => router.push('/admin')}
-            />
-          ) : null}
+          {/* The admin console is a desktop web app now, at its own
+              deployment. Platform work is monitoring and adjudication done
+              sitting down — a verification queue and a policy table are not
+              phone work — and a second implementation on a 390-point screen
+              was one more place for the two to disagree.
+
+              `platformRole` is no longer read here as a result. It is still on
+              the session, because `identityFailed` needs it to tell a dropped
+              connection apart from a demotion, and Owner Mode still shows. */}
 
           <View
             style={{
@@ -248,7 +245,7 @@ export default function Me() {
               </Txt>
               {needsRestart ? (
                 <Txt size={11.5} color={gold.base}>
-                  Restart the app to mirror the layout
+                  {t.restartToMirror}
                 </Txt>
               ) : null}
             </View>
@@ -292,7 +289,7 @@ export default function Me() {
           {signedIn ? (
             <WorkspaceRow
               title={t.signOut}
-              detail={displayName ? `Signed in as ${displayName}` : 'End this session'}
+              detail={displayName ? `Signed in as ${displayName}` : t.endThisSession}
               onPress={() => void signOut()}
             />
           ) : null}

@@ -1,6 +1,8 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isLive, supabase } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
+import type { STRINGS } from '@/i18n/strings';
 
 /**
  * Who is signed in, and what they are allowed to operate.
@@ -20,7 +22,23 @@ import { isLive, supabase } from '@/lib/supabase';
  * switch in §3.1 possible.
  */
 
-export type StaffVenue = { venueId: string; name: string; role: 'staff' | 'manager' | 'owner' };
+/**
+ * `verification` is where the venue stands with the platform, and it is here
+ * rather than fetched per screen because Owner Mode reads this list once a
+ * session anyway.
+ *
+ * It ranks a venue in search and nothing more — `search_venues` returns
+ * unverified venues and merely orders verified ones above them. Any copy built
+ * on this must not imply a pending venue is hidden, because it is not.
+ */
+export type VenueVerification = 'pending' | 'verified' | 'rejected' | 'suspended';
+
+export type StaffVenue = {
+  venueId: string;
+  name: string;
+  role: 'staff' | 'manager' | 'owner';
+  verification: VenueVerification;
+};
 
 /**
  * Joining as a player, or as somebody with a pitch to fill. The venue fields
@@ -80,30 +98,39 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+/** The resolved string table for the current language. */
+type Copy = (typeof STRINGS)['en'];
+
 /**
  * Auth errors reach the player, so they say what happened in words rather than
  * passing a provider's error code through to someone standing at a pitch gate.
  */
-function explain(error: { message: string; code?: string }): string {
+function explain(error: { message: string; code?: string }, t: Copy): string {
   // Match the code where supabase-js provides one and the message otherwise:
   // which field carries the reason varies by endpoint and client version, and
   // a player at a pitch gate should never be shown a raw provider string.
   const hay = `${error.code ?? ''} ${error.message}`.toLowerCase();
   const has = (...needles: string[]) => needles.some((n) => hay.includes(n));
 
-  if (has('invalid_credentials', 'invalid login'))
-    return 'That number and password do not match. Check them and try again.';
-  if (has('email_not_confirmed'))
-    return 'That account is not usable yet. Ask an administrator to check it.';
+  if (has('invalid_credentials', 'invalid login')) return t.authBadCredentials;
+  if (has('email_not_confirmed')) return t.authNotUsable;
   // MSG-006: rate limits are real; the player should wait rather than retry.
-  if (has('rate limit', 'over_request_rate_limit'))
-    return 'Too many attempts. Wait a minute before trying again.';
-  if (has('user_already_exists', 'already registered'))
-    return 'That number already has an account. Sign in instead.';
-  return error.message;
+  if (has('rate limit', 'over_request_rate_limit')) return t.authRateLimited;
+  if (has('user_already_exists', 'already registered')) return t.authAlreadyExists;
+
+  // The fallback used to return `error.message`, which is the provider's own
+  // English — the exact thing the comment above says never to show, arrived at
+  // by falling off the end of the list. It is not actionable by somebody at a
+  // gate in either language, so they get a sentence they can act on and the
+  // detail goes to the console for whoever can.
+  if (__DEV__) console.warn('[auth] unmapped error:', error.code, error.message);
+  return t.authUnknown;
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  // `I18nProvider` wraps this one in the root layout, so the copy is available
+  // here and the auth messages below are the player's own language.
+  const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [venues, setVenues] = useState<StaffVenue[]>([]);
@@ -157,10 +184,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         ((profile ?? []) as { display_name: string }[])[0]?.display_name ?? null,
       );
       setVenues(
-        ((mine ?? []) as { venue_id: string; name: string; role: StaffVenue['role'] }[]).map((v) => ({
+        (
+          (mine ?? []) as {
+            venue_id: string;
+            name: string;
+            role: StaffVenue['role'];
+            verification: VenueVerification | null;
+          }[]
+        ).map((v) => ({
           venueId: v.venue_id,
           name: v.name,
           role: v.role,
+          // A venue is pending until the platform says otherwise, which is also
+          // what the column defaults to — so an absent value means the same
+          // thing here as it does there rather than becoming a fourth state.
+          verification: v.verification ?? 'pending',
         })),
       );
     } catch {
@@ -179,19 +217,41 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!isLive) return;
     let alive = true;
 
-    supabase()
-      .auth.getSession()
-      .then(async ({ data }) => {
-        if (!alive) return;
-        setSession(data.session);
-        await loadIdentity(data.session);
-        setRestoring(false);
-      })
-      .catch(() => alive && setRestoring(false));
+    /**
+     * One listener, with no `getSession()` beside it.
+     *
+     * `onAuthStateChange` emits `INITIAL_SESSION` carrying the restored session
+     * the moment it subscribes — the same answer `getSession()` returns, to the
+     * same question. GoTrue then emits `SIGNED_IN` for that same restored
+     * session, so a cold load with a stored account ran the identity fetch
+     * three times over: nine round trips before a single screen had asked for
+     * anything, on every launch, on a connection this product is meant to work
+     * on.
+     *
+     * The guard is keyed on the access token rather than simply firing once,
+     * because the reason this reloads at all is that revoking somebody's venue
+     * access has to take effect on their next call and not whenever their JWT
+     * happens to expire. A refreshed token is a new token and still reloads;
+     * the two events announcing one restored session carry one token, so they
+     * now load once between them.
+     */
+    let lastToken: string | null | undefined;
 
     const { data: sub } = supabase().auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      void loadIdentity(next);
+
+      const token = next?.access_token ?? null;
+      if (token === lastToken) {
+        setRestoring(false);
+        return;
+      }
+      lastToken = token;
+
+      // Held until the identity is in hand, so no screen paints a signed-in
+      // frame before it knows whose it is — the gap the fixture used to fill.
+      void loadIdentity(next).finally(() => {
+        if (alive) setRestoring(false);
+      });
     });
 
     return () => {
@@ -215,29 +275,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (phone: string, password: string) => {
-      if (!isLive) return 'No database configured.';
+      if (!isLive) return t.authNoDatabase;
       try {
         const found = await addressFor(phone);
-        if (!found) return 'That does not look like a valid mobile number.';
+        if (!found) return t.authBadNumber;
         // Said before asking GoTrue, because "no account" and "wrong password"
         // are different problems and only one of them is fixed by trying again.
-        if (!found.exists_already)
-          return 'No account for that number yet. Create one below.';
+        if (!found.exists_already) return t.authNoAccountYet;
 
         const { error } = await supabase().auth.signInWithPassword({
           email: found.auth_email,
           password,
         });
-        return error ? explain(error) : null;
+        return error ? explain(error, t) : null;
       } catch (e) {
-        return explain(e as { message: string; code?: string });
+        return explain(e as { message: string; code?: string }, t);
       }
     },
-    [addressFor],
+    [addressFor, t],
   );
 
   const signUp = useCallback(async (input: SignUpInput) => {
-    if (!isLive) return 'No database configured.';
+    if (!isLive) return t.authNoDatabase;
     try {
       const { data, error } = await supabase().rpc('sign_up', {
         p_phone: input.phone,
@@ -247,7 +306,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         p_venue_name: input.venueName ?? null,
         p_venue_area: input.venueArea ?? null,
       });
-      if (error) return explain(error);
+      if (error) return explain(error, t);
 
       const row = (data as { ok: boolean; auth_email: string | null; reason: string | null }[])[0];
       // Every rule about what makes an account valid is the server's, so this
@@ -258,11 +317,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         email: row.auth_email!,
         password: input.password,
       });
-      return signInError ? explain(signInError) : null;
+      return signInError ? explain(signInError, t) : null;
     } catch (e) {
-      return explain(e as { message: string; code?: string });
+      return explain(e as { message: string; code?: string }, t);
     }
-  }, []);
+    // `t` is a dependency now that the messages come from it: without it a
+    // language switch would leave the previous language's copy in the closure.
+  }, [t]);
 
   const signOut = useCallback(async () => {
     if (!isLive) return;

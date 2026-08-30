@@ -18,16 +18,25 @@ import { useI18n } from '@/i18n';
  * what the venue is owed (O-06), what players said (O-08), and the
  * configuration behind both (O-03, O-04, O-05, O-07).
  */
-const ITEMS: { label: string; route: string }[] = [
-  { label: 'Today', route: 'index' },
-  { label: 'Calendar', route: 'calendar' },
-  { label: 'Money', route: 'money' },
-  { label: 'Reviews', route: 'reviews' },
-  { label: 'Setup', route: 'setup' },
+/**
+ * Keys, not labels. These read from the string table like everything else —
+ * all five had Arabic sitting in it, unused, while the bar rendered English
+ * on every Owner Mode screen in both languages. Key parity could never catch
+ * that: a hardcoded label has no missing key to report.
+ */
+type OwnerTabKey = 'ownTabToday' | 'ownTabCalendar' | 'ownTabMoney' | 'ownTabReviews' | 'ownTabSetup';
+
+const ITEMS: { key: OwnerTabKey; route: string }[] = [
+  { key: 'ownTabToday', route: 'index' },
+  { key: 'ownTabCalendar', route: 'calendar' },
+  { key: 'ownTabMoney', route: 'money' },
+  { key: 'ownTabReviews', route: 'reviews' },
+  { key: 'ownTabSetup', route: 'setup' },
 ];
 
 export function OwnerTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const activeRoute = state.routes[state.index]?.name;
 
   return (
@@ -46,11 +55,12 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
       {ITEMS.map((item) => {
         const active = item.route === activeRoute;
         const color = active ? ink : onOperative.dim;
+        const label = t[item.key];
         return (
           <Pressable
-            key={item.label}
+            key={item.route}
             accessibilityRole="tab"
-            accessibilityLabel={item.label}
+            accessibilityLabel={label}
             accessibilityState={{ selected: active }}
             onPress={() => {
               if (active) return;
@@ -62,7 +72,7 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
               style={{ width: 16, height: 2, borderRadius: 2, backgroundColor: active ? ink : 'transparent' }}
             />
             <Txt size={10.5} weight="semibold" color={color}>
-              {item.label}
+              {label}
             </Txt>
           </Pressable>
         );

@@ -133,13 +133,13 @@ export default function Staff() {
           ))}
           {rows.length === 0 && !loading && !notice ? (
             <Txt size={12.5} color={onOperative.dim}>
-              Nobody else works here yet.
+              {t.ownNobodyElseWorksHere}
             </Txt>
           ) : null}
         </View>
       </OpSection>
 
-      <OpSection title={t.ownAddSomebody} hint="They need an X League account first — this grants a role, it does not create a person.">
+      <OpSection title={t.ownAddSomebody} hint={t.ownStaffHint}>
         <TextInput
           value={query}
           onChangeText={setQuery}

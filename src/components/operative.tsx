@@ -268,6 +268,52 @@ export function OpHeader({ title, onBack }: { title: string; onBack: () => void 
 }
 
 /** Whatever the server said when it refused. */
+/**
+ * Where the venue stands with the platform.
+ *
+ * Separate from `OpNotice` because that one is burgundy, and burgundy is the
+ * colour this product uses for something being wrong. A venue awaiting
+ * verification has nothing wrong with it — it is listed, it is bookable, and it
+ * simply ranks below the verified ones — so dressing that as an error would be
+ * the screen lying in a different register. Declined and suspended are a
+ * different matter and do get the burgundy.
+ *
+ * Renders nothing at all once verified: the gold badge on the venue profile
+ * says that, and repeating it on every screen would be noise.
+ */
+export function OpStanding({
+  title,
+  blurb,
+  tone,
+}: {
+  title: string;
+  blurb: string;
+  tone: 'info' | 'warn';
+}) {
+  const line = tone === 'warn' ? 'rgba(139,33,53,.35)' : 'rgba(198,163,75,.45)';
+  const fill = tone === 'warn' ? 'rgba(139,33,53,.06)' : 'rgba(198,163,75,.08)';
+  return (
+    <View
+      style={{
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: radius.chip,
+        borderWidth: 1,
+        borderColor: line,
+        backgroundColor: fill,
+        gap: 4,
+      }}
+    >
+      <Txt size={12.5} weight="semibold" color={tone === 'warn' ? burgundy.ink : ink}>
+        {title}
+      </Txt>
+      <Txt size={11.5} lh={1.5} color={onOperative.muted}>
+        {blurb}
+      </Txt>
+    </View>
+  );
+}
+
 export function OpNotice({ text }: { text: string | null }) {
   if (!text) return null;
   return (
