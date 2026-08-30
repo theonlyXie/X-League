@@ -792,6 +792,9 @@ export const STRINGS = {
     cupFull: 'Full',
     lastPlaces: (n: string) => `${n} places left`,
 
+    signInToSee: 'Sign in to see this.',
+    noSuchClub: 'That club does not exist, or is not yours to see.',
+
     // Your photo
     yourPhoto: 'Your photo',
     addPhoto: 'Add a photo',
@@ -1557,6 +1560,9 @@ export const STRINGS = {
     placesTaken: (taken: string, total: string) => `${taken} من ${total} مقعدًا محجوزًا`,
     cupFull: 'مكتملة',
     lastPlaces: (n: string) => `${n} مقاعد متبقية`,
+
+    signInToSee: 'سجّل الدخول لعرض هذا.',
+    noSuchClub: 'هذا النادي غير موجود، أو ليس من حقك رؤيته.',
 
     // Your photo
     yourPhoto: 'صورتك',

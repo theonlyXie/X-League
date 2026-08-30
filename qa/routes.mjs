@@ -24,6 +24,8 @@ export const ROUTES = [
   { path: '/chat', name: 'Chat' },
   { path: '/cups', name: 'Cups' },
   { path: '/teams', name: 'Teams' },
+  { path: '/clubs', name: 'Clubs' },
+  { path: '/leaderboard', name: 'Leaderboards' },
 
   // The booking spine's later screens need state to be meaningful, but they
   // must still render rather than crash when reached cold.
@@ -34,6 +36,11 @@ export const ROUTES = [
   { path: '/play/invite', name: 'Invite' },
   { path: '/play/rate', name: 'Rate' },
   { path: '/play/result', name: 'Result' },
+
+  // Reached cold with an id that belongs to nobody, which is the case that has
+  // to say so rather than render a club-shaped empty shell.
+  { path: '/clubs/00000000-0000-0000-0000-000000000000', name: 'Club detail' },
+  { path: '/cups/enter/00000000-0000-0000-0000-000000000000', name: 'Enter a cup' },
 
   // Owner
   { path: '/owner', name: 'Owner today', signedOut: 'showcase' },
@@ -78,6 +85,8 @@ export const PLAYER_SURFACES = [
   '/chat',
   '/teams',
   '/cups',
+  '/clubs',
+  '/leaderboard',
 ];
 
 /** The surfaces a signed-in venue owner should never see a fixture on. */
@@ -118,6 +127,8 @@ export const MUST_REACH_BACKEND = [
   '/chat',
   '/teams',
   '/cups',
+  '/clubs',
+  '/leaderboard',
   '/owner',
   '/owner/calendar',
   '/owner/money',

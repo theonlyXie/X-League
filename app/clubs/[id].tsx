@@ -275,6 +275,25 @@ export default function ClubPage() {
         </Txt>
       ) : null}
 
+      {/* Three ways this screen has nothing to draw, and they are different
+          things to be told: no account, no such club, and a club that could
+          not be read. Rendering the header alone for the first two is how a
+          screen ends up saying nothing at all. */}
+      {!signedIn ? (
+        <View style={{ gap: 12 }}>
+          <Txt size={13} lh={1.5} color={onVoid.muted}>
+            {t.signInToSee}
+          </Txt>
+          <Button label={t.signIn} onPress={() => router.push('/sign-in?next=/clubs')} />
+        </View>
+      ) : null}
+
+      {signedIn && !loading && !unreachable && !club ? (
+        <Txt size={13} lh={1.5} color={onVoid.muted}>
+          {t.noSuchClub}
+        </Txt>
+      ) : null}
+
       {club ? (
         <>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>

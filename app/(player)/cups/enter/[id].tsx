@@ -83,7 +83,7 @@ export default function EnterCup() {
 
   const ask = useCallback(
     async (withCode: string, withPoints: number) => {
-      if (!isLive || !id) return;
+      if (!isLive || !id || !signedIn) return;
       try {
         const q = await registrationQuote(id, withCode.trim() || null, withPoints);
         setQuote(q);
@@ -96,7 +96,7 @@ export default function EnterCup() {
 
   useEffect(() => {
     void ask('', 0);
-  }, [ask]);
+  }, [ask, signedIn]);
 
   async function applyCode() {
     await ask(code, points);
@@ -211,7 +211,16 @@ export default function EnterCup() {
         </Reveal>
       ) : null}
 
-      {!loading && !unreachable && !clubs.length && !entered ? (
+      {!signedIn ? (
+        <View style={{ gap: 12 }}>
+          <Txt size={13} lh={1.5} color={onVoid.muted}>
+            {t.signInToSee}
+          </Txt>
+          <Button label={t.signIn} onPress={() => router.push('/sign-in?next=/cups')} />
+        </View>
+      ) : null}
+
+      {signedIn && !loading && !unreachable && !clubs.length && !entered ? (
         <View style={{ gap: 12 }}>
           <Txt size={13} lh={1.5} color={onVoid.muted}>
             {t.noEligibleClub}
@@ -223,7 +232,7 @@ export default function EnterCup() {
         </View>
       ) : null}
 
-      {clubs.length && !entered ? (
+      {signedIn && clubs.length > 0 && !entered ? (
         <>
           <View style={{ gap: 10 }}>
             <Eyebrow>{t.chooseClub}</Eyebrow>
