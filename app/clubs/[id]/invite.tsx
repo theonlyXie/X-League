@@ -24,7 +24,7 @@ import { isLive } from '@/lib/supabase';
 export default function InviteToClub() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
 
   const [slot, setSlot] = useState<SlotKind>('starter');
   const [query, setQuery] = useState('');
@@ -66,7 +66,7 @@ export default function InviteToClub() {
         setAsked((prev) => ({ ...prev, [player.playerId]: true }));
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        setNotice(res.reason ?? t.offline);
+        setNotice(reason(res.reason) ?? t.offline);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch {

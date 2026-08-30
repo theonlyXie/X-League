@@ -38,7 +38,7 @@ import { useSession } from '@/state/session';
 export default function EnterCup() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { t, num, money } = useI18n();
+  const { reason, t, num, money } = useI18n();
   const { signedIn } = useSession();
 
   const [clubs, setClubs] = useState<ClubSummary[]>([]);
@@ -125,7 +125,7 @@ export default function EnterCup() {
         setEntered(res.registrationId);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        setNotice(res.reason ?? t.offline);
+        setNotice(reason(res.reason) ?? t.offline);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch {
@@ -140,7 +140,7 @@ export default function EnterCup() {
     setBusy(true);
     try {
       const res = await claimPayment(entered, note.trim());
-      if (!res.ok) setNotice(res.reason ?? t.offline);
+      if (!res.ok) setNotice(reason(res.reason) ?? t.offline);
     } catch {
       setNotice(t.offline);
     } finally {
@@ -301,9 +301,9 @@ export default function EnterCup() {
               />
               <Button label={t.applyCode} width={92} onPress={applyCode} />
             </View>
-            {quote && !quote.promoOk && quote.reason ? (
+            {quote && !quote.promoOk && reason(quote.reason) ? (
               <Txt size={12} color={burgundy.action}>
-                {quote.reason}
+                {reason(quote.reason)}
               </Txt>
             ) : null}
             {quote?.promoOk && quote.promoOffEgp > 0 ? (

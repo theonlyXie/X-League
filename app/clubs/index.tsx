@@ -24,7 +24,7 @@ import { useSession } from '@/state/session';
 export default function Clubs() {
   const { signedIn } = useSession();
   const router = useRouter();
-  const { t, num } = useI18n();
+  const { reason, t, num } = useI18n();
 
   const [clubs, setClubs] = useState<ClubSummary[]>([]);
   const [loading, setLoading] = useState(isLive);
@@ -86,7 +86,7 @@ export default function Clubs() {
         if (res.clubId) router.push(`/clubs/${res.clubId}`);
         else reload();
       } else {
-        setNotice(res.reason ?? null);
+        setNotice(reason(res.reason) ?? null);
       }
     } catch {
       setNotice(t.offline);
@@ -98,7 +98,7 @@ export default function Clubs() {
   async function answer(clubId: string, accept: boolean) {
     try {
       const res = await respondToClubInvite(clubId, accept);
-      if (!res.ok) setNotice(res.reason ?? null);
+      if (!res.ok) setNotice(reason(res.reason) ?? null);
     } catch {
       setNotice(t.offline);
     } finally {

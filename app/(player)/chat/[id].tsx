@@ -36,7 +36,7 @@ export default function Thread() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id?: string }>();
   const conversationId = params.id ?? null;
-  const { t, hour } = useI18n();
+  const { reason, t, hour } = useI18n();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [title, setTitle] = useState('');
@@ -224,7 +224,7 @@ export default function Thread() {
               setNotice(null);
               await load();
             } else {
-              setNotice(res.reason ?? null);
+              setNotice(reason(res.reason) ?? null);
             }
           }}
         />

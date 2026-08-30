@@ -30,7 +30,7 @@ export default function Me() {
   const router = useRouter();
   const { signedIn, session, displayName, venues, signOut } = useSession();
   const { card, evidence, matches, awaitingResult, loading, unreachable, isFixture, reload } = useCard();
-  const { t, num, locale, setLocale, needsRestart, rtl } = useI18n();
+  const { reason, t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
   // Three states, not two, and conflating them was the worst bug in the app.
   //
@@ -477,7 +477,7 @@ function MatchEvidenceList({
   matches: MatchEvidence[];
   onRate: (matchId: string) => void;
 }) {
-  const { t, num, shortDate } = useI18n();
+  const { reason, t, num, shortDate } = useI18n();
 
   return (
     <View style={{ width: '100%', gap: 12 }}>
@@ -618,7 +618,7 @@ function EvidenceBar({ label, pct, color }: { label: string; pct: number; color:
  * password at all.
  */
 function ChangePassword() {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -654,7 +654,7 @@ function ChangePassword() {
       setDone(true);
       setOpen(false);
     } else {
-      setNotice(res.reason ?? t.passwordChangeFailed);
+      setNotice(reason(res.reason) ?? t.passwordChangeFailed);
     }
   };
 
@@ -766,7 +766,7 @@ function WorkspaceRow({ title, detail, onPress }: { title: string; detail: strin
  * a real self-assessment because the network dropped for a second.
  */
 function CardUnreachable() {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   return (
     <View
       style={{
@@ -797,7 +797,7 @@ function CardUnreachable() {
 }
 
 function NoCardYet({ onStart }: { onStart: () => void }) {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   return (
     <View
       style={{
@@ -844,7 +844,7 @@ function PhotoControl({
   hasPhoto: boolean;
   onChanged: () => void | Promise<void>;
 }) {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -856,7 +856,7 @@ function PhotoControl({
       const picked = await pickAndUpload('avatars', userId);
       if (picked.status === 'ok') {
         const res = await setMyPhoto(picked.url);
-        if (!res.ok) setNotice(res.reason ?? t.uploadFailed);
+        if (!res.ok) setNotice(reason(res.reason) ?? t.uploadFailed);
         else await onChanged();
       } else if (picked.status === 'denied') setNotice(t.photoPermission);
       else if (picked.status === 'too-large') setNotice(t.photoTooLarge);

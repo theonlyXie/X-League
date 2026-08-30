@@ -29,7 +29,7 @@ import { useI18n } from '@/i18n';
  * closes the old one rather than replacing it.
  */
 export default function Pricing() {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
@@ -85,7 +85,7 @@ export default function Pricing() {
       setNotice(null);
       void load();
     } else {
-      setNotice(res.reason ?? null);
+      setNotice(reason(res.reason) ?? null);
     }
   };
 

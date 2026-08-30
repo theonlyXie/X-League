@@ -41,7 +41,7 @@ import { useSession } from '@/state/session';
 export default function ClubPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { t, num } = useI18n();
+  const { reason, t, num } = useI18n();
   const { signedIn, session } = useSession();
 
   const [club, setClub] = useState<ClubDetail | null>(null);
@@ -99,7 +99,7 @@ export default function ClubPage() {
     try {
       const res = await fn();
       if (!res.ok) {
-        setNotice(res.reason ?? t.offline);
+        setNotice(reason(res.reason) ?? t.offline);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } else {
         void Haptics.selectionAsync();
@@ -121,7 +121,7 @@ export default function ClubPage() {
       const picked = await pickAndUpload('crests', club.clubId);
       if (picked.status === 'ok') {
         const res = await setClubCrest(club.clubId, picked.url);
-        if (!res.ok) setNotice(res.reason ?? t.uploadFailed);
+        if (!res.ok) setNotice(reason(res.reason) ?? t.uploadFailed);
       } else if (picked.status === 'denied') setNotice(t.photoPermission);
       else if (picked.status === 'too-large') setNotice(t.photoTooLarge);
       else if (picked.status === 'failed') setNotice(t.uploadFailed);
@@ -320,7 +320,7 @@ export default function ClubPage() {
                 weight="medium"
                 color={club.eligible ? gold.base : burgundy.action}
               >
-                {club.eligible ? t.readyToEnter : (club.reason ?? t.notReadyToEnter)}
+                {club.eligible ? t.readyToEnter : (reason(club.reason) ?? t.notReadyToEnter)}
               </Txt>
             </View>
           </View>

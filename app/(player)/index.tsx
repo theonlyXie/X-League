@@ -24,7 +24,7 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Home() {
   const router = useRouter();
-  const { t, num, money, hour, longDate } = useI18n();
+  const { reason, t, num, money, hour, longDate } = useI18n();
   const { signedIn, displayName } = useSession();
   const home = useHome();
 
@@ -54,7 +54,7 @@ export default function Home() {
       ok: false,
       reason: t.offline,
     }));
-    if (!result.ok) setInviteNotice(result.reason ?? t.offline);
+    if (!result.ok) setInviteNotice(reason(result.reason) ?? t.offline);
     home.reload();
   };
 

@@ -30,7 +30,7 @@ export default function TeamDetail() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const teamId = params.id ?? null;
-  const { t, num } = useI18n();
+  const { reason, t, num } = useI18n();
 
   const [team, setTeam] = useState<Team | null>(null);
   const [roster, setRoster] = useState<TeamMember[]>([]);
@@ -206,7 +206,7 @@ export default function TeamDetail() {
               if (!teamId) return;
               const room = await teamConversation(teamId);
               if (room.ok && room.conversationId) router.push(`/chat/${room.conversationId}`);
-              else setNotice(room.reason ?? null);
+              else setNotice(reason(room.reason) ?? null);
             }}
           />
 
@@ -266,7 +266,7 @@ export default function TeamDetail() {
                           if (!teamId) return;
                           const res = await inviteToTeam(teamId, p.playerId);
                           if (res.ok) setInvitedIds((ids) => [...ids, p.playerId]);
-                          else setNotice(res.reason ?? null);
+                          else setNotice(reason(res.reason) ?? null);
                         }}
                       />
                     </View>

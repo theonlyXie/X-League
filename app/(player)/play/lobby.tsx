@@ -27,7 +27,7 @@ export default function Lobby() {
   const { bookingId: heldBookingId, code } = useBooking();
   const bookingId = params.booking ?? heldBookingId;
   const lobby = useLobby(bookingId);
-  const { t, num, hour, shortDate, money } = useI18n();
+  const { reason, t, num, hour, shortDate, money } = useI18n();
 
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -193,7 +193,7 @@ export default function Lobby() {
                       hitSlop={10}
                       onPress={async () => {
                         const res = await removeParticipant(member.participantId);
-                        if (!res.ok) setNotice(res.reason ?? null);
+                        if (!res.ok) setNotice(reason(res.reason) ?? null);
                         lobby.reload();
                       }}
                     >
@@ -272,7 +272,7 @@ export default function Lobby() {
                       setDraft('');
                       lobby.reloadMessages();
                     } else {
-                      setNotice(res.reason ?? null);
+                      setNotice(reason(res.reason) ?? null);
                     }
                   }}
                 />
@@ -321,7 +321,7 @@ export default function Lobby() {
                           reason: t.offline,
                         }));
                         if (!res.ok) {
-                          setNotice(res.reason ?? null);
+                          setNotice(reason(res.reason) ?? null);
                           return;
                         }
                         // `free` is computed by the server and was thrown
@@ -360,7 +360,7 @@ export default function Lobby() {
                 if (!bookingId) return;
                 const res = await leaveBooking(bookingId);
                 if (res.ok) router.replace('/');
-                else setNotice(res.reason ?? null);
+                else setNotice(reason(res.reason) ?? null);
               }}
             />
           )}

@@ -30,7 +30,7 @@ import { useVenueStanding } from '@/state/standing';
  * none of your own.
  */
 export default function OwnerToday() {
-  const { t, money, num } = useI18n();
+  const { reason, t, money, num } = useI18n();
   const { arrivals, summary, loading, error, live, showcase, venueName, reload } = useOwnerToday();
   const { activeVenue } = useSession();
   const standing = useVenueStanding(activeVenue?.verification);
@@ -193,7 +193,7 @@ function Empty({ title, blurb }: { title: string; blurb: string }) {
 }
 
 function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () => void }) {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const { checkedIn: demoCheckedIn, toggleCheckIn } = useBooking();
   const [busy, setBusy] = useState<'check' | 'collect' | 'noshow' | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -220,7 +220,7 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
     setFailed(null);
     const result = await call(bookingId).catch(() => ({ ok: false, reason: t.ownCalendarUnreachable }));
     setBusy(null);
-    if (!result.ok) setFailed(result.reason ?? refusal);
+    if (!result.ok) setFailed(reason(result.reason) ?? refusal);
     else onChanged?.();
   };
 

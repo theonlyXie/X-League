@@ -3,6 +3,7 @@ import { I18nManager, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STRINGS } from './strings';
 import * as fmt from './format';
+import { translateReason } from './reasons';
 
 /**
  * Language and direction (NFR-LOC-001, AUTH-002).
@@ -27,6 +28,14 @@ type I18nValue = {
   /** True when a restart is needed for mirroring to take effect (native only). */
   needsRestart: boolean;
   t: (typeof STRINGS)['en'];
+  /**
+   * A refusal the database sent back, in this reader's language.
+   *
+   * Every screen that shows a server `reason` goes through here. Anything not
+   * mapped falls back to the English sentence, which says something true —
+   * never a generic apology, which says nothing anybody can act on.
+   */
+  reason: (text: string | null | undefined) => string | null;
   setLocale: (locale: Locale) => Promise<void>;
 
   // Locale-aware formatting, bound to the current language.
@@ -73,6 +82,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       needsRestart,
       t: STRINGS[locale] as (typeof STRINGS)['en'],
       setLocale,
+      reason: (text) => translateReason(text, locale),
       num: (v) => fmt.num(v, locale),
       money: (v) => fmt.money(v, locale),
       hour: (iso) => fmt.hour(iso, locale),

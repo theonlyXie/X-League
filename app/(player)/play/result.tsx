@@ -30,7 +30,7 @@ export default function ReportResult() {
   const router = useRouter();
   const params = useLocalSearchParams<{ booking?: string }>();
   const bookingId = params.booking ?? null;
-  const { t, num, moment } = useI18n();
+  const { reason, t, num, moment } = useI18n();
   const { reload: reloadCard } = useCard();
 
   const [booking, setBooking] = useState<PastBooking | null>(null);
@@ -88,7 +88,7 @@ export default function ReportResult() {
     );
     setSaving(false);
     if (!res.ok) {
-      setError(res.reason ?? null);
+      setError(reason(res.reason) ?? null);
       return;
     }
     setError(null);

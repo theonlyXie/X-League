@@ -28,7 +28,7 @@ export default function CupDetail() {
   const params = useLocalSearchParams<{ id?: string }>();
   const tournamentId = params.id ?? null;
   const { signedIn } = useSession();
-  const { t, num, money, shortDate } = useI18n();
+  const { reason, t, num, money, shortDate } = useI18n();
 
   const [cup, setCup] = useState<TournamentDetail | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -253,7 +253,7 @@ export default function CupDetail() {
                             setNotice(null);
                             reload();
                           } else {
-                            setNotice(res.reason ?? null);
+                            setNotice(reason(res.reason) ?? null);
                           }
                         }}
                       />
@@ -390,7 +390,7 @@ function awardLabel(kind: Award['kind'], t: ReturnType<typeof useI18n>['t']): st
 }
 
 function StandingsTable({ rows }: { rows: TournamentDetail['standings'] }) {
-  const { t, num } = useI18n();
+  const { reason, t, num } = useI18n();
 
   if (rows.length === 0) {
     return (

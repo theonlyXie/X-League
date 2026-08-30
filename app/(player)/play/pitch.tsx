@@ -49,7 +49,7 @@ export default function PitchDetail() {
     pitchId,
   } = useBooking();
   const { signedIn } = useSession();
-  const { t, num, hourLabel } = useI18n();
+  const { reason, t, num, hourLabel } = useI18n();
 
   const [venue, setVenue] = useState<VenueDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -198,7 +198,7 @@ export default function PitchDetail() {
             {conflict ? (
               <Pressable
                 accessibilityRole="alert"
-                accessibilityLabel={conflict.reason}
+                accessibilityLabel={reason(conflict.reason) ?? undefined}
                 onPress={clearConflict}
                 style={{
                   paddingVertical: 12,
@@ -211,7 +211,7 @@ export default function PitchDetail() {
                 }}
               >
                 <Txt size={12.5} weight="semibold" color={burgundy.action}>
-                  {conflict.reason}
+                  {reason(conflict.reason)}
                 </Txt>
                 {conflict.alternatives.length ? (
                   <Txt size={11.5} color={onVoid.muted}>
@@ -349,7 +349,7 @@ export default function PitchDetail() {
  * number for the whole evening would misquote it.
  */
 function PriceForSlot() {
-  const { t, money } = useI18n();
+  const { reason, t, money } = useI18n();
   const { slot, slotPrices } = useBooking();
   return (
     <View style={{ gap: 2 }}>

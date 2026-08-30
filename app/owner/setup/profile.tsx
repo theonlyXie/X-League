@@ -27,7 +27,7 @@ import { useVenueStanding } from '@/state/standing';
  * reports the answer.
  */
 export default function VenueProfile() {
-  const { t } = useI18n();
+  const { reason, t } = useI18n();
   const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
@@ -161,7 +161,7 @@ export default function VenueProfile() {
               void load();
             } else {
               setSaved(false);
-              setNotice(res.reason ?? null);
+              setNotice(reason(res.reason) ?? null);
             }
           }}
         />
