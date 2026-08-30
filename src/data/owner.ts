@@ -8,13 +8,25 @@
 
 export type BookingSource = 'app' | 'phone' | 'walk' | 'open' | 'block';
 
-export const VENUE = { name: 'Stadium One', shift: 'Tue 18 Aug · evening shift', pitches: ['A', 'B', 'C'] } as const;
+export const VENUE = { name: 'Stadium One', pitches: ['A', 'B', 'C'] } as const;
 
-export const OWNER_KPIS = [
-  { label: 'OCCUPANCY', value: '78%', sub: '3 slots open', accent: false },
-  { label: 'CASH DUE', value: '400', sub: 'EGP · 4 gates', accent: true },
-  { label: 'CONFLICTS', value: '0', sub: 'one calendar', accent: false },
-] as const;
+/**
+ * The sample evening, in the reader's language.
+ *
+ * These used to be plain English constants, which meant a venue opening the app
+ * in Arabic — before it has signed in, which is the first thing it does — read
+ * a whole screen of English. The names and the pitch labels stay as they are:
+ * those are somebody's data, and a venue that calls its pitch "Pitch A" calls
+ * it that in both languages.
+ */
+type Copy = (typeof import('@/i18n/strings'))['STRINGS']['en'];
+
+export const ownerKpis = (t: Copy, num: (n: number) => string) =>
+  [
+    { label: t.ownOccupancy, value: `${num(78)}%`, sub: t.shSlotsOpen(num(3)), accent: false },
+    { label: t.ownCashDue, value: num(400), sub: t.shGates(num(4)), accent: true },
+    { label: t.ownConflicts, value: num(0), sub: t.ownOneCalendar, accent: false },
+  ] as const;
 
 export type Arrival = {
   time: string;
@@ -37,39 +49,36 @@ export type Arrival = {
   state?: string;
 };
 
-export const ARRIVALS: Arrival[] = [
+export const arrivals = (t: Copy, money: (egp: number) => string): Arrival[] => [
   {
     time: '9:00',
-    meridiem: 'PM',
+    meridiem: t.shPm,
     title: 'Basel Elsayed · Pitch A',
     source: 'app',
-    detail: '5-a-side · 5 + 2 subs · 60 min',
-    money: { text: 'EGP 100 cash to collect at gate', tone: 'due' },
+    detail: t.shSideAndSubs,
+    money: { text: t.ownDueAtGate(money(100)), tone: 'due' },
     justBooked: { code: 'XL-7K42' },
   },
   {
     time: '10:00',
-    meridiem: 'PM',
+    meridiem: t.shPm,
     title: 'Hesham F. · Pitch A',
     source: 'phone',
-    badge: 'PHONE',
-    detail: '5-a-side · regular Tuesday',
-    money: { text: 'Deposit unpaid · 2nd reminder sent', tone: 'unpaid' },
+    badge: t.shPhone,
+    detail: t.shRegularTuesday,
+    money: { text: t.shDepositUnpaid, tone: 'unpaid' },
   },
   {
     time: '10:00',
-    meridiem: 'PM',
+    meridiem: t.shPm,
     title: 'Walk-in · Pitch B',
     source: 'walk',
-    badge: 'DESK',
-    detail: 'Paid in full · no contact on file',
+    badge: t.shDesk,
+    detail: t.shPaidNoContact,
   },
 ];
 
-export const OPEN_TONIGHT = {
-  count: 3,
-  detail: '7:00 PM · 8:00 PM Pitch B · 11:00 PM',
-};
+export const openTonight = (t: Copy) => ({ count: 3, detail: t.shOpenHours });
 
 export type Cell = {
   source: BookingSource;
@@ -86,45 +95,58 @@ export type CalendarRow = { time: string; a: Cell; b: Cell; c: Cell };
 
 const cell = (source: BookingSource, title: string, detail: string): Cell => ({ source, title, detail });
 
-/** One evening across three pitches, every channel visible at once. */
-export const CALENDAR: CalendarRow[] = [
-  {
-    time: '6 PM',
-    a: cell('walk', 'Walk-in', 'paid'),
-    b: cell('open', 'Open', 'EGP 300'),
-    c: cell('phone', 'Sameh A.', '5-a-side'),
-  },
-  {
-    time: '7 PM',
-    a: cell('open', 'Open', 'EGP 300'),
-    b: cell('phone', 'Karim T.', '5-a-side'),
-    c: cell('phone', 'Sameh A.', '5-a-side'),
-  },
-  {
-    time: '8 PM',
-    a: cell('phone', 'Amr S.', 'deposit ok'),
-    b: cell('open', 'Open', 'EGP 300'),
-    c: cell('block', 'Blocked', 'watering'),
-  },
-  {
-    time: '9 PM',
-    a: cell('app', 'Basel E.', 'XL-7K42 · cash'),
-    b: cell('walk', 'Walk-in', 'paid'),
-    c: cell('phone', 'Ziad M.', '5-a-side'),
-  },
-  {
-    time: '10 PM',
-    a: cell('phone', 'Hesham F.', 'unpaid'),
-    b: cell('walk', 'Walk-in', 'paid'),
-    c: cell('app', 'Nour K.', 'XL-7K51'),
-  },
-  {
-    time: '11 PM',
-    a: cell('open', 'Open', 'EGP 260'),
-    b: cell('open', 'Open', 'EGP 260'),
-    c: cell('open', 'Open', 'EGP 260'),
-  },
-];
+/**
+ * One evening across three pitches, every channel visible at once.
+ *
+ * A function of the copy for the same reason the arrivals are: this is what a
+ * venue reads before it signs in, and it was English regardless of language.
+ * `5-a-side` and the walk-in label are the venue's own words in the fiction, so
+ * they come from the table like the rest of the chrome.
+ */
+export const calendar = (t: Copy, money: (egp: number) => string): CalendarRow[] => {
+  const open = (price: number) => cell('open', t.ownChannelOpen, money(price));
+  const walk = () => cell('walk', t.ownChannelWalkIn, t.shPaid);
+  const side = t.ownFiveASide;
+
+  return [
+    {
+      time: '6 PM',
+      a: walk(),
+      b: open(300),
+      c: cell('phone', 'Sameh A.', side),
+    },
+    {
+      time: '7 PM',
+      a: open(300),
+      b: cell('phone', 'Karim T.', side),
+      c: cell('phone', 'Sameh A.', side),
+    },
+    {
+      time: '8 PM',
+      a: cell('phone', 'Amr S.', t.shDepositOk),
+      b: open(300),
+      c: cell('block', t.ownCellBlocked, t.shWatering),
+    },
+    {
+      time: '9 PM',
+      a: cell('app', 'Basel E.', `XL-7K42 · ${t.ownCash}`),
+      b: walk(),
+      c: cell('phone', 'Ziad M.', side),
+    },
+    {
+      time: '10 PM',
+      a: cell('phone', 'Hesham F.', t.shUnpaid),
+      b: walk(),
+      c: cell('app', 'Nour K.', 'XL-7K51'),
+    },
+    {
+      time: '11 PM',
+      a: open(260),
+      b: open(260),
+      c: open(260),
+    },
+  ];
+};
 
 /**
  * The legend is drawn on the live calendar as well as the showcase one, so its

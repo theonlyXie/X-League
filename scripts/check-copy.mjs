@@ -65,7 +65,10 @@ const FIXTURES = ['src/data/player.ts', 'src/data/owner.ts'];
 // The run may contain an apostrophe — `Live from ${venue}'s calendar` was
 // hardcoded on the owner's calendar in English, next to the key that already
 // said it, and hid here for weeks because `'s` broke the match.
-const LITERAL = /(['"`])([A-Z][A-Za-z]+(?:[ ][A-Za-z${}.'\u2019]+){1,8})\1/g;
+// The word cap used to be eight, which meant a *longer* English sentence
+// escaped — exactly backwards. "Verify your number to book and to reach owner
+// mode" is ten words and sat hardcoded on the account screen because of it.
+const LITERAL = /(['"`])([A-Z][A-Za-z]+(?:[ ][A-Za-z${}.'\u2019]+){1,24})\1/g;
 const NOT_COPY =
   /(accessibilityRole|fontFamily|import |from ['"]|require\(|@\/|https?:\/\/|StyleSheet|Platform\.|process\.env|console\.)/;
 

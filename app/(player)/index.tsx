@@ -268,7 +268,7 @@ export default function Home() {
                     ? venue.minPriceEgp > 0
                       ? t.venueMeta(num(venue.distanceKm), money(venue.minPriceEgp))
                       : t.venueMetaNoPrice(num(venue.distanceKm))
-                    : [venue.area, venue.minPriceEgp > 0 ? `${money(venue.minPriceEgp)}/hr` : null]
+                    : [venue.area, venue.minPriceEgp > 0 ? t.perHour(money(venue.minPriceEgp)) : null]
                         .filter(Boolean)
                         .join(' · ')}
                 </Txt>

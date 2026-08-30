@@ -82,7 +82,13 @@ export default function Me() {
           photoUrl={live ? card.photoUrl : null}
           ovr={ovr}
           positionCode={positionCode}
-          confidence={confidence}
+          confidence={
+            confidence === 'provisional'
+              ? t.confProvisional
+              : confidence === 'emerging'
+                ? t.confEmerging
+                : t.confEstablished
+          }
           attributes={attributes}
           explained={explained.key}
           level={live ? (evidence?.level ?? 1) : CARD.level}
@@ -210,7 +216,7 @@ export default function Me() {
           {isLive && !signedIn ? (
             <WorkspaceRow
               title={t.signIn}
-              detail="Verify your number to book and to reach owner mode"
+              detail={t.verifyToBook}
               onPress={() => router.push('/sign-in?next=/me')}
             />
           ) : null}
@@ -428,7 +434,7 @@ function VoidCard({
           }}
         >
           <Txt size={9.5} weight="bold" em={0.12} color={gold.base}>
-            {confidence.toUpperCase()}
+            {confidence}
           </Txt>
         </View>
       </View>

@@ -3,7 +3,7 @@ import * as api from '@/data/api';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 import { today } from '@/data/venue';
-import { CALENDAR, Cell, BookingSource } from '@/data/owner';
+import { calendar, Cell, BookingSource } from '@/data/owner';
 import { useI18n } from '@/i18n';
 
 /** One row of the grid: an hour, and one cell per pitch the venue actually has. */
@@ -64,6 +64,7 @@ export function useOwnerDay(date: string = today()) {
 
   const copy = useMemo<Copy>(
     () => ({
+      t,
       open: t.ownChannelOpen,
       booked: t.ownCellBooked,
       blocked: t.ownCellBlocked,
@@ -132,7 +133,7 @@ function toGrid(cells: api.OwnerCell[], copy: Copy): { pitches: string[]; rows: 
 function showcaseGrid(copy: Copy): { pitches: string[]; rows: DayRow[] } {
   return {
     pitches: ['A', 'B', 'C'],
-    rows: CALENDAR.map((row, i) => ({
+    rows: calendar(copy.t, copy.money).map((row, i) => ({
       hour: 18 + i,
       time: copy.hourLabel(18 + i),
       cells: [row.a, row.b, row.c],
@@ -151,6 +152,8 @@ function showcaseGrid(copy: Copy): { pitches: string[]; rows: DayRow[] } {
  * Arabic-Indic.
  */
 type Copy = {
+  /** The whole table, for the showcase fixture, which builds its own sentences. */
+  t: (typeof import('@/i18n/strings'))['STRINGS']['en'];
   open: string;
   booked: string;
   blocked: string;

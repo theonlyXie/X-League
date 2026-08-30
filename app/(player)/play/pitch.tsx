@@ -365,6 +365,7 @@ function PriceForSlot() {
 
 /** Where verified venue media goes (VEN-005); marked as a placeholder, not faked. */
 function PhotoPlaceholder() {
+  const { t } = useI18n();
   return (
     <View
       style={{
@@ -392,7 +393,7 @@ function PhotoPlaceholder() {
         />
       ))}
       <Txt size={10.5} em={0.12} color="rgba(243,238,229,.3)" style={{ fontFamily: mono }}>
-        venue photo · 16:9
+        {t.venuePhotoSlot}
       </Txt>
       <View style={{ position: 'absolute', bottom: 12, left: 12, flexDirection: 'row', gap: 6 }}>
         {[0, 1, 2].map((i) => (

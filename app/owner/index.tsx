@@ -5,7 +5,12 @@ import { hitSlopTo44 } from '@/components/ui';
 import { Check } from '@/components/icons';
 import { burgundy, gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { Arrival, ARRIVALS, OPEN_TONIGHT, OWNER_KPIS } from '@/data/owner';
+import {
+  Arrival,
+  arrivals as showcaseArrivalRows,
+  openTonight as showcaseOpenTonight,
+  ownerKpis as showcaseKpiRow,
+} from '@/data/owner';
 import { useOwnerToday } from '@/state/ownerToday';
 import * as api from '@/data/api';
 import { markNoShow, recordPayment } from '@/data/manage';
@@ -52,13 +57,13 @@ export default function OwnerToday() {
         { label: t.ownConflicts, value: num(summary.conflicts), sub: t.ownOneCalendar, accent: false },
       ]
     : showcase
-      ? OWNER_KPIS
+      ? showcaseKpiRow(t, num)
       : null;
 
   const rows: Arrival[] | null = arrivals
     ? arrivals.map((a) => toArrival(a, t.ownWalkIn, money, t.ownDueAtGate, t.ownPaidInFull))
     : showcase
-      ? ARRIVALS
+      ? showcaseArrivalRows(t, money)
       : null;
 
   return (
@@ -159,10 +164,10 @@ export default function OwnerToday() {
           }}
         >
           <Txt size={13} weight="semibold" color={ink}>
-            {summary ? t.ownSlotsOpenToday(num(summary.openSlots)) : `${OPEN_TONIGHT.count} slots open tonight`}
+            {summary ? t.ownSlotsOpenToday(num(summary.openSlots)) : t.shSlotsOpen(num(showcaseOpenTonight(t).count))}
           </Txt>
           <Txt size={11.5} color={onOperative.muted}>
-            {summary ? t.ownDiscountSoon : OPEN_TONIGHT.detail}
+            {summary ? t.ownDiscountSoon : showcaseOpenTonight(t).detail}
           </Txt>
         </View>
       ) : null}
