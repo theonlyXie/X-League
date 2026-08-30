@@ -31,6 +31,7 @@ Then, with the app running (`npm run web` from the repository root):
 
 ```
 npm run smoke               # no account, no writes — run this on every change
+npm run wire                # needs accounts, reads only
 npm run leak                # needs accounts, reads only
 npm run spine               # needs accounts, MAKES A REAL BOOKING
 ```
@@ -39,14 +40,14 @@ npm run spine               # needs accounts, MAKES A REAL BOOKING
 |---|---|
 | `QA_BASE_URL` | Defaults to `http://localhost:8081` |
 | `QA_CHROMIUM` | A browser binary, when Playwright's own is not installed |
-| `QA_PLAYER_PHONE` / `QA_PLAYER_PASSWORD` | `leak`, `spine` |
-| `QA_OWNER_PHONE` / `QA_OWNER_PASSWORD` | `leak` — an account on a venue's staff |
+| `QA_PLAYER_PHONE` / `QA_PLAYER_PASSWORD` | `wire`, `leak`, `spine` |
+| `QA_OWNER_PHONE` / `QA_OWNER_PASSWORD` | `wire`, `leak` — an account on a venue's staff |
 | `QA_VENUE` | `spine` — the venue to book at, as it appears in search |
 | `QA_SLOT` | `spine`, optional — e.g. `8:00 PM` |
 | `QA_SETTLE_MS` | How long a route may take to paint before it counts as blank. A ceiling, not a wait — default 5000, and CI raises it because a hosted runner is slower. |
 | `QA_QUIET_MS` | How long after first paint to keep listening for console errors. Default 900. Lowering it turns the console assertion into a coin flip. |
 
-## The three checks
+## The four checks
 
 **`smoke`** visits all 28 routes signed out and asserts each one rendered
 something and left the console quiet. It needs no account and writes nothing,
@@ -55,6 +56,28 @@ people skip, and it is the half that caught the worst bug of the review pass:
 a React duplicate-key warning was the slot grid reporting that it had drawn two
 chips with the same identity — a venue open from ten in the morning showed
 `10:00` twice, and tapping the evening one held the morning hour.
+
+**`wire`** signs in and asserts that every screen meant to show you your own
+data actually asked the database for it, and that the database answered. It is
+the check `leak` cannot be: a screen that calls a function it has no permission
+to call renders *"No teams yet"* — the same words, to the pixel, as a screen
+belonging to somebody who genuinely has no teams. No sentinel string separates
+those two. A status code separates them instantly.
+
+So it asserts on the wire rather than the pixels: nothing comes back 4xx or 5xx,
+nothing is left unanswered, and a screen on the `MUST_REACH_BACKEND` list that
+renders without opening a connection is a failure rather than a pass. That last
+rule is the one that catches a screen quietly falling back to a fixture after
+somebody has renamed the sample player out of `fixtures.mjs`.
+
+It also prints each screen's call map, which is where it earns its keep beyond
+the pass line. Its first run was green on all twenty surfaces and still showed
+`my_profile`, `my_venues` and `my_platform_role` going out three times apiece on
+every load — GoTrue emits both `SIGNED_IN` and `INITIAL_SESSION` for one
+restored session, and the session provider called `getSession()` alongside them
+for the same answer a third time. Nine round trips before a screen had asked for
+anything, and because the owner screens wait on that identity, it tripled their
+fetches too.
 
 **`leak`** signs in and asserts that no signed-in surface shows the design's
 sample data. This is the one that matters most. The dominant failure of this
@@ -80,9 +103,18 @@ confirmation screen regardless of whether anything had been booked.
 
 Honest list.
 
-- **Sixteen screens have never been exercised against real data** — squads and
-  invitations, chat, teams, cups on either side, the admin console, four owner
-  Setup screens, onboarding. They render, and that is all `smoke` claims.
+- **Reaching the database is not the same as being right.** `wire` now signs in
+  and drives all twenty surfaces — chat, teams, cups, closures, staff, venue
+  profile and reviews among them — and every one of them calls its function and
+  gets a 200. That retires the older "sixteen screens have never been exercised
+  against real data", but only that far: it proves each screen asked the right
+  question and was answered, not that it drew the answer correctly. Nobody has
+  yet checked a rendered squad list against the rows behind it.
+- **The admin console.** `/admin` renders and is in `smoke`, but no check signs
+  in as a platform admin, so nothing there is exercised.
+- **Writes, apart from the booking spine.** Recording a closure, changing a
+  price, adding staff, replying in chat, registering for a cup — every one of
+  those is a button no check has ever pressed.
 - **Arabic and RTL.** `npm run check:i18n` proves both locales carry the same
   keys; nothing here has ever looked at a mirrored layout.
 - **Anything after the match.** Reporting a result needs a booking in the past,

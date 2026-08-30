@@ -179,19 +179,41 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!isLive) return;
     let alive = true;
 
-    supabase()
-      .auth.getSession()
-      .then(async ({ data }) => {
-        if (!alive) return;
-        setSession(data.session);
-        await loadIdentity(data.session);
-        setRestoring(false);
-      })
-      .catch(() => alive && setRestoring(false));
+    /**
+     * One listener, with no `getSession()` beside it.
+     *
+     * `onAuthStateChange` emits `INITIAL_SESSION` carrying the restored session
+     * the moment it subscribes — the same answer `getSession()` returns, to the
+     * same question. GoTrue then emits `SIGNED_IN` for that same restored
+     * session, so a cold load with a stored account ran the identity fetch
+     * three times over: nine round trips before a single screen had asked for
+     * anything, on every launch, on a connection this product is meant to work
+     * on.
+     *
+     * The guard is keyed on the access token rather than simply firing once,
+     * because the reason this reloads at all is that revoking somebody's venue
+     * access has to take effect on their next call and not whenever their JWT
+     * happens to expire. A refreshed token is a new token and still reloads;
+     * the two events announcing one restored session carry one token, so they
+     * now load once between them.
+     */
+    let lastToken: string | null | undefined;
 
     const { data: sub } = supabase().auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      void loadIdentity(next);
+
+      const token = next?.access_token ?? null;
+      if (token === lastToken) {
+        setRestoring(false);
+        return;
+      }
+      lastToken = token;
+
+      // Held until the identity is in hand, so no screen paints a signed-in
+      // frame before it knows whose it is — the gap the fixture used to fill.
+      void loadIdentity(next).finally(() => {
+        if (alive) setRestoring(false);
+      });
     });
 
     return () => {

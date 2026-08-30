@@ -6,6 +6,7 @@
   "description": "Browser checks against the running app.",
   "scripts": {
     "smoke": "node smoke.mjs",
+    "wire": "node wire.mjs",
     "leak": "node leak.mjs",
     "spine": "node spine.mjs"
   },

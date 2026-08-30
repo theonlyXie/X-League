@@ -55,7 +55,44 @@ export const OWNER_SURFACES = [
   '/owner',
   '/owner/calendar',
   '/owner/money',
+  '/owner/reviews',
   '/owner/setup',
   '/owner/setup/hours',
   '/owner/setup/pricing',
+  '/owner/setup/closures',
+  '/owner/setup/staff',
+  '/owner/setup/profile',
+];
+
+/**
+ * Screens that exist to show you your own data, and so must ask for it.
+ *
+ * A screen here that renders without opening a connection is not passing — it
+ * is drawing something it did not get from the database, which is the defect
+ * this whole harness was built around.
+ *
+ * This list is evidence, not intent: every entry was observed making the call
+ * on a signed-in run. Screens deliberately absent are the ones that legitimately
+ * render from state carried in from a previous screen (the later booking steps),
+ * from nothing at all (sign-in, onboarding), or from a menu of links
+ * (`/owner/setup`).
+ */
+export const MUST_REACH_BACKEND = [
+  '/',
+  '/me',
+  '/play',
+  '/points',
+  '/notifications',
+  '/chat',
+  '/teams',
+  '/cups',
+  '/owner',
+  '/owner/calendar',
+  '/owner/money',
+  '/owner/reviews',
+  '/owner/setup/hours',
+  '/owner/setup/pricing',
+  '/owner/setup/closures',
+  '/owner/setup/staff',
+  '/owner/setup/profile',
 ];

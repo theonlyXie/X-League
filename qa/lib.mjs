@@ -56,6 +56,53 @@ export async function newPage(browser) {
 }
 
 /**
+ * Record every call the page makes to the database, and what came back.
+ *
+ * The text on a screen cannot distinguish "you have no teams" from "we asked
+ * and were refused" — both render the same empty state, and the second is the
+ * defect this product kept shipping. The status code can. Attach this before
+ * navigating and every request is on the record with the answer it got.
+ */
+const API = /\/(rest|auth)\/v1\//;
+
+/** `rpc/my_teams` reads better in a report than 180 characters of URL. */
+function apiName(url) {
+  const path = url.split('?')[0];
+  const at = path.search(API);
+  return at === -1 ? path : path.slice(at).replace(/^\/(rest|auth)\/v1\//, '');
+}
+
+export function watchCalls(page) {
+  const calls = [];
+  const of = new Map();
+
+  page.on('request', (r) => {
+    if (!API.test(r.url())) return;
+    const call = { name: apiName(r.url()), method: r.method(), status: null, failed: null };
+    calls.push(call);
+    of.set(r, call);
+  });
+
+  page.on('response', (r) => {
+    const call = of.get(r.request());
+    if (!call) return;
+    call.status = r.status();
+    // PostgREST puts the reason in the body — "permission denied for function
+    // owner_arrivals" is the whole finding, and losing it turns a fixable
+    // report into a status code somebody has to go and reproduce.
+    if (r.status() >= 400) call.body = r.text().then((t) => t.slice(0, 180)).catch(() => '');
+  });
+
+  page.on('requestfailed', (r) => {
+    const call = of.get(r);
+    if (call) call.failed = r.failure()?.errorText ?? 'request failed';
+  });
+
+  page.calls = calls;
+  return calls;
+}
+
+/**
  * How long a route may take to put something on screen. A ceiling, not a cost.
  *
  * This was a flat `waitForTimeout`, which meant 28 routes cost 28 × 5s whether
@@ -90,6 +137,7 @@ const EFFECT_MS = Number(process.env.QA_EFFECT_MS ?? 600);
  */
 export async function visit(page, route, { settleMs = SETTLE_MS } = {}) {
   const before = page.errors.length;
+  const callsBefore = page.calls?.length ?? 0;
   await page.goto(BASE + route, { waitUntil: 'load' });
 
   // Resolves the moment the screen has content. A timeout here is not an
@@ -123,6 +171,7 @@ export async function visit(page, route, { settleMs = SETTLE_MS } = {}) {
     route,
     text: (await page.innerText('body')).replace(/\s*\n+\s*/g, ' | ').trim(),
     errors: page.errors.slice(before),
+    calls: page.calls ? page.calls.slice(callsBefore) : [],
   };
 }
 
