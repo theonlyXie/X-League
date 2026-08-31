@@ -7,6 +7,7 @@ import { Notice, Shell } from '@/components/Shell';
 import { useSession } from '@/lib/session';
 import {
   createPromoCode,
+  deletePaymentChannel,
   listForOrganiser,
   paymentChannels,
   promoCodes,
@@ -88,6 +89,31 @@ function Setup() {
   const [value, setValue] = useState('');
   const [instructions, setInstructions] = useState('');
   const [forCup, setForCup] = useState('');
+  /**
+   * The row being corrected, if any.
+   *
+   * This page could add an account and switch one off, and nothing else — so
+   * the one account that most needs correcting, the placeholder somebody enters
+   * on day one, could not be corrected here at all. The cup page has had Change
+   * and Remove since the day it was written; this is the same pair.
+   */
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const startEdit = (c: PaymentChannel) => {
+    setEditing(c.id);
+    setKind(c.kind);
+    setLabel(c.label);
+    setValue(c.value);
+    setInstructions(c.instructions ?? '');
+    setForCup(c.tournamentId ?? '');
+  };
+
+  const clearEdit = () => {
+    setEditing(null);
+    setLabel('');
+    setValue('');
+    setInstructions('');
+  };
 
   // Code form
   const [promoKind, setPromoKind] = useState<PromoKind>('percent');
@@ -155,28 +181,46 @@ function Setup() {
                     </td>
                     {may ? (
                       <td className="num">
-                        <button
-                          className="small"
-                          disabled={busy}
-                          onClick={() =>
-                            void run(
-                              () =>
-                                savePaymentChannel({
-                                  id: c.id,
-                                  tournamentId: c.tournamentId,
-                                  kind: c.kind,
-                                  label: c.label,
-                                  value: c.value,
-                                  instructions: c.instructions,
-                                  active: !c.active,
-                                  sort: c.sort,
-                                }),
-                              c.active ? `${c.label} switched off.` : `${c.label} is live.`,
-                            )
-                          }
-                        >
-                          {c.active ? 'Switch off' : 'Switch on'}
-                        </button>
+                        <span className="row" style={{ justifyContent: 'flex-end' }}>
+                          <button
+                            className="small"
+                            disabled={busy}
+                            onClick={() =>
+                              void run(
+                                () =>
+                                  savePaymentChannel({
+                                    id: c.id,
+                                    tournamentId: c.tournamentId,
+                                    kind: c.kind,
+                                    label: c.label,
+                                    value: c.value,
+                                    instructions: c.instructions,
+                                    active: !c.active,
+                                    sort: c.sort,
+                                  }),
+                                c.active ? `${c.label} switched off.` : `${c.label} is live.`,
+                              )
+                            }
+                          >
+                            {c.active ? 'Switch off' : 'Switch on'}
+                          </button>
+                          <button className="small" disabled={busy} onClick={() => startEdit(c)}>
+                            Change
+                          </button>
+                          <button
+                            className="small danger"
+                            disabled={busy}
+                            onClick={() =>
+                              void run(async () => {
+                                const res = await deletePaymentChannel(c.id);
+                                if (res.ok && editing === c.id) clearEdit();
+                                return res;
+                              }, `${c.label} removed.`)
+                            }
+                          >
+                            Remove
+                          </button>
+                        </span>
                       </td>
                     ) : null}
                   </tr>
@@ -225,24 +269,38 @@ function Setup() {
               disabled={busy || label.trim().length < 2 || value.trim().length < 2}
               onClick={() =>
                 void run(async () => {
+                  // Editing keeps the row's id, so a correction lands on the
+                  // account captains are already being shown rather than adding
+                  // a second one beside it and leaving both live.
+                  //
+                  // `active` and `sort` are carried across deliberately. The
+                  // server writes `coalesce(p_active, true)`, so an edit that
+                  // left them out would switch a disabled account on — which is
+                  // exactly what somebody correcting a placeholder is not asking
+                  // for, and they would find out by a captain being shown it.
+                  const current = editing ? channels.find((c) => c.id === editing) : undefined;
                   const res = await savePaymentChannel({
+                    id: editing,
                     tournamentId: forCup || null,
                     kind,
                     label: label.trim(),
                     value: value.trim(),
                     instructions: instructions.trim() || null,
+                    active: current?.active ?? true,
+                    sort: current?.sort ?? 0,
                   });
-                  if (res.ok) {
-                    setLabel('');
-                    setValue('');
-                    setInstructions('');
-                  }
+                  if (res.ok) clearEdit();
                   return res;
-                }, 'Account added.')
+                }, editing ? 'Account changed.' : 'Account added.')
               }
             >
-              Add account
+              {editing ? 'Save the change' : 'Add account'}
             </button>
+            {editing ? (
+              <button className="small" disabled={busy} onClick={clearEdit}>
+                Cancel
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

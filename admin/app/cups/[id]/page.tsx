@@ -1281,6 +1281,10 @@ function Money({
             disabled={busy || label.trim().length < 2 || value.trim().length < 2}
             onClick={() =>
               void run(async () => {
+                // Carried across for the same reason the defaults page does:
+                // the server writes `coalesce(p_active, true)`, so omitting them
+                // would switch a disabled account on and reset its order.
+                const current = editing ? channels.find((c) => c.id === editing) : undefined;
                 const res = await savePaymentChannel({
                   id: editing,
                   tournamentId: cup.tournamentId,
@@ -1288,6 +1292,8 @@ function Money({
                   label: label.trim(),
                   value: value.trim(),
                   instructions: instructions.trim() || null,
+                  active: current?.active ?? true,
+                  sort: current?.sort ?? 0,
                 });
                 if (res.ok) clear();
                 return res;
