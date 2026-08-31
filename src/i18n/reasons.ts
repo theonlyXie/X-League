@@ -113,6 +113,9 @@ const AR: Record<string, string> = {
   'Give the team a name.': 'أعطِ الفريق اسمًا.',
   'Give the tournament a name.': 'أعطِ البطولة اسمًا.',
   'Give the venue a name and an area.': 'أعطِ الملعب اسمًا ومنطقة.',
+  'That cup does not exist.': 'البطولة دي مش موجودة.',
+  'That cup has matches already played. It cannot be reopened for entries.':
+    'البطولة دي فيها ماتشات اتلعبت. مينفعش تتفتح للاشتراك تاني.',
   'You already have a venue waiting to be verified.':
     'عندك ملعب مستني التوثيق بالفعل.',
   'Hand the club to somebody else before leaving it.': 'سلّم النادي لشخص آخر قبل مغادرته.',

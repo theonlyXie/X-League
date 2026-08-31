@@ -82,8 +82,17 @@ export default function Cups() {
     };
   }, [signedIn, nonce, place]);
 
+  // A cancelled cup used to fall through to "Running", which is the one thing
+  // it certainly is not. The list no longer carries them, but a cup opened by
+  // its own link still can, and it should say what it is.
   const stateLabel = (s: TournamentSummary['state']) =>
-    s === 'open' ? t.openForEntries : s === 'complete' ? t.cupComplete : t.cupRunning;
+    s === 'open'
+      ? t.openForEntries
+      : s === 'complete'
+        ? t.cupComplete
+        : s === 'cancelled'
+          ? t.cupCancelled
+          : t.cupRunning;
 
   return (
     <Screen

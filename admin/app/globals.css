@@ -355,6 +355,14 @@ tr:last-child td {
   border: 1px solid rgba(44, 107, 69, 0.28);
 }
 
+/* A state the organiser needs to know about before they wonder why nothing is
+   happening — a draft nobody can see, a cup that was cancelled. */
+.notice.hold {
+  color: var(--gold-ink);
+  background: var(--gold-fill);
+  border: 1px solid rgba(198, 163, 75, 0.34);
+}
+
 .empty {
   padding: 28px 0;
   text-align: center;
