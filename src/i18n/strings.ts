@@ -511,6 +511,7 @@ export const STRINGS = {
     authWorking: 'One moment…',
     authToJoin: 'New here? Create an account',
     authToSignIn: 'I already have an account',
+    authBrowse: 'Look around without an account',
     authTerms: 'By continuing you accept the X League terms and privacy notice. You must be 18 or over to play.',
 
     // Paying (PAY): nothing up front, the whole price at the venue
@@ -1384,6 +1385,7 @@ export const STRINGS = {
     authWorking: 'لحظة…',
     authToJoin: 'أول مرة؟ أنشئ حساب',
     authToSignIn: 'عندي حساب بالفعل',
+    authBrowse: 'اتفرج من غير حساب',
     authTerms: 'باستمرارك بتوافق على شروط إكس ليج وسياسة الخصوصية. لازم يكون عندك ١٨ سنة أو أكتر.',
 
     payAtVenue: 'الدفع في الملعب',
