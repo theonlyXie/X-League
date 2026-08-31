@@ -245,6 +245,18 @@ export default function Me() {
             </View>
           ) : null}
 
+          {/* Somebody who joined as a player and turns out to have a pitch.
+              Offered only when they staff nothing, because an owner already
+              has Owner Mode above and a second door to the same place would
+              read as a second venue. */}
+          {isLive && signedIn && venues.length === 0 ? (
+            <WorkspaceRow
+              title={t.venueOpen}
+              detail={t.venueOpenDetail}
+              onPress={() => router.push('/open-a-venue')}
+            />
+          ) : null}
+
           {(isLive ? venues : [{ venueId: 'demo', name: 'Stadium One', role: 'manager' as const }]).map((v) => (
             <WorkspaceRow
               key={v.venueId}

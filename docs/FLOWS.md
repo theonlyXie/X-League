@@ -13,11 +13,22 @@ and only booking needs an account.
 
 ## 1. Arriving
 
-**Signed out.** `app/(player)/index.tsx` is Home for everybody. A visitor sees
-the venues open near them, tonight, and can walk the whole discovery path —
-search, a venue's page, its hours, its prices, its reviews — without an
-account. The one thing they cannot do is hold a slot, and the button says so
-rather than failing afterwards: "Sign in to hold 9:00 PM".
+**The door comes first.** A launch with no session lands on `app/sign-in.tsx`,
+not on Home. The gate is a component at the root of `app/_layout.tsx`; it
+waits for the stored session to be read back (`restoring`) and for the
+navigator to have mounted before it acts, because doing either too early
+throws a signed-in person out of their own app on every launch. A build with
+no database configured is not gated — it cannot sign anybody in, and says so
+on the account screen instead.
+
+**Signed out, by choice.** The gate has one link out: *look around without an
+account*. Reading stays open on purpose — cups, venues and the boards are
+anon-readable in the database, because a cup nobody can see is a cup nobody
+enters — so `app/(player)/index.tsx` is still Home for a visitor, and the
+whole discovery path works: search, a venue's page, its hours, its prices, its
+reviews. The one thing they cannot do is hold a slot, and the button says so
+rather than failing afterwards: "Sign in to hold 9:00 PM". Guest standing
+lasts the launch, and signing out ends it, so a sign-out returns to the door.
 
 The design's showcase card and sample shift stand in on Home, `/me` and Owner
 Mode for a visitor, because there is no account to show instead. That is the
@@ -37,6 +48,13 @@ opening hours (10:00–24:00, every day) and a price for them. Before this it
 created a venue with no hours and no price, which meant a venue that had
 registered through the product was structurally unbookable and had no screen
 that could fix it.
+
+**And that answer is not final.** A player who turns out to have a pitch opens
+`/open-a-venue` from the account screen: `register_my_venue` does the same
+work sign-up does, for an account that already exists. There is no role flag —
+Owner Mode is drawn from `my_venues`, so listing the ground *is* the
+promotion, and the card they play on is untouched. One pending venue at a
+time, so an account cannot bury the verification queue.
 
 ---
 

@@ -512,6 +512,12 @@ export const STRINGS = {
     authToJoin: 'New here? Create an account',
     authToSignIn: 'I already have an account',
     authBrowse: 'Look around without an account',
+
+    // A player who turns out to have a pitch (AUTH-005: still one account)
+    venueOpen: 'Open a venue',
+    venueOpenDetail: 'Have a pitch? List it and take bookings.',
+    venueOpenBlurb: 'This stays the account you play on. Owner Mode appears the moment the ground is listed, and you can still play as yourself.',
+    venueOpenCta: 'List my venue',
     authTerms: 'By continuing you accept the X League terms and privacy notice. You must be 18 or over to play.',
 
     // Paying (PAY): nothing up front, the whole price at the venue
@@ -1386,6 +1392,11 @@ export const STRINGS = {
     authToJoin: 'أول مرة؟ أنشئ حساب',
     authToSignIn: 'عندي حساب بالفعل',
     authBrowse: 'اتفرج من غير حساب',
+
+    venueOpen: 'افتح ملعب',
+    venueOpenDetail: 'عندك ملعب؟ ضيفه واستقبل حجوزات.',
+    venueOpenBlurb: 'هيفضل نفس الحساب اللي بتلعب بيه. وضع صاحب الملعب هيظهر أول ما تضيف الملعب، وهتفضل تلعب عادي.',
+    venueOpenCta: 'ضيف ملعبي',
     authTerms: 'باستمرارك بتوافق على شروط إكس ليج وسياسة الخصوصية. لازم يكون عندك ١٨ سنة أو أكتر.',
 
     payAtVenue: 'الدفع في الملعب',

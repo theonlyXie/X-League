@@ -60,6 +60,7 @@ export default function RootLayout() {
                 somebody with no account, and a modal reads as an interruption
                 of a screen behind it — here there is nothing behind it. */}
             <Stack.Screen name="sign-in" />
+            <Stack.Screen name="open-a-venue" />
             <Stack.Screen name="onboarding" />
           </Stack>
           </BookingProvider>

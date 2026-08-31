@@ -88,6 +88,13 @@ type SessionContextValue = {
   /** Lets this launch continue without an account. */
   browseAsGuest: () => void;
   /**
+   * Reads the name, the venues and the platform role again. Called after
+   * something the person just did changes what they are — listing a ground
+   * makes them an owner — because the identity otherwise only reloads when the
+   * session itself changes, and it would take a sign-out to see it.
+   */
+  refreshIdentity: () => Promise<void>;
+  /**
    * True when this person's profile, venues or platform role could not be
    * read. It matters beyond the greeting: an empty `venues` and a null
    * `platformRole` silently remove Owner Mode and the admin console from the
@@ -358,6 +365,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       restoring,
       guest,
       browseAsGuest: () => setGuest(true),
+      refreshIdentity: () => loadIdentity(session),
       identityFailed,
       signIn,
       signUp,
@@ -372,6 +380,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       restoring,
       guest,
       identityFailed,
+      loadIdentity,
       signIn,
       signUp,
       signOut,

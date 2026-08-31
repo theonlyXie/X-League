@@ -113,6 +113,8 @@ const AR: Record<string, string> = {
   'Give the team a name.': 'أعطِ الفريق اسمًا.',
   'Give the tournament a name.': 'أعطِ البطولة اسمًا.',
   'Give the venue a name and an area.': 'أعطِ الملعب اسمًا ومنطقة.',
+  'You already have a venue waiting to be verified.':
+    'عندك ملعب مستني التوثيق بالفعل.',
   'Hand the club to somebody else before leaving it.': 'سلّم النادي لشخص آخر قبل مغادرته.',
   'Hours run from 0 to 24.': 'الساعات من ٠ إلى ٢٤.',
   'Name the player you are inviting.': 'اكتب اسم اللاعب الذي تدعوه.',
