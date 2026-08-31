@@ -79,6 +79,22 @@ type SessionContextValue = {
   /** True until the stored session has been read back. */
   restoring: boolean;
   /**
+   * True when somebody chose to look around before making an account. The app
+   * asks for a sign-in before anything else; this is the one door out of that,
+   * and it is deliberate rather than a side effect of a screen that forgot to
+   * check. It lasts as long as the app is open, and a sign-out closes it again.
+   */
+  guest: boolean;
+  /** Lets this launch continue without an account. */
+  browseAsGuest: () => void;
+  /**
+   * Reads the name, the venues and the platform role again. Called after
+   * something the person just did changes what they are — listing a ground
+   * makes them an owner — because the identity otherwise only reloads when the
+   * session itself changes, and it would take a sign-out to see it.
+   */
+  refreshIdentity: () => Promise<void>;
+  /**
    * True when this person's profile, venues or platform role could not be
    * read. It matters beyond the greeting: an empty `venues` and a null
    * `platformRole` silently remove Owner Mode and the admin console from the
@@ -137,6 +153,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [platformRole, setPlatformRole] =
     useState<SessionContextValue['platformRole']>(null);
   const [restoring, setRestoring] = useState(isLive);
+  const [guest, setGuest] = useState(false);
   const [identityFailed, setIdentityFailed] = useState(false);
   const [activeVenueId, setActiveVenueId] = useState<string | null>(null);
 
@@ -326,6 +343,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [t]);
 
   const signOut = useCallback(async () => {
+    // Signing out puts the door back in front of them, so looking around has
+    // to end here too — otherwise somebody who signed out would stay inside
+    // the app as a guest and wonder why nothing of theirs was there.
+    setGuest(false);
     if (!isLive) return;
     await supabase().auth.signOut();
   }, []);
@@ -342,6 +363,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setActiveVenue: setActiveVenueId,
       platformRole,
       restoring,
+      guest,
+      browseAsGuest: () => setGuest(true),
+      refreshIdentity: () => loadIdentity(session),
       identityFailed,
       signIn,
       signUp,
@@ -354,7 +378,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       activeVenueId,
       platformRole,
       restoring,
+      guest,
       identityFailed,
+      loadIdentity,
       signIn,
       signUp,
       signOut,

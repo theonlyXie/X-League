@@ -107,6 +107,21 @@ export async function verificationQueue(): Promise<PendingVenue[]> {
   }));
 }
 
+/**
+ * Puts a ground on the platform from here.
+ *
+ * Until this existed a venue could only come into being by somebody signing up
+ * as its owner in the app, so a pitch the league arranges by phone — the normal
+ * case — could not be listed at all. It arrives verified, with a first pitch,
+ * a week of hours and a price, so it can take a booking immediately.
+ */
+export const createVenue = (name: string, area: string, phone?: string) =>
+  act('admin_create_venue', {
+    p_name: name,
+    p_area: area,
+    p_phone: phone && phone.trim() ? phone.trim() : null,
+  });
+
 export const setVerification = (venueId: string, verification: string, note?: string) =>
   act('admin_set_verification', {
     p_venue_id: venueId,

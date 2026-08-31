@@ -1,10 +1,17 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { canAct } from '@/components/Gate';
 import { Empty, Messages, Page, useSection, when } from '@/components/Page';
 import { useSession } from '@/lib/session';
-import { allVenues, setVerification, verificationQueue, type PendingVenue, type Venue } from '@/lib/admin';
+import {
+  allVenues,
+  createVenue,
+  setVerification,
+  verificationQueue,
+  type PendingVenue,
+  type Venue,
+} from '@/lib/admin';
 
 /**
  * Every venue, and the ones waiting to be verified.
@@ -33,8 +40,10 @@ export default function VenuesPage() {
     );
 
   return (
-    <Page title="Venues" blurb="Verify what players are shown, and see every venue on the platform.">
+    <Page title="Venues" blurb="Add a ground, verify what players are shown, and see every venue on the platform.">
       <Messages error={error} note={note} />
+
+      {may ? <AddVenue busy={busy} run={run} /> : null}
 
       <div className="panel">
         <div className="panel-head">
@@ -171,5 +180,86 @@ export default function VenuesPage() {
         )}
       </div>
     </Page>
+  );
+}
+
+/**
+ * A ground the league arranges itself.
+ *
+ * Every venue here used to arrive one way: somebody signed up as its owner in
+ * the app. That is the wrong shape for how this league actually works — most
+ * grounds are agreed on the phone, and the person agreeing them is the one
+ * sitting in front of this console. It arrives verified, with a pitch, a week
+ * of hours and a price, so it can take a booking the moment it is saved; the
+ * owner's own account can be attached later by them signing up.
+ */
+function AddVenue({
+  busy,
+  run,
+}: {
+  busy: boolean;
+  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<void>;
+}) {
+  const [name, setName] = useState('');
+  const [area, setArea] = useState('');
+  const [phone, setPhone] = useState('');
+
+  const ready = name.trim().length >= 2 && area.trim().length >= 2;
+
+  const save = () =>
+    void run(async () => {
+      const res = await createVenue(name.trim(), area.trim(), phone);
+      if (res.ok) {
+        setName('');
+        setArea('');
+        setPhone('');
+      }
+      return res.ok ? { ok: true } : { ok: false, reason: res.reason };
+    }, `${name.trim()} is on the platform, verified, with a pitch open 10:00–24:00 at 300 EGP.`);
+
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <h2>Add a venue</h2>
+      </div>
+      <div className="grid cols-2">
+        <div>
+          <label htmlFor="venue-name">Name</label>
+          <input
+            id="venue-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Stadium One"
+          />
+        </div>
+        <div>
+          <label htmlFor="venue-area">Area</label>
+          <input
+            id="venue-area"
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+            placeholder="Nasr City"
+          />
+        </div>
+        <div>
+          <label htmlFor="venue-phone">Phone (optional)</label>
+          <input
+            id="venue-phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+20 100 000 0000"
+          />
+        </div>
+        <div className="row" style={{ gridColumn: '1 / -1' }}>
+          <button className="primary" disabled={!ready || busy} onClick={save}>
+            Add the venue
+          </button>
+          <span className="faint">
+            One pitch to begin with, open every day 10:00–24:00 at 300 EGP. Change any of it on
+            the venue&rsquo;s own screens.
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

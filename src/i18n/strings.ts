@@ -211,6 +211,8 @@ export const STRINGS = {
     authAlreadyExists: 'That number already has an account. Sign in instead.',
     authUnknown: 'That did not work. Try again in a moment.',
     authNoDatabase: 'This build has no database configured.',
+    noDatabaseBlurb:
+      'Nobody can sign in, sign up or sign out of this build, and everything on\nscreen is sample data. Install one built by the project\u2019s own pipeline.',
     authBadNumber: 'That does not look like a valid mobile number.',
     authNoAccountYet: 'No account for that number yet. Create one below.',
 
@@ -406,6 +408,7 @@ export const STRINGS = {
     openForEntries: 'Open for entries',
     cupRunning: 'Running',
     cupComplete: 'Finished',
+    cupCancelled: 'Cancelled',
     enterTeam: 'Enter a team',
     standings: 'Standings',
     fixtures: 'Fixtures',
@@ -509,6 +512,13 @@ export const STRINGS = {
     authWorking: 'One moment…',
     authToJoin: 'New here? Create an account',
     authToSignIn: 'I already have an account',
+    authBrowse: 'Look around without an account',
+
+    // A player who turns out to have a pitch (AUTH-005: still one account)
+    venueOpen: 'Open a venue',
+    venueOpenDetail: 'Have a pitch? List it and take bookings.',
+    venueOpenBlurb: 'This stays the account you play on. Owner Mode appears the moment the ground is listed, and you can still play as yourself.',
+    venueOpenCta: 'List my venue',
     authTerms: 'By continuing you accept the X League terms and privacy notice. You must be 18 or over to play.',
 
     // Paying (PAY): nothing up front, the whole price at the venue
@@ -1101,6 +1111,8 @@ export const STRINGS = {
     authAlreadyExists: 'الرقم ده له حساب بالفعل. سجّل الدخول.',
     authUnknown: 'مانفعش. جرّب تاني بعد شوية.',
     authNoDatabase: 'النسخة دي مفيهاش قاعدة بيانات.',
+    noDatabaseBlurb:
+      'لا أحد يستطيع تسجيل الدخول أو إنشاء حساب أو الخروج من هذه النسخة، وكل ما\nتراه بيانات تجريبية. ثبِّت نسخة صادرة من خط بناء المشروع نفسه.',
     authBadNumber: 'الرقم ده مش شكله رقم موبايل صح.',
     authNoAccountYet: 'مفيش حساب للرقم ده لسه. اعمل واحد تحت.',
 
@@ -1284,6 +1296,7 @@ export const STRINGS = {
     openForEntries: 'باب الاشتراك مفتوح',
     cupRunning: 'جارية',
     cupComplete: 'انتهت',
+    cupCancelled: 'ملغاة',
     enterTeam: 'اشترك بفريق',
     standings: 'الترتيب',
     fixtures: 'المباريات',
@@ -1380,6 +1393,12 @@ export const STRINGS = {
     authWorking: 'لحظة…',
     authToJoin: 'أول مرة؟ أنشئ حساب',
     authToSignIn: 'عندي حساب بالفعل',
+    authBrowse: 'اتفرج من غير حساب',
+
+    venueOpen: 'افتح ملعب',
+    venueOpenDetail: 'عندك ملعب؟ ضيفه واستقبل حجوزات.',
+    venueOpenBlurb: 'هيفضل نفس الحساب اللي بتلعب بيه. وضع صاحب الملعب هيظهر أول ما تضيف الملعب، وهتفضل تلعب عادي.',
+    venueOpenCta: 'ضيف ملعبي',
     authTerms: 'باستمرارك بتوافق على شروط إكس ليج وسياسة الخصوصية. لازم يكون عندك ١٨ سنة أو أكتر.',
 
     payAtVenue: 'الدفع في الملعب',

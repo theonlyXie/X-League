@@ -358,6 +358,28 @@ export async function updateVenueProfile(
   return row.ok ? { ok: true } : { ok: false, reason: row.reason ?? undefined };
 }
 
+/**
+ * Lists a ground under this account, for somebody who joined as a player.
+ *
+ * The same work sign-up does for a venue owner, addressed to an account that
+ * already exists — there is no owner flag to set, because Owner Mode is drawn
+ * from `my_venues` and listing the ground *is* the promotion.
+ */
+export async function registerMyVenue(
+  name: string,
+  area: string,
+): Promise<{ ok: true; venueId: string } | { ok: false; reason?: string }> {
+  const { data, error } = await supabase().rpc('register_my_venue', {
+    p_name: name,
+    p_area: area,
+  });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row?.ok
+    ? { ok: true, venueId: row.venue_id as string }
+    : { ok: false, reason: row?.reason ?? undefined };
+}
+
 export type StaffVenueRow = { venueId: string; name: string; role: VenueRole };
 
 /**

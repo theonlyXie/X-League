@@ -8,6 +8,7 @@ import { Notice, Shell, StateChip, dayText } from '@/components/Shell';
 import { useSession } from '@/lib/session';
 import {
   adminVenues,
+  addTournamentVenue,
   createTournament,
   listForOrganiser,
   type TournamentFormat,
@@ -157,6 +158,15 @@ function Cups() {
 function CreateCup({ venues, onDone }: { venues: Venue[]; onDone: () => void }) {
   const router = useRouter();
   const [venueId, setVenueId] = useState(venues[0]?.venueId ?? '');
+  /**
+   * The other grounds this cup is played on.
+   *
+   * A cup is not a place, it is a competition — a Giza cup runs across whichever
+   * grounds the organiser could get, and each match may be at a different one.
+   * The host above still decides who may run the cup, which is why it is a
+   * separate choice rather than the first tick in this list.
+   */
+  const [alsoAt, setAlsoAt] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [format, setFormat] = useState<TournamentFormat>('league');
   const [maxTeams, setMaxTeams] = useState(8);
@@ -184,9 +194,28 @@ function CreateCup({ venues, onDone }: { venues: Venue[]; onDone: () => void }) 
       entryFeeEgp: entryFee,
       description: description.trim() || null,
     });
-    setBusy(false);
     if (!res.ok) {
+      setBusy(false);
       setError(res.reason);
+      return;
+    }
+
+    // The extra grounds, added one at a time because that is the operation the
+    // server exposes and each one can be refused for its own reason. A ground
+    // that will not attach is reported rather than swallowed — the cup exists
+    // either way, and an organiser who thinks they picked four venues should
+    // not discover on the fixture screen that they got three.
+    const refused: string[] = [];
+    for (const id of alsoAt) {
+      const added = await addTournamentVenue(res.tournamentId, id);
+      if (!added.ok) {
+        refused.push(`${venues.find((v) => v.venueId === id)?.name ?? 'A ground'}: ${added.reason}`);
+      }
+    }
+    setBusy(false);
+
+    if (refused.length) {
+      setError(`The cup was created. These grounds were not added — ${refused.join('; ')}`);
       return;
     }
     onDone();
@@ -204,7 +233,15 @@ function CreateCup({ venues, onDone }: { venues: Venue[]; onDone: () => void }) 
       <div className="grid cols-2">
         <div>
           <label htmlFor="venue">Venue</label>
-          <select id="venue" value={venueId} onChange={(e) => setVenueId(e.target.value)}>
+          <select
+            id="venue"
+            value={venueId}
+            onChange={(e) => {
+              setVenueId(e.target.value);
+              // The host is never also an extra: it is already a ground.
+              setAlsoAt((cur) => cur.filter((id) => id !== e.target.value));
+            }}
+          >
             {venues.map((v) => (
               <option key={v.venueId} value={v.venueId}>
                 {v.name}
@@ -212,7 +249,74 @@ function CreateCup({ venues, onDone }: { venues: Venue[]; onDone: () => void }) 
               </option>
             ))}
           </select>
+          <p className="faint" style={{ marginTop: 6, marginBottom: 0 }}>
+            The home ground. It decides who may run this cup.
+          </p>
         </div>
+        {/* Every other ground the cup may be played on. Ticking none is the
+            ordinary single-venue cup and nothing here gets in its way. */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label>Also played at</label>
+          {venues.filter((v) => v.venueId !== venueId).length === 0 ? (
+            <p className="faint" style={{ margin: 0 }}>
+              There is no other venue to add. A cup can always take more grounds later.
+            </p>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  maxHeight: 132,
+                  overflowY: 'auto',
+                }}
+              >
+                {venues
+                  .filter((v) => v.venueId !== venueId)
+                  .map((v) => {
+                    const on = alsoAt.includes(v.venueId);
+                    return (
+                      <label
+                        key={v.venueId}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '7px 11px',
+                          borderRadius: 999,
+                          cursor: 'pointer',
+                          border: `1px solid var(${on ? '--gold' : '--hairline'})`,
+                          background: on ? 'var(--gold-fill)' : 'transparent',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={() =>
+                            setAlsoAt((cur) =>
+                              on ? cur.filter((id) => id !== v.venueId) : [...cur, v.venueId],
+                            )
+                          }
+                          style={{ width: 'auto', margin: 0 }}
+                        />
+                        <span style={{ fontSize: 13 }}>
+                          {v.name}
+                          {v.area ? ` — ${v.area}` : ''}
+                        </span>
+                      </label>
+                    );
+                  })}
+              </div>
+              <p className="faint" style={{ marginTop: 6, marginBottom: 0 }}>
+                {alsoAt.length === 0
+                  ? 'One ground unless you tick more. A match can then be placed at any of them.'
+                  : `${alsoAt.length + 1} grounds. Each match can be placed at any of them.`}
+              </p>
+            </>
+          )}
+        </div>
+
         <div>
           <label htmlFor="name">Name</label>
           <input

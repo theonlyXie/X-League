@@ -33,8 +33,13 @@ type Role = 'player' | 'venue_owner';
 export default function SignIn() {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string }>();
-  const { signIn, signUp } = useSession();
+  const { signIn, signUp, browseAsGuest } = useSession();
   const { reason, t } = useI18n();
+
+  // `canGoBack` is false on the launch that starts here, and true when this
+  // was opened from somewhere — a cup entry, the account screen — which is
+  // exactly the difference between the door and a detour.
+  const canLeave = router.canGoBack();
 
   const [mode, setMode] = useState<Mode>('in');
   const [role, setRole] = useState<Role>('player');
@@ -123,24 +128,30 @@ export default function SignIn() {
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 22 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t.back}
-          hitSlop={10}
-          onPress={() => router.back()}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ArrowLeft size={16} color={onVoid.secondary} />
-        </Pressable>
+      {/* This screen is now where the app starts, so on a fresh launch there
+          is nothing behind it. A back arrow that does nothing is worse than no
+          arrow: it says a way out exists. The way out is the link at the
+          bottom. The arrow returns when somebody arrived here from a screen. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 34 }}>
+        {canLeave ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t.back}
+            hitSlop={10}
+            onPress={() => router.back()}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: radius.icon,
+              borderWidth: 1,
+              borderColor: 'rgba(243,238,229,.14)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ArrowLeft size={16} color={onVoid.secondary} />
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={{ alignItems: 'center', paddingVertical: 4 }}>
@@ -256,6 +267,26 @@ export default function SignIn() {
           {mode === 'in' ? t.authToJoin : t.authToSignIn}
         </Txt>
       </Pressable>
+
+      {/* The one way past the door, for somebody who wants to see what is on
+          before handing over a number. The cups, the boards and the venues are
+          readable without an account by design; everything with their name on
+          it asks them to sign in when they reach it. */}
+      {!canLeave ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.authBrowse}
+          hitSlop={10}
+          onPress={() => {
+            browseAsGuest();
+            router.replace('/');
+          }}
+        >
+          <Txt size={12.5} weight="semibold" color={onVoid.muted} align="center">
+            {t.authBrowse}
+          </Txt>
+        </Pressable>
+      ) : null}
 
       {/* AUTH-004: acceptance is recorded against a version. */}
       {mode === 'join' ? (

@@ -61,17 +61,16 @@ jobs:
       - name: Generate the native project
         run: npx expo prebuild --platform android --clean
 
+      # No `env:` block here, deliberately. It used to pass four
+      # `${{ vars.* }}` through, and those repository variables were never set,
+      # so every one arrived as an empty string — which is *set*, as far as the
+      # env loader is concerned, and an already-set variable is never overridden
+      # by a .env file. The committed `.env.production` was read and then
+      # ignored, and every APK CI has ever produced shipped with no database:
+      # it installed, opened, showed no cups, and offered no way to sign in.
+      # The configuration is `.env.production`; nothing here may shadow it.
       - name: Build the APK
         working-directory: android
-        env:
-          # Absent, the app builds in demo mode on fixtures — which still
-          # installs and runs. Set these as repository variables to point a
-          # build at the database. The anon key is publishable by design and
-          # ships inside any client build.
-          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-          EXPO_PUBLIC_VENUE_ID: ${{ vars.EXPO_PUBLIC_VENUE_ID }}
-          EXPO_PUBLIC_PITCH_ID: ${{ vars.EXPO_PUBLIC_PITCH_ID }}
         run: |
           ./gradlew assembleRelease --no-daemon \
             -PreactNativeArchitectures=${{ github.event.inputs.abi || 'arm64-v8a,armeabi-v7a' }}
@@ -82,15 +81,26 @@ jobs:
       # failure: it looks like a working app. The check is against the APK
       # rather than against the environment, because what matters is what the
       # bundle ended up containing.
+      # This guard existed for exactly the failure above and did not catch it,
+      # because `grep supabase.co` matches `supabase.collapsedetents` — a
+      # string Reanimated puts in every bundle. It passed on a bundle that had
+      # no database in it at all. It now looks for the values this repository
+      # actually configures, read out of `.env.production` rather than typed
+      # here, so the check cannot drift away from the thing it checks.
       - name: Refuse to ship a build with no database
         run: |
           APK=android/app/build/outputs/apk/release/app-release.apk
           unzip -p "$APK" assets/index.android.bundle > /tmp/bundle.hbc
-          if ! grep -q "supabase.co" /tmp/bundle.hbc; then
-            echo "::error::No Supabase URL in the bundle — this APK would install and be unable to sign anybody in."
+          URL=$(grep -oP '(?<=^EXPO_PUBLIC_SUPABASE_URL=).*' .env.production)
+          KEY=$(grep -oP '(?<=^EXPO_PUBLIC_SUPABASE_ANON_KEY=).*' .env.production)
+          fail=0
+          grep -qF "$URL" /tmp/bundle.hbc || { echo "::error::The Supabase URL is not in the bundle."; fail=1; }
+          grep -qF "$KEY" /tmp/bundle.hbc || { echo "::error::The Supabase key is not in the bundle."; fail=1; }
+          if [ "$fail" = 1 ]; then
+            echo "::error::This APK would install, open, show no cups and offer nobody a way to sign in."
             exit 1
           fi
-          echo "Database configured in the bundle."
+          echo "Database configured in the bundle: URL and key both present."
 
       - name: Name it after the commit
         id: name

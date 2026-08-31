@@ -376,6 +376,18 @@ function Lifecycle({
   const go = (state: TournamentState, said: string) => () =>
     void run(() => setState(cup.tournamentId, state), said);
 
+  // Cancelling sat in the same row as every ordinary step, one click, final.
+  // In a toolbar the word also reads as "dismiss", and every cup on this
+  // platform ended up cancelled with nobody meaning to. It asks now.
+  const cancel = () => {
+    const sure = window.confirm(
+      `Cancel ${cup.name}?\n\n` +
+        'Players stop seeing it and nobody can enter. You can bring it back to draft ' +
+        'afterwards, as long as no match has been played.',
+    );
+    if (sure) go('cancelled', 'The cup is cancelled.')();
+  };
+
   const played = cup.fixtures.filter((f) => f.state === 'played').length;
 
   return (
@@ -387,6 +399,23 @@ function Lifecycle({
           {cup.entryFeeEgp > 0 ? `Entry ${cup.entryFeeEgp} EGP` : 'Free to enter'}
         </span>
       </div>
+      {/* The commonest confusion this console produces, said plainly rather
+          than in grey text at the end of a toolbar: a cup is created as a
+          draft, and a draft is invisible in the app. "I made a cup and it
+          never appeared" is this, every time. */}
+      {cup.state === 'draft' ? (
+        <div className="notice hold">
+          This cup is a draft. Nobody can see it in the app and nobody can enter it. Press
+          &ldquo;Open for entries&rdquo; when it is ready.
+        </div>
+      ) : null}
+      {cup.state === 'cancelled' ? (
+        <div className="notice hold">
+          This cup is cancelled, so it has disappeared from the app. Bring it back to draft to
+          work on it again.
+        </div>
+      ) : null}
+
       <div className="row">
         {cup.state === 'draft' ? (
           <button className="primary" disabled={busy} onClick={go('open', 'Open for entries.')}>
@@ -436,9 +465,19 @@ function Lifecycle({
           </button>
         ) : null}
 
+        {/* A cancelled cup used to be the end of the road: nothing in here
+            offered a way back, so one wrong click killed a competition and
+            only hand-written SQL could revive it. The server allows the return
+            while no match has been played, and refuses it after. */}
+        {cup.state === 'cancelled' ? (
+          <button className="primary" disabled={busy} onClick={go('draft', 'Back to draft.')}>
+            Bring it back to draft
+          </button>
+        ) : null}
+
         {cup.state !== 'cancelled' && cup.state !== 'complete' ? (
-          <button className="danger" disabled={busy} onClick={go('cancelled', 'The cup is cancelled.')}>
-            Cancel
+          <button className="danger" disabled={busy} onClick={cancel}>
+            Cancel the cup
           </button>
         ) : null}
 

@@ -221,6 +221,42 @@ export default function Me() {
             />
           ) : null}
 
+          {/* A build with no database used to hide the way in and show a
+              showcase venue in its place, so it looked like an app whose
+              sign-in had simply gone missing. It says so now: the one screen
+              somebody checks when they cannot get in is this one. */}
+          {!isLive ? (
+            <View
+              style={{
+                padding: 14,
+                borderRadius: radius.control,
+                borderWidth: 1,
+                borderColor: goldAlpha.frame,
+                backgroundColor: goldAlpha.fill,
+                gap: 5,
+              }}
+            >
+              <Txt size={13.5} weight="semibold" color={gold.base}>
+                {t.authNoDatabase}
+              </Txt>
+              <Txt size={11.5} lh={1.5} color={onVoid.secondary}>
+                {t.noDatabaseBlurb}
+              </Txt>
+            </View>
+          ) : null}
+
+          {/* Somebody who joined as a player and turns out to have a pitch.
+              Offered only when they staff nothing, because an owner already
+              has Owner Mode above and a second door to the same place would
+              read as a second venue. */}
+          {isLive && signedIn && venues.length === 0 ? (
+            <WorkspaceRow
+              title={t.venueOpen}
+              detail={t.venueOpenDetail}
+              onPress={() => router.push('/open-a-venue')}
+            />
+          ) : null}
+
           {(isLive ? venues : [{ venueId: 'demo', name: 'Stadium One', role: 'manager' as const }]).map((v) => (
             <WorkspaceRow
               key={v.venueId}
