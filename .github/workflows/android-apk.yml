@@ -76,6 +76,22 @@ jobs:
           ./gradlew assembleRelease --no-daemon \
             -PreactNativeArchitectures=${{ github.event.inputs.abi || 'arm64-v8a,armeabi-v7a' }}
 
+      # A build with no database still compiles, still installs, and still opens
+      # — on showcase data, where signing up as a player or a venue answers
+      # "This build has no database configured." That is the worst kind of
+      # failure: it looks like a working app. The check is against the APK
+      # rather than against the environment, because what matters is what the
+      # bundle ended up containing.
+      - name: Refuse to ship a build with no database
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          unzip -p "$APK" assets/index.android.bundle > /tmp/bundle.hbc
+          if ! grep -q "supabase.co" /tmp/bundle.hbc; then
+            echo "::error::No Supabase URL in the bundle — this APK would install and be unable to sign anybody in."
+            exit 1
+          fi
+          echo "Database configured in the bundle."
+
       - name: Name it after the commit
         id: name
         run: echo "apk=x-league-${GITHUB_SHA::7}.apk" >> "$GITHUB_OUTPUT"
