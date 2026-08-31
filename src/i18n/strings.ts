@@ -211,6 +211,8 @@ export const STRINGS = {
     authAlreadyExists: 'That number already has an account. Sign in instead.',
     authUnknown: 'That did not work. Try again in a moment.',
     authNoDatabase: 'This build has no database configured.',
+    noDatabaseBlurb:
+      'Nobody can sign in, sign up or sign out of this build, and everything on\nscreen is sample data. Install one built by the project\u2019s own pipeline.',
     authBadNumber: 'That does not look like a valid mobile number.',
     authNoAccountYet: 'No account for that number yet. Create one below.',
 
@@ -1101,6 +1103,8 @@ export const STRINGS = {
     authAlreadyExists: 'الرقم ده له حساب بالفعل. سجّل الدخول.',
     authUnknown: 'مانفعش. جرّب تاني بعد شوية.',
     authNoDatabase: 'النسخة دي مفيهاش قاعدة بيانات.',
+    noDatabaseBlurb:
+      'لا أحد يستطيع تسجيل الدخول أو إنشاء حساب أو الخروج من هذه النسخة، وكل ما\nتراه بيانات تجريبية. ثبِّت نسخة صادرة من خط بناء المشروع نفسه.',
     authBadNumber: 'الرقم ده مش شكله رقم موبايل صح.',
     authNoAccountYet: 'مفيش حساب للرقم ده لسه. اعمل واحد تحت.',
 
