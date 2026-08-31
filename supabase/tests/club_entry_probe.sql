@@ -392,6 +392,34 @@ begin
   select state::text into v_txt from match where id = v_match;
   return query select 'and a cup match with three raters becomes evidence',
                       v_txt, v_txt = 'verified';
+
+  -- The board has to count it. It used to inner-join `booking` to find the
+  -- venue, so a cup match on a ground the organiser arranged was dropped from
+  -- both leaderboards — silently, and precisely for the matches the board
+  -- exists to rank.
+  declare
+    v_shooter uuid;
+  begin
+    perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+    select mp.player_id into v_shooter
+      from match_participant mp where mp.match_id = v_match and mp.side = 'home' limit 1;
+    perform set_match_scorers(v_match,
+      jsonb_build_array(jsonb_build_object('player_id', v_shooter, 'goals', 2)));
+
+    select count(*)::integer into v_n from leaderboard() where player_id = v_shooter;
+    return query select 'a scorer in a cup match with no booking reaches the board',
+                        v_n::text, v_n = 1;
+
+    select goals, cup_goals into r from leaderboard() where player_id = v_shooter;
+    return query select 'with the goals counted', coalesce(r.goals::text, '-'), r.goals = 2;
+    return query select 'and counted as cup goals', coalesce(r.cup_goals::text, '-'),
+                        r.cup_goals = 2;
+
+    select count(*)::integer into v_n
+      from leaderboard(v_venue) where player_id = v_shooter;
+    return query select 'and on the board of the ground it was played at',
+                        v_n::text, v_n = 1;
+  end;
 end;
 $$;
 

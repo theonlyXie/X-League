@@ -260,6 +260,82 @@ begin
   return query select 'and the keeper who let three in is below them',
                       coalesce(r.place::text, '(absent)') || ' on ' || coalesce(r.conceded::text, '-'),
                       r.place = 2 and r.conceded = 3;
+
+  -- -------------------------------------------------------------------------
+  -- Who scored, written by the product rather than by this probe
+  -- -------------------------------------------------------------------------
+  -- Everything above ran on `goals` inserted directly by the setup above, which
+  -- is a fixture writing state no screen could reach. These cases use the
+  -- function a person actually calls.
+  declare
+    v_sheet_match uuid;
+    v_scorer  uuid;
+    v_other   uuid;
+  begin
+    select f.match_id into v_sheet_match
+      from fixture f where f.tournament_id = v_trn and f.match_id is not null limit 1;
+
+    -- From the side that actually scored: crediting a goal to a player whose
+    -- team was kept out is refused, and rightly, so the probe has to ask the
+    -- score rather than assume home.
+    select case when m.score_home > 0 then 'home' else 'away' end into v_txt
+      from match m where m.id = v_sheet_match;
+
+    select mp.player_id into v_scorer
+      from match_participant mp
+     where mp.match_id = v_sheet_match and mp.side = v_txt limit 1;
+    select mp.player_id into v_other
+      from match_participant mp
+     where mp.match_id = v_sheet_match and mp.side <> v_txt limit 1;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+
+    select count(*)::integer into v_n from match_sheet(v_sheet_match);
+    return query select 'the organiser can read the team sheet', v_n::text, v_n > 0;
+
+    select * into r from set_match_scorers(v_sheet_match,
+      jsonb_build_array(jsonb_build_object('player_id', v_scorer, 'goals', 99)));
+    return query select 'a sheet claiming more goals than the score is refused',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason = 'More goals on the sheet than in the score.';
+
+    select * into r from set_match_scorers(v_sheet_match,
+      jsonb_build_array(jsonb_build_object(
+        'player_id', 'b0000009-0000-0000-0000-000000000009', 'goals', 1)));
+    return query select 'and one naming somebody who did not play',
+                        coalesce(r.reason, '(allowed!)'),
+                        r.ok = false and r.reason like '%did not play%';
+
+    select * into r from set_match_scorers(v_sheet_match,
+      jsonb_build_array(jsonb_build_object('player_id', v_scorer, 'goals', 1, 'assists', 0)));
+    return query select 'a sheet inside the score is taken',
+                        coalesce(r.reason, 'recorded'), r.ok;
+
+    select goals into r from match_participant
+     where match_id = v_sheet_match and player_id = v_scorer;
+    return query select 'and the goal is on the scorer', r.goals::text, r.goals = 1;
+
+    -- Sending the sheet again replaces it rather than adding to it.
+    perform set_match_scorers(v_sheet_match,
+      jsonb_build_array(jsonb_build_object('player_id', v_scorer, 'goals', 1)));
+    select goals into r from match_participant
+     where match_id = v_sheet_match and player_id = v_scorer;
+    return query select 'sending it twice does not double the goal', r.goals::text, r.goals = 1;
+
+    -- And somebody dropped from the sheet loses the credit.
+    perform set_match_scorers(v_sheet_match,
+      jsonb_build_array(jsonb_build_object('player_id', v_other, 'goals', 0)));
+    select goals into r from match_participant
+     where match_id = v_sheet_match and player_id = v_scorer;
+    return query select 'and dropping them from it takes it back', r.goals::text, r.goals = 0;
+
+    perform set_config('request.jwt.claims', json_build_object('sub',
+      'd1000000-0000-0000-0000-000000000008')::text, true);
+    select * into r from set_match_scorers(v_sheet_match,
+      jsonb_build_array(jsonb_build_object('player_id', v_scorer, 'goals', 1)));
+    return query select 'somebody who merely played cannot write the sheet',
+                        coalesce(r.reason, '(allowed!)'), r.ok = false;
+  end;
 end;
 $$;
 

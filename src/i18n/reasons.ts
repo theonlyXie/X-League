@@ -34,6 +34,22 @@ const digits = (s: string) => s.replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[
 
 /** Refusals assembled at runtime, matched before the exact table. */
 const PATTERNS: { re: RegExp; ar: (m: RegExpMatchArray) => string }[] = [
+  // The three notifications a two-sided result produces. They carry a score, so
+  // they cannot be keyed on an exact sentence — and a notification is the one
+  // piece of server text a person reads without having asked for it, which
+  // makes leaving it in English worse than leaving a refusal in English.
+  {
+    re: /^They say you won (\d+)–(\d+)$/,
+    ar: (m) => `يقولون إنك فزت ${digits(m[1])}–${digits(m[2])}`,
+  },
+  {
+    re: /^They say you lost (\d+)–(\d+)$/,
+    ar: (m) => `يقولون إنك خسرت ${digits(m[1])}–${digits(m[2])}`,
+  },
+  {
+    re: /^They say it ended (\d+)–(\d+)$/,
+    ar: (m) => `يقولون إنها انتهت ${digits(m[1])}–${digits(m[2])}`,
+  },
   {
     // `club_eligibility`, nested inside the entry refusal below.
     re: /^Needs (\d+) more starters and (\d+) more substitutes\.$/,
@@ -235,6 +251,29 @@ const AR: Record<string, string> = {
   'You do not have access to that venue.': 'ليس لك وصول إلى هذا الملعب.',
   'You do not have permission to do that.': 'ليس لديك صلاحية لفعل ذلك.',
   'You do not manage that cup.': 'أنت لا تدير هذه البطولة.',
+  'Say what you saw. Nothing counts until you both agree.':
+    'سجّل ما رأيته. لا شيء يُحتسب قبل أن تتفقا.',
+  'The two sides disagree': 'الطرفان غير متفقين',
+  'You and your opponent reported different scores. The organiser will settle it.':
+    'سجّلت أنت وخصمك نتيجتين مختلفتين. المنظّم هو من يحسم الأمر.',
+  'Only the two captains report this match.':
+    'كابتنا الفريقين وحدهما من يسجّلان نتيجة هذه المباراة.',
+  'A captain records their own side only.':
+    'الكابتن يسجّل لفريقه هو فقط.',
+  'That match has only one side to report it. The captain\'s report stands.':
+    'هذه المباراة لها طرف واحد يسجّلها، وتقرير الكابتن هو المعتمد.',
+  'Sign in to report a result.': 'سجّل الدخول لتسجيل النتيجة.',
+  'Only the captain, the venue or the organiser can record scorers.':
+    'الكابتن أو الملعب أو منظّم البطولة وحدهم من يسجّلون أسماء الهدّافين.',
+  'Report the score first.': 'سجّل النتيجة أولًا.',
+  'Send the sheet as a list.': 'أرسل القائمة في صورة قائمة.',
+  'That is not a player.': 'هذا ليس لاعبًا.',
+  'Goals and assists cannot be negative.':
+    'لا يمكن أن تكون الأهداف والصناعات بالسالب.',
+  'Somebody on that sheet did not play in the match.':
+    'أحد المذكورين في القائمة لم يشارك في المباراة.',
+  'More goals on the sheet than in the score.':
+    'عدد الأهداف في القائمة أكبر من نتيجة المباراة.',
   'Only a knockout has rounds to draw.':
     'بطولات خروج المغلوب وحدها هي التي تُسحب لها جولات تالية.',
   'Make the draw first.': 'أجرِ القرعة أولًا.',

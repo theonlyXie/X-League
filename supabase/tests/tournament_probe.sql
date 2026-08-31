@@ -525,6 +525,97 @@ begin
     return query select 'nor is there a next round in a league',
                         coalesce(r.reason, '(allowed!)'),
                         r.ok = false and r.reason = 'Only a knockout has rounds to draw.';
+
+    -- -----------------------------------------------------------------------
+    -- Both sides have to say the same thing before anybody is paid
+    -- -----------------------------------------------------------------------
+    declare
+      v_tie    uuid;
+      v_mid    uuid;
+      v_capA   uuid;
+      v_capB   uuid;
+      v_player uuid;
+      v_pts    integer;
+      v_notes  integer;
+    begin
+      select id into v_tie from fixture
+       where tournament_id = v_ko and round = 1 and sequence = 1;
+      select match_id into v_mid from fixture where id = v_tie;
+
+      select tm.player_id into v_capA
+        from fixture f
+        join tournament_registration reg on reg.id = f.home_entrant_id
+        join team_membership tm on tm.team_id = reg.team_id
+       where f.id = v_tie and tm.role = 'captain' and tm.state = 'active';
+      select tm.player_id into v_capB
+        from fixture f
+        join tournament_registration reg on reg.id = f.away_entrant_id
+        join team_membership tm on tm.team_id = reg.team_id
+       where f.id = v_tie and tm.role = 'captain' and tm.state = 'active';
+
+      select mp.player_id into v_player
+        from match_participant mp where mp.match_id = v_mid limit 1;
+
+      -- The organiser already wrote a score for this tie further up. Nobody has
+      -- been paid for it, because only one side has spoken.
+      select coalesce(sum(points), 0)::integer into v_pts
+        from point_ledger where match_id = v_mid;
+      return query select 'the organiser''s score alone pays nobody', v_pts::text, v_pts = 0;
+
+      perform set_config('request.jwt.claims', json_build_object('sub', v_capA)::text, true);
+      select state into r from match_agreement(v_mid);
+      return query select 'and the match is waiting on the two captains',
+                          coalesce(r.state, '(none)'), r.state = 'waiting';
+
+      select * into r from report_side_result(v_mid, 2, 1);
+      return query select 'one captain can say what happened',
+                          coalesce(r.state, r.reason), r.ok and r.state = 'waiting';
+
+      select count(*)::integer into v_notes
+        from notification where player_id = v_capB and kind = 'result_reported';
+      return query select 'and the other captain is told', v_notes::text, v_notes = 1;
+
+      select title into v_txt from notification
+       where player_id = v_capB and kind = 'result_reported' order by created_at desc limit 1;
+      return query select 'in their own terms, as a defeat', v_txt, v_txt = 'They say you lost 1–2';
+
+      select coalesce(sum(points), 0)::integer into v_pts
+        from point_ledger where match_id = v_mid;
+      return query select 'one side''s word still pays nobody', v_pts::text, v_pts = 0;
+
+      -- The other captain remembers it differently.
+      perform set_config('request.jwt.claims', json_build_object('sub', v_capB)::text, true);
+      select * into r from report_side_result(v_mid, 3, 3);
+      return query select 'a second captain who disagrees makes it a dispute',
+                          coalesce(r.state, r.reason), r.ok and r.state = 'disputed';
+
+      select state::text into v_txt from match where id = v_mid;
+      return query select 'and the match says so', v_txt, v_txt = 'disputed';
+
+      select coalesce(sum(points), 0)::integer into v_pts
+        from point_ledger where match_id = v_mid;
+      return query select 'a disputed match pays nobody either', v_pts::text, v_pts = 0;
+
+      -- They look again and agree.
+      select * into r from report_side_result(v_mid, 2, 1);
+      return query select 'when they agree the result stands',
+                          coalesce(r.state, r.reason), r.ok and r.state = 'agreed';
+
+      select score_home, state into r from match where id = v_mid;
+      return query select 'the score is the one both said', r.score_home::text, r.score_home = 2;
+      return query select 'and it is played rather than disputed', r.state::text, r.state = 'played';
+
+      select coalesce(sum(points), 0)::integer into v_pts
+        from point_ledger where match_id = v_mid and player_id = v_player;
+      return query select 'now everybody who played is paid', v_pts::text, v_pts > 0;
+
+      -- Somebody who is not either captain cannot speak for a side.
+      perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+      select * into r from report_side_result(v_mid, 9, 0);
+      return query select 'a stranger cannot report the tie',
+                          coalesce(r.reason, '(allowed!)'),
+                          r.ok = false and r.reason = 'Only the two captains report this match.';
+    end;
   end;
 
   -- -------------------------------------------------------------------------

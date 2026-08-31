@@ -226,6 +226,21 @@ is no service-role key in this repository.
 an hour to sale the moment it commits, with no sweeper in the loop, because
 the constraint only counts live states.
 
+**Goals belong to people, and somebody has to say so.** The score is the
+match's truth; the sheet under it says who scored and who set them up. It is
+written by the captain, the venue or the cup's organiser, it replaces itself
+rather than accumulating, and a side's scorers may add up to less than its
+score — an own goal belongs to nobody — but never to more. The scorers'
+leaderboard and two of a cup's five awards are made of nothing else.
+
+**A cup result counts when both sides say the same thing.** Each side's
+captain reports what they saw; the second is told the score from their own end
+("they say you lost 1–3") and records their own account. Agreement writes the
+result and pays everybody. Disagreement makes the match disputed and pays
+nobody until the organiser settles it. One side reporting alone pays nobody
+either — a result the other club never confirmed is not a result. A casual
+booking has one captain and a venue check-in behind it, so it is untouched.
+
 **A cup is what verifies a stat.** A booked match is still a match: it earns
 points and shows in the form strip. It is not evidence. A match becomes
 evidence only when a cup fixture stands behind it *and* three independent
@@ -253,6 +268,10 @@ Honest list, as of this pass:
 - **Photos.** `venue_photo` is read by the pitch page and written by nothing;
   every venue shows a placeholder.
 - **Date picker.** The third day chip is "Day after", not a picker.
+- **Notifications are written in English.** The server composes them, and the
+  notification list puts them through the same table the refusals use — so the
+  ones with a mapping arrive in Arabic and the rest fall back to English. Every
+  notification kind wants a key eventually.
 - **Realtime.** Nothing is pushed. The owner surfaces pull to refresh and the
   notification badge polls; a busy gate will want a subscription eventually.
 - **A second pitch has no price.** `add_pitch` inherits the venue's opening

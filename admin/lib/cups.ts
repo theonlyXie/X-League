@@ -112,6 +112,8 @@ export type Fixture = {
    * than two where one is always refused.
    */
   booked: boolean;
+  /** The match behind it, once a result has been recorded. */
+  match_id: string | null;
 };
 
 export type StandingRow = {
@@ -286,6 +288,64 @@ export const setState = (id: string, state: TournamentState) =>
 
 export const decideRegistration = (registrationId: string, accept: boolean) =>
   act('decide_registration', { p_registration_id: registrationId, p_accept: accept });
+
+/**
+ * The team sheet behind a played fixture: who was on it, and what they are
+ * currently credited with.
+ *
+ * `goals` and `assists` had no writer at all until now, which meant the scorers'
+ * board could never show anybody and two of a cup's five awards could never be
+ * given. This is the read half of the fix.
+ */
+export type SheetLine = {
+  playerId: string;
+  displayName: string;
+  side: 'home' | 'away';
+  position: string | null;
+  goals: number;
+  assists: number;
+};
+
+export type MatchSheet = {
+  lines: SheetLine[];
+  scoreHome: number | null;
+  scoreAway: number | null;
+};
+
+export async function matchSheet(matchId: string): Promise<MatchSheet> {
+  const { data, error } = await supabase().rpc('match_sheet', { p_match_id: matchId });
+  if (error) throw error;
+  const rows = data as Array<Record<string, unknown>>;
+  return {
+    lines: rows.map((r) => ({
+      playerId: r.player_id as string,
+      displayName: r.display_name as string,
+      side: r.side as 'home' | 'away',
+      position: (r.position_code as string) ?? null,
+      goals: (r.goals as number) ?? 0,
+      assists: (r.assists as number) ?? 0,
+    })),
+    scoreHome: (rows[0]?.score_home as number) ?? null,
+    scoreAway: (rows[0]?.score_away as number) ?? null,
+  };
+}
+
+/**
+ * Write the sheet. It replaces what is there rather than adding to it, so a
+ * correction is the corrected sheet.
+ */
+export const setMatchScorers = (
+  matchId: string,
+  lines: { playerId: string; goals: number; assists: number }[],
+) =>
+  act('set_match_scorers', {
+    p_match_id: matchId,
+    p_lines: lines.map((l) => ({
+      player_id: l.playerId,
+      goals: l.goals,
+      assists: l.assists,
+    })),
+  });
 
 /**
  * Draw the round after the one just finished.

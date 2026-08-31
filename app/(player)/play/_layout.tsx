@@ -18,6 +18,7 @@ export default function PlayLayout() {
       <Stack.Screen name="lobby" />
       <Stack.Screen name="invite" />
       <Stack.Screen name="result" />
+      <Stack.Screen name="agree" />
       <Stack.Screen name="rate" />
     </Stack>
   );
