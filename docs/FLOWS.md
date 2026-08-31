@@ -226,6 +226,13 @@ is no service-role key in this repository.
 an hour to sale the moment it commits, with no sweeper in the loop, because
 the constraint only counts live states.
 
+**Goals belong to people, and somebody has to say so.** The score is the
+match's truth; the sheet under it says who scored and who set them up. It is
+written by the captain, the venue or the cup's organiser, it replaces itself
+rather than accumulating, and a side's scorers may add up to less than its
+score — an own goal belongs to nobody — but never to more. The scorers'
+leaderboard and two of a cup's five awards are made of nothing else.
+
 **A cup is what verifies a stat.** A booked match is still a match: it earns
 points and shows in the form strip. It is not evidence. A match becomes
 evidence only when a cup fixture stands behind it *and* three independent

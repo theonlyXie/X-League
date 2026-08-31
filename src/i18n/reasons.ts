@@ -235,6 +235,17 @@ const AR: Record<string, string> = {
   'You do not have access to that venue.': 'ليس لك وصول إلى هذا الملعب.',
   'You do not have permission to do that.': 'ليس لديك صلاحية لفعل ذلك.',
   'You do not manage that cup.': 'أنت لا تدير هذه البطولة.',
+  'Only the captain, the venue or the organiser can record scorers.':
+    'الكابتن أو الملعب أو منظّم البطولة وحدهم من يسجّلون أسماء الهدّافين.',
+  'Report the score first.': 'سجّل النتيجة أولًا.',
+  'Send the sheet as a list.': 'أرسل القائمة في صورة قائمة.',
+  'That is not a player.': 'هذا ليس لاعبًا.',
+  'Goals and assists cannot be negative.':
+    'لا يمكن أن تكون الأهداف والصناعات بالسالب.',
+  'Somebody on that sheet did not play in the match.':
+    'أحد المذكورين في القائمة لم يشارك في المباراة.',
+  'More goals on the sheet than in the score.':
+    'عدد الأهداف في القائمة أكبر من نتيجة المباراة.',
   'Only a knockout has rounds to draw.':
     'بطولات خروج المغلوب وحدها هي التي تُسحب لها جولات تالية.',
   'Make the draw first.': 'أجرِ القرعة أولًا.',

@@ -13,6 +13,7 @@ import {
   deletePaymentChannel,
   decideRegistration,
   generateFixtures,
+  matchSheet,
   placeFixture,
   recordFixtureResult,
   removeTournamentVenue,
@@ -21,6 +22,7 @@ import {
   paymentChannels,
   savePaymentChannel,
   setRegion,
+  setMatchScorers,
   setRegistrationPaid,
   setState,
   settleTournament,
@@ -33,6 +35,7 @@ import {
   type BookableHour,
   type CupPitch,
   type Entry,
+  type MatchSheet,
   type Venue,
   type PaymentChannel,
   type PaymentChannelKind,
@@ -637,6 +640,8 @@ function Fixtures({
 }) {
   const [scheduling, setScheduling] = useState<string | null>(null);
   const [scoring, setScoring] = useState<string | null>(null);
+  /** The played fixture whose team sheet is open, if any. */
+  const [sheetFor, setSheetFor] = useState<string | null>(null);
 
   const rounds = [...new Set(cup.fixtures.map((f) => f.round))].sort((a, b) => a - b);
 
@@ -766,6 +771,17 @@ function Fixtures({
                                   Take result
                                 </button>
                               ) : null}
+                              {f.state === 'played' && f.match_id ? (
+                                <button
+                                  className="small"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    setSheetFor(sheetFor === f.match_id ? null : f.match_id)
+                                  }
+                                >
+                                  Who scored
+                                </button>
+                              ) : null}
                               {f.kicks_off_at && f.state !== 'played' && !f.booked ? (
                                 <button
                                   className="small primary"
@@ -785,6 +801,22 @@ function Fixtures({
                 </tbody>
               </table>
             </div>
+
+            {cup.fixtures.some((f) => f.round === round && f.match_id === sheetFor) ? (
+              <Scorers
+                key={sheetFor!}
+                matchId={sheetFor!}
+                busy={busy}
+                onSave={async (lines) => {
+                  await run(
+                    () => setMatchScorers(sheetFor!, lines),
+                    'The sheet is recorded.',
+                  );
+                  setSheetFor(null);
+                }}
+                onCancel={() => setSheetFor(null)}
+              />
+            ) : null}
 
             {cup.fixtures.some((f) => f.round === round && f.fixture_id === scoring) ? (
               <ScoreEntry
@@ -826,6 +858,184 @@ function Fixtures({
             ) : null}
           </div>
         ))
+      )}
+    </div>
+  );
+}
+
+/**
+ * Who scored, and who set them up.
+ *
+ * The score is the truth and this sheet lives under it: a side's scorers may add
+ * up to less than its score, because an own goal belongs to nobody here, but the
+ * server refuses more. The panel says how many are still unaccounted for rather
+ * than making an organiser hold the arithmetic in their head.
+ *
+ * Sending it replaces what was there, so a correction is simply the corrected
+ * sheet — there is nothing to undo.
+ */
+function Scorers({
+  matchId,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  matchId: string;
+  busy: boolean;
+  onSave: (lines: { playerId: string; goals: number; assists: number }[]) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [sheet, setSheet] = useState<MatchSheet | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<Record<string, { goals: string; assists: string }>>({});
+
+  useEffect(() => {
+    matchSheet(matchId)
+      .then((s) => {
+        setSheet(s);
+        setRows(
+          Object.fromEntries(
+            s.lines.map((l) => [l.playerId, { goals: String(l.goals), assists: String(l.assists) }]),
+          ),
+        );
+      })
+      .catch((e: { message?: string }) => setError(e.message ?? 'Could not read the team sheet.'));
+  }, [matchId]);
+
+  const num = (v: string | undefined) => (/^\d+$/.test(v ?? '') ? Number(v) : 0);
+  const sideTotal = (side: 'home' | 'away') =>
+    (sheet?.lines ?? [])
+      .filter((l) => l.side === side)
+      .reduce((sum, l) => sum + num(rows[l.playerId]?.goals), 0);
+
+  const left = (side: 'home' | 'away') =>
+    (side === 'home' ? (sheet?.scoreHome ?? 0) : (sheet?.scoreAway ?? 0)) - sideTotal(side);
+
+  const overrun = left('home') < 0 || left('away') < 0;
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: 14,
+        borderRadius: 12,
+        background: 'var(--bg)',
+        border: '1px solid var(--hairline)',
+      }}
+    >
+      <div className="row" style={{ marginBottom: 12 }}>
+        <strong style={{ fontSize: 13 }}>Who scored?</strong>
+        <span className="spacer" />
+        <button className="small" onClick={onCancel}>
+          Close
+        </button>
+      </div>
+
+      <Notice text={error} />
+
+      {sheet === null ? (
+        <div className="empty">Loading the team sheet…</div>
+      ) : sheet.lines.length === 0 ? (
+        <div className="empty">
+          Nobody is on this match&rsquo;s team sheet, so there is nobody to credit.
+        </div>
+      ) : (
+        <>
+          {(['home', 'away'] as const).map((side) => (
+            <div key={side} style={{ marginBottom: 14 }}>
+              <p className="eyebrow" style={{ marginBottom: 6 }}>
+                {side === 'home' ? 'Home' : 'Away'} &mdash;{' '}
+                {left(side) === 0
+                  ? 'all goals accounted for'
+                  : left(side) > 0
+                    ? `${left(side)} still unaccounted for`
+                    : `${-left(side)} more than the score`}
+              </p>
+              <div className="scroll-x">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th className="num">Goals</th>
+                      <th className="num">Assists</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sheet.lines
+                      .filter((l) => l.side === side)
+                      .map((l) => (
+                        <tr key={l.playerId}>
+                          <td style={{ fontWeight: 600 }}>
+                            {l.displayName}
+                            {l.position ? (
+                              <span className="chip" style={{ marginLeft: 8 }}>
+                                {l.position}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="num">
+                            <input
+                              inputMode="numeric"
+                              value={rows[l.playerId]?.goals ?? '0'}
+                              onChange={(e) =>
+                                setRows((r) => ({
+                                  ...r,
+                                  [l.playerId]: {
+                                    goals: e.target.value,
+                                    assists: r[l.playerId]?.assists ?? '0',
+                                  },
+                                }))
+                              }
+                              style={{ width: 64 }}
+                            />
+                          </td>
+                          <td className="num">
+                            <input
+                              inputMode="numeric"
+                              value={rows[l.playerId]?.assists ?? '0'}
+                              onChange={(e) =>
+                                setRows((r) => ({
+                                  ...r,
+                                  [l.playerId]: {
+                                    goals: r[l.playerId]?.goals ?? '0',
+                                    assists: e.target.value,
+                                  },
+                                }))
+                              }
+                              style={{ width: 64 }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+
+          <div className="row">
+            <button
+              className="primary"
+              disabled={busy || overrun}
+              title={overrun ? 'More goals on the sheet than in the score' : undefined}
+              onClick={() =>
+                void onSave(
+                  sheet.lines.map((l) => ({
+                    playerId: l.playerId,
+                    goals: num(rows[l.playerId]?.goals),
+                    assists: num(rows[l.playerId]?.assists),
+                  })),
+                )
+              }
+            >
+              Record the sheet
+            </button>
+            <span className="faint">
+              An own goal belongs to nobody here, so a side&rsquo;s scorers may add up to less than
+              its score.
+            </span>
+          </div>
+        </>
       )}
     </div>
   );
