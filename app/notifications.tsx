@@ -25,7 +25,12 @@ import { useSession } from '@/state/session';
 export default function Notifications() {
   const { signedIn } = useSession();
   const router = useRouter();
-  const { t, hour, shortDate } = useI18n();
+  // A notification is written by the server, in English, and is the one piece
+  // of server text somebody reads without having asked a question. `reason` is
+  // the same table the refusals go through: anything with a mapping arrives
+  // translated, and anything without falls back to the sentence itself rather
+  // than to silence.
+  const { t, hour, shortDate, reason: say } = useI18n();
 
   const [rows, setRows] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(isLive);
@@ -68,9 +73,15 @@ export default function Notifications() {
 
   const open = (n: Notification) => {
     void markNotificationsRead(n.notificationId);
-    const { screen, booking_id: bookingId, conversation_id: conversationId, tournament_id: cupId } =
-      n.payload;
+    const {
+      screen,
+      booking_id: bookingId,
+      conversation_id: conversationId,
+      tournament_id: cupId,
+      match_id: matchId,
+    } = n.payload;
     if (screen === 'lobby' && bookingId) router.push(`/play/lobby?booking=${bookingId}`);
+    else if (screen === 'result' && matchId) router.push(`/play/agree?match=${matchId}`);
     else if (screen === 'chat' && conversationId) router.push(`/chat/${conversationId}`);
     else if (screen === 'tournament' && cupId) router.push(`/cups/${cupId}`);
     else reload();
@@ -142,7 +153,7 @@ export default function Notifications() {
           <Pressable
             key={n.notificationId}
             accessibilityRole="button"
-            accessibilityLabel={n.title}
+            accessibilityLabel={say(n.title) ?? n.title}
             onPress={() => open(n)}
             style={({ pressed }) => ({
               paddingVertical: 13,
@@ -161,7 +172,7 @@ export default function Notifications() {
                 />
               ) : null}
               <Txt size={13.5} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
-                {n.title}
+                {say(n.title)}
               </Txt>
               <Txt size={10.5} color={onVoid.dim}>
                 {sameDay(n.at) ? hour(n.at) : shortDate(n.at)}
@@ -169,7 +180,7 @@ export default function Notifications() {
             </View>
             {n.body ? (
               <Txt size={12} lh={1.5} color={onVoid.muted}>
-                {n.body}
+                {say(n.body)}
               </Txt>
             ) : null}
           </Pressable>

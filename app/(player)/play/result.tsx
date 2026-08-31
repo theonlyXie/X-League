@@ -6,7 +6,7 @@ import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
-import { completeMatch } from '@/data/progress';
+import { completeMatch, matchAgreement } from '@/data/progress';
 import { myBookings, submitReview, type PastBooking } from '@/data/discovery';
 import { useCard } from '@/state/card';
 import { useI18n } from '@/i18n';
@@ -94,10 +94,18 @@ export default function ReportResult() {
     setError(null);
     // Points were just awarded, so the card this app is holding is stale.
     void reloadCard();
-    // Straight on to rating: this is the moment the squad is still fresh in
-    // mind, and rating is what turns the match into card evidence.
-    if (res.matchId) router.replace(`/play/rate?match=${res.matchId}`);
-    else router.replace('/me');
+    if (!res.matchId) {
+      router.replace('/me');
+      return;
+    }
+    // A cup tie has another captain, and nothing is awarded until they say the
+    // same thing — so this report is half of a result, and the next screen is
+    // where that is visible rather than a silence in the ledger. A casual
+    // booking has no second side and goes straight on to rating, which is the
+    // moment the squad is still fresh in mind.
+    const state = await matchAgreement(res.matchId).catch(() => null);
+    if (state?.twoSided) router.replace(`/play/agree?match=${res.matchId}`);
+    else router.replace(`/play/rate?match=${res.matchId}`);
   };
 
   // In the venue's zone, through the same formatter as every other date in

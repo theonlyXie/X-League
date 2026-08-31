@@ -170,3 +170,95 @@ export const ATTRIBUTE_LABEL: Record<string, string> = {
   REF: 'Reflexes',
   POS: 'Positioning',
 };
+
+/**
+ * Where a two-sided result stands.
+ *
+ * A cup tie is claimed by each side's captain and pays nobody until the two
+ * claims agree. `waiting` is a real answer and the screen says it: a match that
+ * only one side has confirmed is not a result, and a player is owed that reason
+ * rather than an unexplained absence from their ledger.
+ */
+export type Agreement = {
+  twoSided: boolean;
+  state: 'single' | 'waiting' | 'agreed' | 'disputed';
+  homeClaimed: boolean;
+  awayClaimed: boolean;
+  homeSays: { home: number; away: number } | null;
+  awaySays: { home: number; away: number } | null;
+  mySide: 'home' | 'away' | null;
+};
+
+export async function matchAgreement(matchId: string): Promise<Agreement | null> {
+  const { data, error } = await supabase().rpc('match_agreement', { p_match_id: matchId });
+  if (error) throw error;
+  const r = (data as any[])[0];
+  if (!r) return null;
+  return {
+    twoSided: r.two_sided,
+    state: r.state,
+    homeClaimed: r.home_claimed,
+    awayClaimed: r.away_claimed,
+    homeSays: r.home_claimed ? { home: r.home_score_home, away: r.home_score_away } : null,
+    awaySays: r.away_claimed ? { home: r.away_score_home, away: r.away_score_away } : null,
+    mySide: r.my_side,
+  };
+}
+
+export async function reportSideResult(
+  matchId: string,
+  home: number,
+  away: number,
+): Promise<{ ok: true; state: string } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('report_side_result', {
+    p_match_id: matchId,
+    p_score_home: home,
+    p_score_away: away,
+  });
+  if (error) return { ok: false, reason: error.message };
+  const row = (data as any[])[0];
+  return row?.ok ? { ok: true, state: row.state } : { ok: false, reason: row?.reason ?? 'Refused.' };
+}
+
+/** The team sheet: who played, and what they are credited with. */
+export type SheetLine = {
+  playerId: string;
+  displayName: string;
+  side: 'home' | 'away';
+  position: string | null;
+  goals: number;
+  assists: number;
+};
+
+export async function matchSheet(
+  matchId: string,
+): Promise<{ lines: SheetLine[]; scoreHome: number | null; scoreAway: number | null }> {
+  const { data, error } = await supabase().rpc('match_sheet', { p_match_id: matchId });
+  if (error) throw error;
+  const rows = data as any[];
+  return {
+    lines: rows.map((r) => ({
+      playerId: r.player_id,
+      displayName: r.display_name,
+      side: r.side,
+      position: r.position_code,
+      goals: r.goals ?? 0,
+      assists: r.assists ?? 0,
+    })),
+    scoreHome: rows[0]?.score_home ?? null,
+    scoreAway: rows[0]?.score_away ?? null,
+  };
+}
+
+export async function setMatchScorers(
+  matchId: string,
+  lines: { playerId: string; goals: number; assists: number }[],
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const { data, error } = await supabase().rpc('set_match_scorers', {
+    p_match_id: matchId,
+    p_lines: lines.map((l) => ({ player_id: l.playerId, goals: l.goals, assists: l.assists })),
+  });
+  if (error) return { ok: false, reason: error.message };
+  const row = (data as any[])[0];
+  return row?.ok ? { ok: true } : { ok: false, reason: row?.reason ?? 'Refused.' };
+}

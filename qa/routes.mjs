@@ -36,6 +36,7 @@ export const ROUTES = [
   { path: '/play/invite', name: 'Invite' },
   { path: '/play/rate', name: 'Rate' },
   { path: '/play/result', name: 'Result' },
+  { path: '/play/agree', name: 'Agree a result' },
 
   // Reached cold with an id that belongs to nobody, which is the case that has
   // to say so rather than render a club-shaped empty shell.
