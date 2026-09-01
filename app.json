@@ -18,6 +18,7 @@
     },
     "android": {
       "package": "com.xleague.app",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#F7F0E6",
         "foregroundImage": "./assets/android-icon-foreground.png",

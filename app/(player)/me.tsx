@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Image, Pressable, TextInput, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
+import { TextInput } from '@/components/TextField';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';

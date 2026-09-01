@@ -36,6 +36,10 @@ const ALLOWED = new Set([
   'Stadium One', // showcase venue
   'Nasr City', // showcase area
   'English', // the language switch names itself
+  // The crash screen is deliberately English. Its job is to be screenshotted
+  // and sent to whoever is fixing it, next to a stack trace that is English
+  // whatever the app's language is; a translated error report helps nobody.
+  'Try again',
 ]);
 
 /**

@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
-import { Pressable, ScrollView, TextInput, View, ViewStyle } from 'react-native';
+import { Pressable, ScrollView, View, ViewStyle } from 'react-native';
+import { TextInput } from '@/components/TextField';
 import { Txt } from './Txt';
 import { ArrowLeft } from './icons';
 import { burgundy, gold, ink, onOperative, operative, radius } from '@/theme/tokens';

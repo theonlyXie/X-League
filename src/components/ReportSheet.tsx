@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Pressable, TextInput, View } from 'react-native';
+import { Modal, Pressable, View } from 'react-native';
+import { TextInput } from '@/components/TextField';
 import { Txt } from './Txt';
 import { Button, Eyebrow } from './ui';
 import { burgundy, onVoid, radius, void_ } from '@/theme/tokens';

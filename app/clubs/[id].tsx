@@ -151,115 +151,22 @@ export default function ClubPage() {
     }
   }
 
+  const squadProps = {
+    open,
+    setOpen,
+    canManage,
+    captainId,
+    clubId: club?.clubId ?? '',
+    busy,
+    act,
+    t,
+    num,
+  };
+
   const starters = squad.filter((m) => m.state === 'active' && m.slotKind === 'starter');
   const subs = squad.filter((m) => m.state === 'active' && m.slotKind === 'sub');
   const bench = squad.filter((m) => m.state === 'active' && !m.slotKind);
   const pending = squad.filter((m) => m.state === 'invited');
-
-  function Row({ member }: { member: ClubMember }) {
-    const expanded = open === member.playerId;
-    return (
-      <View style={{ gap: 8 }}>
-        <PressScale
-          accessibilityRole="button"
-          accessibilityLabel={member.displayName}
-          disabled={!canManage || member.playerId === captainId}
-          onPress={() => setOpen(expanded ? null : member.playerId)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            paddingVertical: 8,
-          }}
-        >
-          <Avatar
-            name={member.displayName}
-            url={member.photoUrl}
-            size={36}
-            background={void_.raised}
-            border={onVoid.edge}
-            color={onVoid.secondary}
-          />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Txt size={14} weight="semibold" color={onVoid.primary}>
-              {member.displayName}
-            </Txt>
-            <Txt size={11.5} color={onVoid.faint}>
-              {member.playerId === captainId ? t.captain : null}
-              {member.playerId === captainId && member.state === 'invited' ? ' · ' : ''}
-              {member.state === 'invited' ? t.clubInvitePending : ''}
-              {member.playerId !== captainId && member.state !== 'invited' && !member.slotKind
-                ? t.doesNotPlay
-                : ''}
-            </Txt>
-          </View>
-          {member.ovr != null ? (
-            <Txt size={13} weight="bold" color={gold.base}>
-              {num(member.ovr)}
-            </Txt>
-          ) : null}
-        </PressScale>
-
-        {expanded ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 6 }}>
-            {member.slotKind !== 'starter' ? (
-              <Button
-                label={t.makeStarter}
-                variant="ghost"
-                height={36}
-                size={12}
-                onPress={() => act(() => setClubSlot(club!.clubId, member.playerId, 'starter'))}
-              />
-            ) : null}
-            {member.slotKind !== 'sub' ? (
-              <Button
-                label={t.makeSub}
-                variant="ghost"
-                height={36}
-                size={12}
-                onPress={() => act(() => setClubSlot(club!.clubId, member.playerId, 'sub'))}
-              />
-            ) : null}
-            {member.slotKind ? (
-              <Button
-                label={t.benchMember}
-                variant="ghost"
-                height={36}
-                size={12}
-                onPress={() => act(() => setClubSlot(club!.clubId, member.playerId, null))}
-              />
-            ) : null}
-            <Button
-              label={t.handOver}
-              variant="ghost"
-              height={36}
-              size={12}
-              onPress={() => act(() => handOverClub(club!.clubId, member.playerId))}
-            />
-            <Button
-              label={t.removeMember}
-              variant="danger"
-              height={36}
-              size={12}
-              onPress={() => act(() => removeFromClub(club!.clubId, member.playerId))}
-            />
-          </View>
-        ) : null}
-      </View>
-    );
-  }
-
-  function Group({ label, members }: { label: string; members: ClubMember[] }) {
-    if (!members.length) return null;
-    return (
-      <View style={{ gap: 2 }}>
-        <Eyebrow>{label}</Eyebrow>
-        {members.map((m) => (
-          <Row key={m.playerId} member={m} />
-        ))}
-      </View>
-    );
-  }
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
@@ -338,12 +245,48 @@ export default function ClubPage() {
                 weight="medium"
                 color={club.eligible ? gold.base : burgundy.action}
               >
-                {club.eligible ? t.readyToEnter : (reason(club.reason) ?? t.notReadyToEnter)}
+                {/* When the club is waiting on admission the banner below says
+                    so at length; repeating it here as a one-liner reads as two
+                    different problems. */}
+                {club.eligible
+                  ? t.readyToEnter
+                  : club.verification !== 'verified'
+                    ? t.notReadyToEnter
+                    : (reason(club.reason) ?? t.notReadyToEnter)}
               </Txt>
             </View>
           </View>
 
-          {!club.eligible ? (
+          {/* Admission comes before the squad count. A captain looking at a
+              club that cannot enter needs to know which of the two reasons it
+              is: five more players is work they can do tonight, and waiting on
+              X League is not. */}
+          {club.verification !== 'verified' ? (
+            <View
+              style={{
+                padding: 14,
+                borderRadius: radius.control,
+                borderWidth: 1,
+                borderColor: club.verification === 'rejected' ? 'rgba(101,21,37,.5)' : goldAlpha.frame,
+                backgroundColor:
+                  club.verification === 'rejected' ? 'rgba(101,21,37,.09)' : goldAlpha.fill,
+                gap: 5,
+              }}
+            >
+              <Txt
+                size={13.5}
+                weight="semibold"
+                color={club.verification === 'rejected' ? burgundy.action : gold.base}
+              >
+                {club.verification === 'rejected' ? t.clubRejected : t.clubPending}
+              </Txt>
+              <Txt size={11.5} lh={1.5} color={onVoid.secondary}>
+                {club.verification === 'rejected' ? t.clubRejectedBlurb : t.clubPendingBlurb}
+              </Txt>
+            </View>
+          ) : null}
+
+          {club.verification === 'verified' && !club.eligible ? (
             <Txt size={12} lh={1.5} color={onVoid.dim}>
               {t.needFive}
             </Txt>
@@ -385,10 +328,10 @@ export default function ClubPage() {
           <Divider />
 
           <View style={{ gap: 14 }}>
-            <Group label={t.starters} members={starters} />
-            <Group label={t.substitutes} members={subs} />
-            <Group label={t.doesNotPlay} members={bench} />
-            <Group label={t.clubInvitePending} members={pending} />
+            <Group label={t.starters} members={starters} {...squadProps} />
+            <Group label={t.substitutes} members={subs} {...squadProps} />
+            <Group label={t.doesNotPlay} members={bench} {...squadProps} />
+            <Group label={t.clubInvitePending} members={pending} {...squadProps} />
           </View>
 
           <Divider />
@@ -432,3 +375,147 @@ export default function ClubPage() {
     </Screen>
   );
 }
+
+/**
+ * The squad rows, defined at module scope.
+ *
+ * These were declared inside the screen. A component created during render is
+ * a new component *type* on every render, so React threw the whole squad away
+ * and rebuilt it every time anything changed — each row's press animation and
+ * shared values torn down and recreated on every tap. That is churn on the web
+ * and something worse on a device.
+ */
+type RowProps = {
+  member: ClubMember;
+  open: string | null;
+  setOpen: (id: string | null) => void;
+  canManage: boolean;
+  captainId: string | null;
+  clubId: string;
+  busy: boolean;
+  act: (fn: () => Promise<{ ok: boolean; reason?: string }>) => void;
+  t: ReturnType<typeof useI18n>['t'];
+  num: ReturnType<typeof useI18n>['num'];
+};
+
+type GroupProps = Omit<RowProps, 'member'> & {
+  label: string;
+  members: ClubMember[];
+};
+
+function Row({
+  member,
+  open,
+  setOpen,
+  canManage,
+  captainId,
+  clubId,
+  busy,
+  act,
+  t,
+  num,
+}: RowProps) {
+  const expanded = open === member.playerId;
+  return (
+    <View style={{ gap: 8 }}>
+      <PressScale
+        accessibilityRole="button"
+        accessibilityLabel={member.displayName}
+        disabled={!canManage || member.playerId === captainId}
+        onPress={() => setOpen(expanded ? null : member.playerId)}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingVertical: 8,
+        }}
+      >
+        <Avatar
+          name={member.displayName}
+          url={member.photoUrl}
+          size={36}
+          background={void_.raised}
+          border={onVoid.edge}
+          color={onVoid.secondary}
+        />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt size={14} weight="semibold" color={onVoid.primary}>
+            {member.displayName}
+          </Txt>
+          <Txt size={11.5} color={onVoid.faint}>
+            {member.playerId === captainId ? t.captain : null}
+            {member.playerId === captainId && member.state === 'invited' ? ' · ' : ''}
+            {member.state === 'invited' ? t.clubInvitePending : ''}
+            {member.playerId !== captainId && member.state !== 'invited' && !member.slotKind
+              ? t.doesNotPlay
+              : ''}
+          </Txt>
+        </View>
+        {member.ovr != null ? (
+          <Txt size={13} weight="bold" color={gold.base}>
+            {num(member.ovr)}
+          </Txt>
+        ) : null}
+      </PressScale>
+
+      {expanded ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 6 }}>
+          {member.slotKind !== 'starter' ? (
+            <Button
+              label={t.makeStarter}
+              variant="ghost"
+              height={36}
+              size={12}
+              onPress={() => act(() => setClubSlot(clubId, member.playerId, 'starter'))}
+            />
+          ) : null}
+          {member.slotKind !== 'sub' ? (
+            <Button
+              label={t.makeSub}
+              variant="ghost"
+              height={36}
+              size={12}
+              onPress={() => act(() => setClubSlot(clubId, member.playerId, 'sub'))}
+            />
+          ) : null}
+          {member.slotKind ? (
+            <Button
+              label={t.benchMember}
+              variant="ghost"
+              height={36}
+              size={12}
+              onPress={() => act(() => setClubSlot(clubId, member.playerId, null))}
+            />
+          ) : null}
+          <Button
+            label={t.handOver}
+            variant="ghost"
+            height={36}
+            size={12}
+            onPress={() => act(() => handOverClub(clubId, member.playerId))}
+          />
+          <Button
+            label={t.removeMember}
+            variant="danger"
+            height={36}
+            size={12}
+            onPress={() => act(() => removeFromClub(clubId, member.playerId))}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function Group({ label, members, ...shared }: GroupProps) {
+  if (!members.length) return null;
+  return (
+    <View style={{ gap: 2 }}>
+      <Eyebrow>{label}</Eyebrow>
+      {members.map((m) => (
+        <Row key={m.playerId} member={m} {...shared} />
+      ))}
+    </View>
+  );
+}
+
