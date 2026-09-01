@@ -30,6 +30,7 @@ export function supabase(): SupabaseClient {
   }
   if (!client) {
     client = createClient(url!, anonKey!, {
+      global: { fetch: withTimeout, headers: { 'x-client-info': 'x-league-app' } },
       auth: {
         // AUTH-007: the session survives a restart so a player is not asked to
         // re-verify a phone number every time they open the app.
@@ -39,8 +40,33 @@ export function supabase(): SupabaseClient {
         // No OAuth redirects in this app; the OTP is entered in-app.
         detectSessionInUrl: false,
       },
-      global: { headers: { 'x-client-info': 'x-league-app' } },
     });
   }
   return client;
+}
+
+/**
+ * A request that cannot hang forever.
+ *
+ * Every screen here is a spinner until its request answers, and a mobile
+ * connection that drops mid-flight does not answer — it simply never does.
+ * The screen then sits there, the button that started it stays disabled, and
+ * the only way out is to kill the app and open it again. That is what "the app
+ * freezes" means from the outside, and no amount of error handling helps when
+ * nothing ever throws.
+ *
+ * Twenty seconds is well past the slowest honest answer this database gives and
+ * well short of a person's patience. What comes back is an ordinary failure,
+ * which every caller here already knows how to show.
+ */
+const TIMEOUT_MS = 20000;
+
+async function withTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const control = new AbortController();
+  const timer = setTimeout(() => control.abort(), TIMEOUT_MS);
+  try {
+    return await fetch(input as RequestInfo, { ...init, signal: control.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
