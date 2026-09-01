@@ -122,6 +122,39 @@ export const createVenue = (name: string, area: string, phone?: string) =>
     p_phone: phone && phone.trim() ? phone.trim() : null,
   });
 
+export type PendingClub = {
+  clubId: string;
+  name: string;
+  homeArea: string | null;
+  verification: string;
+  captainName: string;
+  captainPhone: string | null;
+  members: number;
+  createdAt: string;
+};
+
+/**
+ * Clubs waiting to be admitted.
+ *
+ * A club used to count from the moment somebody founded it, which made the
+ * league something sides joined by declaring themselves. Now it waits here.
+ */
+export async function clubQueue(state = 'pending'): Promise<PendingClub[]> {
+  return (await call('admin_club_queue', { p_state: state, p_limit: 100 })).map((r) => ({
+    clubId: r.club_id as string,
+    name: r.name as string,
+    homeArea: (r.home_area as string) ?? null,
+    verification: r.verification as string,
+    captainName: r.captain_name as string,
+    captainPhone: (r.captain_phone as string) ?? null,
+    members: r.members as number,
+    createdAt: r.created_at as string,
+  }));
+}
+
+export const setClubVerification = (clubId: string, verification: string) =>
+  act('admin_set_club_verification', { p_club_id: clubId, p_verification: verification });
+
 export const setVerification = (venueId: string, verification: string, note?: string) =>
   act('admin_set_verification', {
     p_venue_id: venueId,

@@ -64,6 +64,12 @@ export type ClubDetail = {
   eligible: boolean;
   /** What the club is short of, in words. Null when it is short of nothing. */
   reason: string | null;
+  /**
+   * Whether X League has admitted the club. A club used to count from the
+   * moment somebody founded it, which made the league something sides joined
+   * by declaring themselves.
+   */
+  verification: 'pending' | 'verified' | 'rejected';
 };
 
 export async function clubDetail(clubId: string): Promise<ClubDetail | null> {
@@ -86,6 +92,7 @@ export async function clubDetail(clubId: string): Promise<ClubDetail | null> {
     playing: r.playing,
     eligible: r.eligible,
     reason: r.reason,
+    verification: (r.verification ?? 'verified') as ClubDetail['verification'],
   };
 }
 

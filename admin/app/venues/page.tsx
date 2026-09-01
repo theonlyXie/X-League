@@ -215,7 +215,7 @@ function AddVenue({
         setPhone('');
       }
       return res.ok ? { ok: true } : { ok: false, reason: res.reason };
-    }, `${name.trim()} is on the platform, verified, with a pitch open 10:00–24:00 at 300 EGP.`);
+    }, `${name.trim()} is added and waiting to be verified. Approve it in the queue above and it goes live.`);
 
   return (
     <div className="panel">
@@ -255,8 +255,8 @@ function AddVenue({
             Add the venue
           </button>
           <span className="faint">
-            One pitch to begin with, open every day 10:00–24:00 at 300 EGP. Change any of it on
-            the venue&rsquo;s own screens.
+            One pitch to begin with, open every day 10:00&ndash;24:00 at 300 EGP. It arrives in the
+            queue above &mdash; nothing reaches players until it is verified.
           </span>
         </div>
       </div>

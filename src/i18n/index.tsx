@@ -55,16 +55,17 @@ type I18nValue = {
 const I18nContext = createContext<I18nValue | null>(null);
 
 /**
- * Arabic is the app's first language, so the mirroring is asked for here — at
- * module scope, before anything renders — rather than after the stored locale
- * has been read. Native RTL is a setting the platform applies when the app
- * starts; asking for it once React is already laying screens out is what makes
- * a language switch owe a restart. Somebody who has chosen English gets the
- * same restart notice on their next launch, once, and never again.
+ * Mirroring is allowed, and nothing more is decided here.
+ *
+ * This used to force RTL at module scope, on the reasoning that Arabic is the
+ * first language and native mirroring is applied at startup. It ran on *every*
+ * launch, before the stored preference had been read — so somebody who chose
+ * English got RTL forced back on the next time they opened the app, and typed
+ * into fields that were still laid out right to left. The direction is decided
+ * once the preference is known, below.
  */
-if (Platform.OS !== 'web' && !I18nManager.isRTL) {
+if (Platform.OS !== 'web') {
   I18nManager.allowRTL(true);
-  I18nManager.forceRTL(true);
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {

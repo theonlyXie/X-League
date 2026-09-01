@@ -49,6 +49,20 @@ created a venue with no hours and no price, which meant a venue that had
 registered through the product was structurally unbookable and had no screen
 that could fix it.
 
+**Nothing reaches players unapproved.** A venue is created `pending` — from the
+app or from the console — and `search_venues` now filters on that. It always
+had the column and only ever *sorted* by it, so an unchecked ground was listed
+and bookable within a minute of somebody typing its name. A trigger on `booking`
+refuses the row outright as well, because hiding a venue from a list is not
+access control when its id is in every link.
+
+Clubs work the same way now. A club used to count from the moment it was
+founded, which made the league something sides joined by declaring themselves.
+`club.verification` is pending until an admin admits it; `club_eligibility`
+folds that into the same sentence it already used for a short squad, so a
+captain is told which of the two is stopping them. The console has a queue with
+Admit and Refuse, and the captain is notified either way.
+
 **And that answer is not final.** A player who turns out to have a pitch opens
 `/open-a-venue` from the account screen: `register_my_venue` does the same
 work sign-up does, for an account that already exists. There is no role flag —

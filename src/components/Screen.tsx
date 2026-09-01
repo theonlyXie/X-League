@@ -1,5 +1,13 @@
 import { ReactNode } from 'react';
-import { ScrollView, ScrollViewProps, StyleProp, View, ViewStyle } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ScrollViewProps,
+  StyleProp,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { operative, void_ } from '@/theme/tokens';
 import { TopBar } from '@/components/TopBar';
@@ -49,17 +57,36 @@ export function Screen({
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor, paddingTop: insets.top }}>
-      {bar ? <TopBar /> : null}
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={contentStyle}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={refreshControl}
-      >
-        {children}
-      </ScrollView>
-    </View>
+    /**
+     * The keyboard used to sit on top of whatever somebody was typing into.
+     * Half the forms in this app — a club's name, a venue's area, a score, a
+     * message — are far enough down the screen that the field they were tapping
+     * disappeared behind the keyboard the moment it opened, with no way to
+     * scroll it back into view.
+     *
+     * `padding` on iOS and `height` on Android are the behaviours those two
+     * platforms actually want; the ScrollView keeps the field reachable, and
+     * `automaticallyAdjustKeyboardInsets` handles the iOS case where the
+     * keyboard opens over content that was already scrolled.
+     */
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={{ flex: 1, backgroundColor, paddingTop: insets.top }}>
+        {bar ? <TopBar /> : null}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={contentStyle}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+          refreshControl={refreshControl}
+        >
+          {children}
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

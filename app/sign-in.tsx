@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
@@ -306,6 +307,10 @@ function Field({
   hint,
   ...input
 }: { label: string; prefix?: string; hint?: string } & React.ComponentProps<typeof TextInput>) {
+  // The row's direction comes from the language, not from the process. Native
+  // mirroring only changes on a restart, and until it does an English speaker
+  // was reading `+20` on the wrong side of their own number.
+  const { rtl } = useI18n();
   const box = {
     height: 52,
     borderRadius: radius.control,
@@ -328,14 +333,22 @@ function Field({
         // The affix sits inside the field's border rather than beside it, so
         // the two read as one control: the number is `+20 100 000 0000`, not a
         // label and a number that happen to be adjacent.
-        <View style={{ ...box, flexDirection: 'row', alignItems: 'center' }}>
+        <View
+          style={{
+            ...box,
+            flexDirection: rtl ? 'row-reverse' : 'row',
+            alignItems: 'center',
+          }}
+        >
           <View
             style={{
               paddingHorizontal: 14,
               height: '100%',
               justifyContent: 'center',
-              borderRightWidth: 1,
+              borderRightWidth: rtl ? 0 : 1,
+              borderLeftWidth: rtl ? 1 : 0,
               borderRightColor: goldAlpha.edge,
+              borderLeftColor: goldAlpha.edge,
             }}
           >
             {/* Not a field. It cannot be edited, cleared or tabbed into,

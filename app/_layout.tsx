@@ -21,6 +21,7 @@ import { BookingProvider } from '@/state/booking';
 import { SessionProvider, useSession } from '@/state/session';
 import { CardProvider } from '@/state/card';
 import { RefreshProvider } from '@/state/refresh';
+import { Boundary } from '@/components/Boundary';
 import { I18nProvider } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 import { void_ } from '@/theme/tokens';
@@ -43,6 +44,9 @@ export default function RootLayout() {
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: void_.bg }} />;
 
   return (
+    // A render that throws used to take the whole app with it, and what came
+    // back was "it crashes" with nothing to read. Now it says what happened.
+    <Boundary>
     <SafeAreaProvider>
       <I18nProvider>
         <SessionProvider>
@@ -71,6 +75,7 @@ export default function RootLayout() {
         </SessionProvider>
       </I18nProvider>
     </SafeAreaProvider>
+    </Boundary>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, Switch, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Switch, View } from 'react-native';
+import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Divider, Eyebrow } from '@/components/ui';

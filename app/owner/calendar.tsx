@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { TextInput } from '@/components/TextField';
 import { useRouter } from 'expo-router';
 import { Txt } from '@/components/Txt';
 import { hitSlopTo44 } from '@/components/ui';

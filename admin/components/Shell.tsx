@@ -12,6 +12,7 @@ import { useSession } from '@/lib/session';
 const NAV = [
   { href: '/', label: 'Overview' },
   { href: '/venues', label: 'Venues' },
+  { href: '/clubs', label: 'Clubs' },
   { href: '/people', label: 'People' },
   { href: '/reports', label: 'Reports' },
   { href: '/cups', label: 'Cups' },
