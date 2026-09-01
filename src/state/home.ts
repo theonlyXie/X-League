@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isLive } from '@/lib/supabase';
+import { useRefreshTick } from '@/state/refresh';
 import { today } from '@/data/venue';
 import { useSession } from '@/state/session';
 import {
@@ -61,6 +62,13 @@ export function useHome(): HomeState {
   const [nonce, setNonce] = useState(0);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  // The refresh button in the top bar reaches Home through the same door a
+  // pull-to-refresh does.
+  const tick = useRefreshTick();
+  useEffect(() => {
+    if (tick > 0) reload();
+  }, [tick, reload]);
 
   useEffect(() => {
     if (!isLive || restoring) return;

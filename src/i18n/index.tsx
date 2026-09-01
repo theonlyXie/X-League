@@ -54,16 +54,36 @@ type I18nValue = {
 
 const I18nContext = createContext<I18nValue | null>(null);
 
+/**
+ * Arabic is the app's first language, so the mirroring is asked for here — at
+ * module scope, before anything renders — rather than after the stored locale
+ * has been read. Native RTL is a setting the platform applies when the app
+ * starts; asking for it once React is already laying screens out is what makes
+ * a language switch owe a restart. Somebody who has chosen English gets the
+ * same restart notice on their next launch, once, and never again.
+ */
+if (Platform.OS !== 'web' && !I18nManager.isRTL) {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
+  // Arabic until somebody says otherwise. Every player this is built for reads
+  // Arabic first, and an app that opens in English asks them to read the wrong
+  // language to find the switch.
+  const [locale, setLocaleState] = useState<Locale>('ar');
   const [needsRestart, setNeedsRestart] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((stored) => {
-        if (stored === 'ar' || stored === 'en') applyDirection(stored, setLocaleState);
+        // Nothing stored is the first launch, and the first launch is Arabic —
+        // which still has to be *applied*, or the copy is Arabic while the
+        // document is left in its default direction and every screen lays out
+        // the wrong way round.
+        applyDirection(stored === 'en' ? 'en' : 'ar', setLocaleState);
       })
-      .catch(() => {});
+      .catch(() => applyDirection('ar', setLocaleState));
   }, []);
 
   const setLocale = useCallback(async (next: Locale) => {

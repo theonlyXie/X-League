@@ -1,4 +1,4 @@
-import { openBrowser, newPage, visit, makeReport, requireServer } from './lib.mjs';
+import { openBrowser, newPage, visit, makeReport, requireServer, lookAround } from './lib.mjs';
 import { ROUTES } from './routes.mjs';
 
 /**
@@ -31,6 +31,11 @@ async function main() {
   const report = makeReport('smoke');
   const browser = await openBrowser();
   const page = await newPage(browser);
+
+  // Past the sign-in gate, once, or every route below is the sign-in screen.
+  if (!(await lookAround(page))) {
+    report.fail('the way past the sign-in gate', 'no "look around" link on the first screen');
+  }
 
   for (const route of ROUTES) {
     const { text, errors } = await visit(page, route.path);

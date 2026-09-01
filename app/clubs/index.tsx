@@ -10,6 +10,7 @@ import { ArrowLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { createClub, myClubs, respondToClubInvite, type ClubSummary } from '@/data/clubs';
 import { useI18n } from '@/i18n';
+import { useRefreshTick } from '@/state/refresh';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 
@@ -26,6 +27,8 @@ export default function Clubs() {
   const router = useRouter();
   const { reason, t, num } = useI18n();
 
+  // The refresh button in the top bar.
+  const tick = useRefreshTick();
   const [clubs, setClubs] = useState<ClubSummary[]>([]);
   const [loading, setLoading] = useState(isLive);
   /** §4.7: a list we could not read is not an empty list. */
@@ -64,7 +67,7 @@ export default function Clubs() {
     return () => {
       cancelled = true;
     };
-  }, [nonce, signedIn]);
+  }, [nonce, signedIn, tick]);
 
   const invited = clubs.filter((c) => c.state === 'invited');
   const active = clubs.filter((c) => c.state === 'active');

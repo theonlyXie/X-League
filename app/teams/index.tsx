@@ -8,6 +8,7 @@ import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { createTeam, myTeams, respondToTeamInvite, type Team } from '@/data/squad';
 import { useI18n } from '@/i18n';
+import { useRefreshTick } from '@/state/refresh';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 
@@ -22,6 +23,8 @@ export default function Teams() {
   const router = useRouter();
   const { reason, t, num } = useI18n();
 
+  // The refresh button in the top bar.
+  const tick = useRefreshTick();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(isLive);
   /** §4.7: a list we could not read is not an empty list. */
@@ -60,7 +63,7 @@ export default function Teams() {
     return () => {
       cancelled = true;
     };
-  }, [nonce, signedIn]);
+  }, [nonce, signedIn, tick]);
 
   const invited = teams.filter((team) => team.state === 'invited');
   const active = teams.filter((team) => team.state === 'active');

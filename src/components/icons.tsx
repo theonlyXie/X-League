@@ -97,3 +97,29 @@ export function Check({ size = 14, color }: IconProps) {
     </Svg>
   );
 }
+
+/**
+ * Refresh. Not mirrored: a circular arrow means the same thing in both
+ * directions, and flipping it would only make it look wrong.
+ */
+export function Rotate({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Path
+        d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Polyline
+        points="16.5,2.5 16.5,6 13,6"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}

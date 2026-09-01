@@ -1,4 +1,4 @@
-import { openBrowser, newPage, visit, signIn, makeReport, requireServer, BASE } from './lib.mjs';
+import { openBrowser, newPage, visit, signIn, makeReport, requireServer, lookAround, BASE } from './lib.mjs';
 import { ROUTES, OWNER_SURFACES, FIXTURE_COPY_WHEN_SIGNED_OUT } from './routes.mjs';
 import { loadStrings, englishSentinels } from './strings.mjs';
 
@@ -112,6 +112,9 @@ async function main() {
   const browser = await openBrowser();
   const page = await newPage(browser);
   await useArabic(page);
+  // The gate stands in front of every route now; guest standing is the way
+  // past it, and without it this walks the sign-in screen twenty-eight times.
+  await lookAround(page);
 
   for (const route of ROUTES) {
     // Sign-in and onboarding are reachable before a locale is ever chosen, but

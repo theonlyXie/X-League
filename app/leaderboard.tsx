@@ -11,6 +11,7 @@ import { ArrowLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { keeperLeaderboard, leaderboard, type BoardRow, type KeeperRow } from '@/data/board';
 import { useI18n } from '@/i18n';
+import { useRefreshTick } from '@/state/refresh';
 import { isLive } from '@/lib/supabase';
 
 /**
@@ -28,6 +29,8 @@ export default function Leaderboard() {
   const router = useRouter();
   const { t, num } = useI18n();
 
+  // The refresh button in the top bar.
+  const tick = useRefreshTick();
   const [board, setBoard] = useState<'scorers' | 'keepers'>('scorers');
   const [scorers, setScorers] = useState<BoardRow[]>([]);
   const [keepers, setKeepers] = useState<KeeperRow[]>([]);
@@ -61,7 +64,7 @@ export default function Leaderboard() {
     return () => {
       cancelled = true;
     };
-  }, [venue]);
+  }, [venue, tick]);
 
   const empty = board === 'scorers' ? !scorers.length : !keepers.length;
 

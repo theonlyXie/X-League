@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as api from '@/data/api';
 import { isLive } from '@/lib/supabase';
+import { useRefreshTick } from '@/state/refresh';
 import { useSession } from '@/state/session';
 import { today } from '@/data/venue';
 import { useI18n } from '@/i18n';
@@ -58,9 +59,10 @@ export function useOwnerToday() {
     }
   }, [signedIn, venue]);
 
+  const tick = useRefreshTick();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, tick]);
 
   return {
     arrivals,

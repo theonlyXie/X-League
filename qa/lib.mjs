@@ -56,6 +56,31 @@ export async function newPage(browser) {
 }
 
 /**
+ * Get past the door.
+ *
+ * The app now asks a signed-out visitor to sign in before it shows anything,
+ * with one link out: look around without an account. Every signed-out check
+ * here walks routes that are behind that, so without this every one of them
+ * would visit the sign-in screen twenty-eight times and pass — a green suite
+ * asserting nothing at all.
+ *
+ * Guest standing lives in memory for the life of the launch, so this is done
+ * once per page and every later `visit` inherits it.
+ */
+export async function lookAround(page) {
+  await page.goto(BASE + '/', { waitUntil: 'load' });
+  for (const label of ['Look around without an account', 'اتفرج من غير حساب']) {
+    const link = page.getByLabel(label);
+    if (await link.count()) {
+      await link.first().click();
+      await page.waitForTimeout(1200);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Record every call the page makes to the database, and what came back.
  *
  * The text on a screen cannot distinguish "you have no teams" from "we asked

@@ -74,7 +74,10 @@ export function Txt({
  * site, because every piece of type in this app already goes through this
  * component and no screen should have to remember.
  */
-const LATIN_RUN = /([A-Za-z0-9][A-Za-z0-9\u0027\u2019.,:;!?()\/+\-–—&%#@ ]*[A-Za-z0-9.)\]%]|[A-Za-z0-9])/g;
+// A leading `+` counts as part of the run. Without it the plus fell outside
+// the isolate and an Arabic line rendered `+20` as `20+`, which is the one
+// place in this app where a number is read aloud to a stranger.
+const LATIN_RUN = /(\+?[A-Za-z0-9][A-Za-z0-9\u0027\u2019.,:;!?()\/+\-–—&%#@ ]*[A-Za-z0-9.)\]%]|\+?[A-Za-z0-9])/g;
 
 function isolate(children: ReactNode): ReactNode {
   if (typeof children === 'string') return children.replace(LATIN_RUN, '\u2068$1\u2069');
