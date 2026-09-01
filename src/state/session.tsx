@@ -51,6 +51,12 @@ export type SignUpInput = {
   role: 'player' | 'venue_owner';
   venueName?: string;
   venueArea?: string;
+  /** A year rather than a date: enough for a cup's minimum age, and markedly
+   *  less to hold about somebody who may turn out to be a child. */
+  birthYear?: number | null;
+  gender?: 'man' | 'woman' | null;
+  /** A governorate code from `@/data/egypt`. */
+  governorate?: string | null;
 };
 
 type SessionContextValue = {
@@ -76,6 +82,8 @@ type SessionContextValue = {
    * decides who may walk through one; every console function checks for itself.
    */
   platformRole: 'support' | 'moderator' | 'admin' | null;
+  /** Where this player plays, as a governorate code, or null for all of Egypt. */
+  governorate: string | null;
   /** True until the stored session has been read back. */
   restoring: boolean;
   /**
@@ -149,6 +157,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  /**
+   * Where this player says they play. Home uses it to put their own
+   * governorate first; null is all of Egypt, which is what a guest gets.
+   */
+  const [governorate, setGovernorate] = useState<string | null>(null);
   const [venues, setVenues] = useState<StaffVenue[]>([]);
   const [platformRole, setPlatformRole] =
     useState<SessionContextValue['platformRole']>(null);
@@ -165,6 +178,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const loadIdentity = useCallback(async (active: Session | null) => {
     if (!active) {
       setDisplayName(null);
+      setGovernorate(null);
       setVenues([]);
       setPlatformRole(null);
       setIdentityFailed(false);
@@ -197,9 +211,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const { data: mine } = venuesRes;
       const { data: role } = roleRes;
       setPlatformRole((role as SessionContextValue['platformRole']) ?? null);
-      setDisplayName(
-        ((profile ?? []) as { display_name: string }[])[0]?.display_name ?? null,
-      );
+      const me = ((profile ?? []) as { display_name: string; governorate: string | null }[])[0];
+      setDisplayName(me?.display_name ?? null);
+      setGovernorate(me?.governorate ?? null);
       setVenues(
         (
           (mine ?? []) as {
@@ -322,6 +336,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         p_role: input.role,
         p_venue_name: input.venueName ?? null,
         p_venue_area: input.venueArea ?? null,
+        p_birth_year: input.birthYear ?? null,
+        p_gender: input.gender ?? null,
+        p_governorate: input.governorate ?? null,
       });
       if (error) return explain(error, t);
 
@@ -362,6 +379,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       activeVenue: venues.find((v) => v.venueId === activeVenueId) ?? venues[0] ?? null,
       setActiveVenue: setActiveVenueId,
       platformRole,
+      governorate,
       restoring,
       guest,
       browseAsGuest: () => setGuest(true),
@@ -377,6 +395,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       venues,
       activeVenueId,
       platformRole,
+      governorate,
       restoring,
       guest,
       identityFailed,

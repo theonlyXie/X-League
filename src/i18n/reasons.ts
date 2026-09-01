@@ -34,6 +34,12 @@ const digits = (s: string) => s.replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[
 
 /** Refusals assembled at runtime, matched before the exact table. */
 const PATTERNS: { re: RegExp; ar: (m: RegExpMatchArray) => string }[] = [
+  // A cup's minimum age, refused by naming who is under it — a count would
+  // make the captain guess which of eight people it is.
+  {
+    re: /^This cup is for players aged (\d+) and over\. Too young: (.+)\.$/,
+    ar: (m) => `البطولة دي للاعبين من ${digits(m[1])} سنة وفوق. صغيرين: ${m[2]}.`,
+  },
   // Leaving is refused by naming the thing other people depend on, so the club
   // and the venue arrive inside the sentence.
   {
@@ -133,6 +139,8 @@ const AR: Record<string, string> = {
   'You cannot block yourself.': 'مينفعش تحظر نفسك.',
   'That player does not exist.': 'اللاعب ده مش موجود.',
   'You cannot message that player.': 'مينفعش تبعت للاعب ده.',
+  'Enter the year you were born.': 'اكتب سنة ميلادك.',
+  'Choose one.': 'اختر واحد.',
   'That cup does not exist.': 'البطولة دي مش موجودة.',
   'That cup has matches already played. It cannot be reopened for entries.':
     'البطولة دي فيها ماتشات اتلعبت. مينفعش تتفتح للاشتراك تاني.',

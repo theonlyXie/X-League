@@ -64,8 +64,17 @@ from the app, Me → Change password — and change it here too.
 4. **Store paperwork.** Privacy labels (Apple) and the Data safety form (Play),
    matching the privacy policy: phone number, name, optional photo, area, chat
    messages, football record. No location, no analytics, no advertising.
-5. **Age rating.** 18+, matching the terms. Both questionnaires ask about
-   contests and about user-generated content; both now apply.
+5. **Age rating — read this one twice.** X League is open to players of any
+   age, and cups are 15+. That is a decision with teeth: an app that knowingly
+   admits children *and* has open chat, photo upload and personal data falls
+   under Google Play's Families policy and Apple's rules for apps aimed at
+   minors, and in some countries needs verifiable parental consent. Answer both
+   questionnaires honestly — chat, user photos, minors — and expect questions.
+
+   The cheapest way to make this pass, if review pushes back: turn chat and
+   photo upload off for accounts under a chosen age. The birth year is already
+   collected, so it is a rule rather than a rebuild. Say the word and I will
+   build it.
 6. **Screenshots** of the real app, in Arabic, with no test data in frame.
 
 ## Done in the app

@@ -38,6 +38,12 @@ export type SearchVenuesOptions = {
   toHour?: number;
   format?: string | null;
   limit?: number;
+  /**
+   * A governorate code from `@/data/egypt`. Null is all of Egypt, which is the
+   * default and what a guest gets — the filter narrows, it never hides the
+   * country from somebody who has not said where they are.
+   */
+  governorate?: string | null;
 };
 
 /**
@@ -58,6 +64,7 @@ export async function searchVenues(opts: SearchVenuesOptions = {}): Promise<Venu
     p_to_hour: opts.toHour ?? 24,
     p_format: opts.format ?? null,
     p_limit: opts.limit ?? 25,
+    p_governorate: opts.governorate ?? null,
   });
   if (error) throw error;
   return (data as any[]).map((r) => ({

@@ -380,6 +380,28 @@ export async function registerMyVenue(
     : { ok: false, reason: row?.reason ?? undefined };
 }
 
+/**
+ * The three questions sign-up now asks, for everybody who signed up before it
+ * did. All optional: an app that will not work until somebody states their
+ * gender is worse than one that asks nicely.
+ */
+export async function setMyDetails(input: {
+  birthYear?: number | null;
+  gender?: 'man' | 'woman' | null;
+  governorate?: string | null;
+  area?: string | null;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('set_my_details', {
+    p_birth_year: input.birthYear ?? null,
+    p_gender: input.gender ?? null,
+    p_governorate: input.governorate ?? null,
+    p_area: input.area ?? null,
+  });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row?.ok ? { ok: true } : { ok: false, reason: row?.reason ?? undefined };
+}
+
 export type StaffVenueRow = { venueId: string; name: string; role: VenueRole };
 
 /**

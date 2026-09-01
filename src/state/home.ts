@@ -49,7 +49,7 @@ export type HomeState = {
 };
 
 export function useHome(): HomeState {
-  const { signedIn, restoring } = useSession();
+  const { signedIn, restoring, governorate } = useSession();
   const [loading, setLoading] = useState(true);
   const [unreachable, setUnreachable] = useState(false);
   const [next, setNext] = useState<NextBooking | null>(null);
@@ -87,7 +87,9 @@ export function useHome(): HomeState {
         // and reported every venue fully booked while Play, two taps away,
         // showed fourteen free hours at the same venues. Two screens
         // disagreeing about what day it is, on the screen people open first.
-        const venues = await searchVenues({ date: today(), limit: 6 });
+        // The player's own governorate first. Null — a guest, or somebody
+        // who has not answered — is all of Egypt, exactly as before.
+        const venues = await searchVenues({ date: today(), limit: 6, governorate });
         if (cancelled) return;
         setNearby(venues);
 
@@ -163,7 +165,7 @@ export function useHome(): HomeState {
     return () => {
       cancelled = true;
     };
-  }, [signedIn, restoring, nonce]);
+  }, [signedIn, restoring, nonce, governorate]);
 
   return {
     loading: isLive ? loading : false,

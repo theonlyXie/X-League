@@ -16,8 +16,13 @@ export default function Terms() {
 
       <h2>Who can use it</h2>
       <p>
-        You must be 18 or over. One person, one account, on one mobile number — an account is yours
-        and not to be shared or sold.
+        Anyone can play. If you are under 18 you need a parent or guardian&rsquo;s permission, and
+        by signing up you are saying you have it. One person, one account, on one mobile number —
+        an account is yours and not to be shared or sold.
+      </p>
+      <p>
+        Every cup states a minimum age, and it is <b>15</b> unless that cup says otherwise. A squad
+        with anybody under a cup&rsquo;s minimum cannot enter it, and the app names who.
       </p>
 
       <h2>Behaviour, and what happens when it goes wrong</h2>
