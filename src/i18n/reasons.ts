@@ -34,6 +34,16 @@ const digits = (s: string) => s.replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[
 
 /** Refusals assembled at runtime, matched before the exact table. */
 const PATTERNS: { re: RegExp; ar: (m: RegExpMatchArray) => string }[] = [
+  // Leaving is refused by naming the thing other people depend on, so the club
+  // and the venue arrive inside the sentence.
+  {
+    re: /^You captain (.+)\. Hand the club to somebody else before you leave\.$/,
+    ar: (m) => `إنت كابتن ${m[1]}. سلّم النادي لحد تاني الأول قبل ما تمشي.`,
+  },
+  {
+    re: /^You are the only owner of (.+)\. Add another owner before you leave\.$/,
+    ar: (m) => `إنت المالك الوحيد لـ${m[1]}. ضيف مالك تاني قبل ما تمشي.`,
+  },
   // The three notifications a two-sided result produces. They carry a score, so
   // they cannot be keyed on an exact sentence — and a notification is the one
   // piece of server text a person reads without having asked for it, which
@@ -120,6 +130,9 @@ const AR: Record<string, string> = {
     'النادي ده ما اتقبلش في إكس ليج.',
   'That venue is waiting to be verified.': 'الملعب ده مستني التوثيق.',
   'That club does not exist.': 'النادي ده مش موجود.',
+  'You cannot block yourself.': 'مينفعش تحظر نفسك.',
+  'That player does not exist.': 'اللاعب ده مش موجود.',
+  'You cannot message that player.': 'مينفعش تبعت للاعب ده.',
   'That cup does not exist.': 'البطولة دي مش موجودة.',
   'That cup has matches already played. It cannot be reopened for entries.':
     'البطولة دي فيها ماتشات اتلعبت. مينفعش تتفتح للاشتراك تاني.',

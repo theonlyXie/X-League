@@ -301,6 +301,25 @@ export async function myCard(): Promise<Card | null> {
 }
 
 /** PRO-002: the anchored assessment, which yields a provisional card. */
+/**
+ * Delete this account, for good.
+ *
+ * Not a flag and not a deactivation: the row goes, and every foreign key in
+ * the schema already says what becomes of what it touched — a person's own
+ * things go with them, and the places where somebody else's record depends on
+ * them keep the record without the name.
+ *
+ * It refuses in two cases, and both are somebody else's problem rather than a
+ * policy: a club captain and a venue's only owner are load-bearing for other
+ * people, so those have to be handed over first. The server says which.
+ */
+export async function deleteMyAccount(): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('delete_my_account');
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row?.ok ? { ok: true } : { ok: false, reason: row?.reason ?? undefined };
+}
+
 export async function submitSelfAssessment(
   position: string,
   answers: Record<string, number>,

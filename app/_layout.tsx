@@ -67,6 +67,7 @@ export default function RootLayout() {
                 of a screen behind it — here there is nothing behind it. */}
             <Stack.Screen name="sign-in" />
             <Stack.Screen name="open-a-venue" />
+            <Stack.Screen name="blocked" />
             <Stack.Screen name="onboarding" />
           </Stack>
           </RefreshProvider>

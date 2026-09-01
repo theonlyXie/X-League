@@ -18,6 +18,7 @@ import type { MatchEvidence } from '@/data/progress';
 import { CONFIDENCE_COPY } from '@/data/assessment';
 import { useI18n } from '@/i18n';
 import { useSession } from '@/state/session';
+import { deleteMyAccount } from '@/data/api';
 import { isLive } from '@/lib/supabase';
 import { pickAndUpload, setMyPhoto } from '@/lib/upload';
 
@@ -339,11 +340,24 @@ export default function Me() {
 
           {signedIn ? (
             <WorkspaceRow
+              title={t.blockedPlayers}
+              detail={t.blockedPlayersDetail}
+              onPress={() => router.push('/blocked')}
+            />
+          ) : null}
+
+          {signedIn ? (
+            <WorkspaceRow
               title={t.signOut}
               detail={displayName ? t.signedInAs(displayName) : t.endThisSession}
               onPress={() => void signOut()}
             />
           ) : null}
+
+          {/* Last, and on its own, because it is the one row here that cannot
+              be undone. Apple has required this since 2022 and there was
+              nothing anywhere in the app that removed a person. */}
+          {signedIn ? <DeleteAccount /> : null}
         </View>
       </View>
     </Screen>
@@ -660,6 +674,99 @@ function EvidenceBar({ label, pct, color }: { label: string; pct: number; color:
  * no caller in either client: nobody using this product could change their
  * password at all.
  */
+/**
+ * Leaving, and meaning it.
+ *
+ * Two taps, and the second one says what goes. The server refuses if this
+ * person is a club's captain or a venue's only owner, because those are other
+ * people's problems rather than theirs — and it says which, by name.
+ */
+function DeleteAccount() {
+  const { reason, t } = useI18n();
+  const { signOut } = useSession();
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const go = async () => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await deleteMyAccount();
+      if (!res.ok) {
+        setNotice(res.reason ? (reason(res.reason) ?? res.reason) : t.listUnreachable);
+        setBusy(false);
+        return;
+      }
+      // The row is gone; the session it was signing is meaningless now.
+      await signOut();
+    } catch {
+      setNotice(t.listUnreachable);
+      setBusy(false);
+    }
+  };
+
+  if (!asking) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t.deleteAccount}
+        onPress={() => setAsking(true)}
+        style={{ paddingVertical: 14, paddingHorizontal: 14 }}
+      >
+        <Txt size={13.5} weight="semibold" color={burgundy.action}>
+          {t.deleteAccount}
+        </Txt>
+        <Txt size={11.5} color={onVoid.faint}>
+          {t.deleteAccountDetail}
+        </Txt>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View
+      style={{
+        padding: 16,
+        borderRadius: radius.control,
+        borderWidth: 1,
+        borderColor: 'rgba(101,21,37,.5)',
+        backgroundColor: 'rgba(101,21,37,.09)',
+        gap: 12,
+      }}
+    >
+      <Txt size={15} weight="bold" color={onVoid.primary}>
+        {t.deleteAccountTitle}
+      </Txt>
+      <Txt size={12.5} lh={1.55} color={onVoid.secondary}>
+        {t.deleteAccountBlurb}
+      </Txt>
+      {notice ? (
+        <Txt size={12} lh={1.5} color={burgundy.action}>
+          {notice}
+        </Txt>
+      ) : null}
+      <View style={{ gap: 8 }}>
+        <Button
+          label={busy ? t.deleteAccountWorking : t.deleteAccountConfirm}
+          variant="danger"
+          disabled={busy}
+          onPress={() => void go()}
+        />
+        <Button
+          label={t.keepAccount}
+          variant="ghost"
+          disabled={busy}
+          onPress={() => {
+            setAsking(false);
+            setNotice(null);
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
 function ChangePassword() {
   const { reason, t } = useI18n();
   const [open, setOpen] = useState(false);
