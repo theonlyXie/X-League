@@ -97,8 +97,25 @@ export default function Privacy() {
         the address below and we will answer within 30 days.
       </p>
 
-      <h2>Age</h2>
-      <p>X League is for people aged 18 and over. We do not knowingly keep data about anybody younger.</p>
+      <h2>Age, and children</h2>
+      <p>
+        X League is open to players of any age, because football is. That means some of the people
+        here are children, and we treat that as the responsibility it is:
+      </p>
+      <ul>
+        <li>
+          A player under 18 needs a parent or guardian&rsquo;s permission to use X League, and a
+          parent or guardian may ask us for their child&rsquo;s data or its deletion at any time.
+        </li>
+        <li>
+          We ask for a <b>year of birth</b> rather than a date, because a year is all a
+          competition&rsquo;s minimum age needs and it is markedly less to hold about a child.
+        </li>
+        <li>
+          Every cup states a minimum age. It is 15 unless the cup says otherwise.
+        </li>
+        <li>We show no advertising to anybody, and we profile nobody.</li>
+      </ul>
 
       <h2>Changes</h2>
       <p>

@@ -5,7 +5,7 @@ import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
-import { ArrowLeft, Check } from '@/components/icons';
+import { ArrowLeft, Check, ChevronDown } from '@/components/icons';
 import { VoidMark } from '@/components/VoidMark';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { face } from '@/theme/typography';
@@ -15,6 +15,7 @@ import { myCard } from '@/data/api';
 import { myVenues } from '@/data/manage';
 import { COUNTRY_CODE, isEgyptianMobile, nationalDigits, toE164 } from '@/lib/phone';
 import { PRIVACY_URL, TERMS_URL, legalConfigured } from '@/lib/legal';
+import { GOVERNORATES } from '@/data/egypt';
 
 /**
  * P-01 Onboarding — signing in, and joining.
@@ -53,11 +54,16 @@ export default function SignIn() {
   const [name, setName] = useState('');
   const [venueName, setVenueName] = useState('');
   const [venueArea, setVenueArea] = useState('');
+  // A year, typed. A date picker for something forty years ago is four
+  // hundred taps, and the year is all a cup's minimum age needs.
+  const [birthYear, setBirthYear] = useState('');
+  const [gender, setGender] = useState<'man' | 'woman' | null>(null);
+  const [governorate, setGovernorate] = useState<string | null>(null);
   // Said out loud rather than buried in a sentence nobody reads. The terms
   // put the age at 18, the store rating has to agree with that, and a
   // confirmation somebody actually ticked is the only version of it that means
   // anything.
-  const [over18, setOver18] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,13 +71,20 @@ export default function SignIn() {
   // eight of anything, which passed `+20` followed by five stray characters
   // straight through to GoTrue.
   const phoneUsable = isEgyptianMobile(phone);
+  const thisYear = new Date().getFullYear();
+  const yearNumber = Number(birthYear);
+  const yearUsable =
+    /^\d{4}$/.test(birthYear) && yearNumber >= 1920 && yearNumber <= thisYear;
   const ready =
     mode === 'in'
       ? phoneUsable && password.length >= 8
       : phoneUsable &&
         password.length >= 8 &&
         name.trim().length >= 2 &&
-        over18 &&
+        yearUsable &&
+        !!gender &&
+        !!governorate &&
+        accepted &&
         (role === 'player' || (venueName.trim().length >= 2 && venueArea.trim().length >= 2));
 
   /**
@@ -120,6 +133,9 @@ export default function SignIn() {
             password,
             displayName: name,
             role,
+            birthYear: yearNumber,
+            gender,
+            governorate,
             venueName: role === 'venue_owner' ? venueName : undefined,
             venueArea: role === 'venue_owner' ? venueArea : undefined,
           });
@@ -199,6 +215,35 @@ export default function SignIn() {
             placeholder="Basel Elsayed"
             autoComplete="name"
           />
+        ) : null}
+
+        {mode === 'join' ? (
+          <Field
+            label={t.yourYearOfBirth}
+            value={birthYear}
+            onChangeText={(text) => setBirthYear(text.replace(/[^0-9]/g, '').slice(0, 4))}
+            placeholder="2001"
+            hint={t.yearOfBirthHint}
+            keyboardType="number-pad"
+          />
+        ) : null}
+
+        {mode === 'join' ? (
+          <View style={{ gap: 10 }}>
+            <Eyebrow>{t.yourGender}</Eyebrow>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Choice label={t.genderMan} on={gender === 'man'} onPress={() => setGender('man')} />
+              <Choice
+                label={t.genderWoman}
+                on={gender === 'woman'}
+                onPress={() => setGender('woman')}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        {mode === 'join' ? (
+          <GovernoratePicker value={governorate} onPick={setGovernorate} />
         ) : null}
 
         <Field
@@ -303,9 +348,9 @@ export default function SignIn() {
         <View style={{ gap: 10 }}>
           <Pressable
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: over18 }}
-            accessibilityLabel={t.over18}
-            onPress={() => setOver18((on) => !on)}
+            accessibilityState={{ checked: accepted }}
+            accessibilityLabel={t.acceptTerms}
+            onPress={() => setAccepted((on) => !on)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
           >
             <View
@@ -314,16 +359,16 @@ export default function SignIn() {
                 height: 22,
                 borderRadius: 6,
                 borderWidth: 1,
-                borderColor: over18 ? gold.base : goldAlpha.edge,
-                backgroundColor: over18 ? 'rgba(198,163,75,.16)' : void_.surface,
+                borderColor: accepted ? gold.base : goldAlpha.edge,
+                backgroundColor: accepted ? 'rgba(198,163,75,.16)' : void_.surface,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              {over18 ? <Check size={13} color={gold.base} /> : null}
+              {accepted ? <Check size={13} color={gold.base} /> : null}
             </View>
             <Txt size={13} color={onVoid.secondary}>
-              {t.over18}
+              {t.acceptTerms}
             </Txt>
           </Pressable>
 
@@ -452,6 +497,96 @@ function Field({
           {hint}
         </Txt>
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * Where you play.
+ *
+ * Twenty-seven governorates is too many for a row of chips and too few to be
+ * worth a search field, so it opens as a grid. Ordered by population rather
+ * than alphabetically: sorting by name puts a different governorate first
+ * depending on which language the app happens to be in, and whoever is first
+ * gets picked by people who do not read the rest.
+ *
+ * The code is what gets stored. A player who signs up in English and a venue
+ * registered in Arabic have to land in the same bucket, and free text never
+ * does — this database already holds `Nasr City`, `awsim` and `Awsim` as
+ * different places.
+ */
+function GovernoratePicker({
+  value,
+  onPick,
+}: {
+  value: string | null;
+  onPick: (code: string) => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const chosen = GOVERNORATES.find((g) => g.code === value);
+
+  return (
+    <View style={{ gap: 10 }}>
+      <Eyebrow>{t.whereYouLive}</Eyebrow>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={chosen ? t[chosen.label] : t.pickGovernorate}
+        onPress={() => setOpen((on) => !on)}
+        style={{
+          height: 52,
+          borderRadius: radius.control,
+          borderWidth: 1,
+          borderColor: chosen ? gold.base : goldAlpha.edge,
+          backgroundColor: void_.surface,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Txt size={15} weight="semibold" color={chosen ? onVoid.primary : onVoid.disabled}>
+          {chosen ? t[chosen.label] : t.pickGovernorate}
+        </Txt>
+        <ChevronDown size={18} color={onVoid.secondary} />
+      </Pressable>
+
+      {open ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {GOVERNORATES.map((g) => {
+            const on = g.code === value;
+            return (
+              <Pressable
+                key={g.code}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={t[g.label]}
+                onPress={() => {
+                  onPick(g.code);
+                  setOpen(false);
+                }}
+                style={{
+                  paddingVertical: 9,
+                  paddingHorizontal: 13,
+                  borderRadius: radius.pill,
+                  borderWidth: 1,
+                  borderColor: on ? gold.base : goldAlpha.edge,
+                  backgroundColor: on ? 'rgba(198,163,75,.14)' : void_.surface,
+                }}
+              >
+                <Txt size={13} weight="semibold" color={on ? gold.base : onVoid.secondary}>
+                  {t[g.label]}
+                </Txt>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      <Txt size={11.5} color={onVoid.faint}>
+        {t.whereYouLiveHint}
+      </Txt>
     </View>
   );
 }
