@@ -3,6 +3,7 @@ import * as api from '@/data/api';
 import { myCardEvidence, myMatchEvidence, type CardEvidence, type MatchEvidence } from '@/data/progress';
 import { myBookings, type PastBooking } from '@/data/discovery';
 import { isLive } from '@/lib/supabase';
+import { useRefreshTick } from '@/state/refresh';
 import { useSession } from '@/state/session';
 
 /**
@@ -98,9 +99,11 @@ export function CardProvider({ children }: { children: ReactNode }) {
     }
   }, [signedIn]);
 
+  // The refresh button, and the first load, through the same door.
+  const tick = useRefreshTick();
   useEffect(() => {
     void reload();
-  }, [reload]);
+  }, [reload, tick]);
 
   const value = useMemo<CardContextValue>(
     () => ({

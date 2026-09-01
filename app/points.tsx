@@ -8,6 +8,7 @@ import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, onVoid, radius } from '@/theme/tokens';
 import { myPoints, type PointEntry } from '@/data/progress';
 import { useI18n } from '@/i18n';
+import { useRefreshTick } from '@/state/refresh';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 
@@ -25,6 +26,8 @@ export default function Points() {
   const { t, num, shortDate } = useI18n();
   const { signedIn } = useSession();
 
+  // The refresh button in the top bar.
+  const tick = useRefreshTick();
   const [rows, setRows] = useState<PointEntry[]>([]);
   const [loading, setLoading] = useState(isLive && signedIn);
   const [unreachable, setUnreachable] = useState(false);
@@ -55,7 +58,7 @@ export default function Points() {
     return () => {
       cancelled = true;
     };
-  }, [signedIn]);
+  }, [signedIn, tick]);
 
   const label = (kind: PointEntry['kind']) =>
     ({

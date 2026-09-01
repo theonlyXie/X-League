@@ -11,6 +11,7 @@ import {
   type Notification,
 } from '@/data/social';
 import { useI18n } from '@/i18n';
+import { useRefreshTick } from '@/state/refresh';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 
@@ -32,6 +33,8 @@ export default function Notifications() {
   // than to silence.
   const { t, hour, shortDate, reason: say } = useI18n();
 
+  // The refresh button in the top bar.
+  const tick = useRefreshTick();
   const [rows, setRows] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(isLive);
   /** §4.7: a list we could not read is not an empty list. */
@@ -69,7 +72,7 @@ export default function Notifications() {
     return () => {
       cancelled = true;
     };
-  }, [nonce, signedIn]);
+  }, [nonce, signedIn, tick]);
 
   const open = (n: Notification) => {
     void markNotificationsRead(n.notificationId);

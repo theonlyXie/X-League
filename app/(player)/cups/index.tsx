@@ -19,6 +19,7 @@ import {
 import { featuredClubs, tournamentRegions, type FeaturedClub, type Region } from '@/data/board';
 import { useSession } from '@/state/session';
 import { useI18n } from '@/i18n';
+import { useRefreshTick } from '@/state/refresh';
 import { isLive } from '@/lib/supabase';
 
 /**
@@ -33,6 +34,8 @@ export default function Cups() {
   const { signedIn } = useSession();
   const { t, num, money, shortDate, moment } = useI18n();
 
+  // The refresh button in the top bar.
+  const tick = useRefreshTick();
   const [all, setAll] = useState<TournamentSummary[]>([]);
   const [mine, setMine] = useState<MyTournament[]>([]);
   const [matches, setMatches] = useState<MyCupFixture[]>([]);
@@ -80,7 +83,7 @@ export default function Cups() {
     return () => {
       cancelled = true;
     };
-  }, [signedIn, nonce, place]);
+  }, [signedIn, nonce, place, tick]);
 
   // A cancelled cup used to fall through to "Running", which is the one thing
   // it certainly is not. The list no longer carries them, but a cup opened by

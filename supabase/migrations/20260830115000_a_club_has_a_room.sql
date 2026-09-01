@@ -1,0 +1,16 @@
+-- A club can talk to itself. (1 of 2 — the enum value alone.)
+--
+-- "Chats are not working" turned out to be true in a way no error message could
+-- say: there was no way to start one. A room came into existence from a booking
+-- lobby or from a team and nothing else — the chat list even carries a comment
+-- saying there is deliberately no "new message" button, because there is no way
+-- to open a conversation with a stranger.
+--
+-- Clubs arrived later and never got a room, so the one group of people who most
+-- need to talk — the squad entering a cup together — had no way in at all.
+-- Somebody who founds a club, invites their friends and opens Chats finds it
+-- empty and concludes messaging is broken. It was.
+--
+-- This is its own migration because a new enum value cannot be used in the same
+-- transaction that adds it; everything that uses `'club'` is in the next one.
+alter type conversation_kind add value if not exists 'club';

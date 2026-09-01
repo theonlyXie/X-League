@@ -20,6 +20,7 @@ import { View } from 'react-native';
 import { BookingProvider } from '@/state/booking';
 import { SessionProvider, useSession } from '@/state/session';
 import { CardProvider } from '@/state/card';
+import { RefreshProvider } from '@/state/refresh';
 import { I18nProvider } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 import { void_ } from '@/theme/tokens';
@@ -47,6 +48,7 @@ export default function RootLayout() {
         <SessionProvider>
         <CardProvider>
           <BookingProvider>
+          <RefreshProvider>
           <StatusBar style="light" />
           <Gate />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
@@ -63,6 +65,7 @@ export default function RootLayout() {
             <Stack.Screen name="open-a-venue" />
             <Stack.Screen name="onboarding" />
           </Stack>
+          </RefreshProvider>
           </BookingProvider>
         </CardProvider>
         </SessionProvider>

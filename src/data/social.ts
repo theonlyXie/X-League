@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
  * can call them on mount without accumulating empty rooms.
  */
 
-export type ConversationKind = 'lobby' | 'team' | 'direct';
+export type ConversationKind = 'lobby' | 'team' | 'club' | 'direct';
 
 export type ConversationSummary = {
   conversationId: string;
@@ -20,6 +20,7 @@ export type ConversationSummary = {
   unread: number;
   bookingId: string | null;
   teamId: string | null;
+  clubId: string | null;
 };
 
 export async function myConversations(limit = 30): Promise<ConversationSummary[]> {
@@ -34,6 +35,7 @@ export async function myConversations(limit = 30): Promise<ConversationSummary[]
     unread: r.unread,
     bookingId: r.booking_id,
     teamId: r.team_id,
+    clubId: r.club_id ?? null,
   }));
 }
 
@@ -102,6 +104,17 @@ export async function teamConversation(teamId: string): Promise<OpenResult> {
  * MSG-002: refused unless the two have shared a team or a pitch. The reason
  * comes back as copy the screen can show, because "no" needs to be explainable.
  */
+/**
+ * A club's own room. The squad that enters a cup together is the group that
+ * most needs somewhere to talk, and until this existed a conversation could
+ * only come from a booking lobby or a team — so a club had no way in at all.
+ */
+export async function clubConversation(clubId: string): Promise<OpenResult> {
+  const { data, error } = await supabase().rpc('club_conversation', { p_club_id: clubId });
+  if (error) throw error;
+  return toOpen((data as any[])[0]);
+}
+
 export async function directConversation(playerId: string): Promise<OpenResult> {
   const { data, error } = await supabase().rpc('direct_conversation', { p_player_id: playerId });
   if (error) throw error;

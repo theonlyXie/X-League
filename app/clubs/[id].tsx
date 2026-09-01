@@ -23,6 +23,7 @@ import {
   type Honour,
   type SlotKind,
 } from '@/data/clubs';
+import { clubConversation } from '@/data/social';
 import { pickAndUpload } from '@/lib/upload';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
@@ -110,6 +111,23 @@ export default function ClubPage() {
       setBusy(false);
       setOpen(null);
       reload();
+    }
+  }
+
+  // The way into the club's room. Opening it is idempotent on the server, so
+  // this is safe to press repeatedly and never makes a second empty room.
+  async function openRoom() {
+    if (!club || busy) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await clubConversation(club.clubId);
+      if (res.ok && res.conversationId) router.push(`/chat/${res.conversationId}`);
+      else setNotice(reason(res.reason) ?? t.offline);
+    } catch {
+      setNotice(t.offline);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -330,6 +348,16 @@ export default function ClubPage() {
               {t.needFive}
             </Txt>
           ) : null}
+
+          {/* Every member gets the room, not only the captain: the squad is
+              the point of a club, and a chat one person can open is a notice
+              board. */}
+          <Button
+            label={t.clubRoom}
+            variant="ghost"
+            disabled={busy}
+            onPress={openRoom}
+          />
 
           {canManage ? (
             <View style={{ flexDirection: 'row', gap: 10 }}>

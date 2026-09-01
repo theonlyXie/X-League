@@ -8,6 +8,7 @@ import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { myConversations, type ConversationSummary } from '@/data/social';
 import { useSession } from '@/state/session';
 import { useI18n } from '@/i18n';
+import { useRefreshTick } from '@/state/refresh';
 import { isLive } from '@/lib/supabase';
 
 /**
@@ -23,6 +24,8 @@ export default function ChatList() {
   const { signedIn } = useSession();
   const { t, num, hour, shortDate } = useI18n();
 
+  // The refresh button in the top bar.
+  const tick = useRefreshTick();
   const [rooms, setRooms] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(isLive);
   /** §4.7: a list we could not read is not an empty list. */
@@ -59,7 +62,7 @@ export default function ChatList() {
     return () => {
       cancelled = true;
     };
-  }, [signedIn, nonce]);
+  }, [signedIn, nonce, tick]);
 
   const sameDay = (iso: string) =>
     new Date(iso).toDateString() === new Date().toDateString();
@@ -100,6 +103,13 @@ export default function ChatList() {
           <Txt size={12.5} lh={1.55} color={onVoid.muted}>
             {unreachable ? t.listUnreachableBlurb : t.noConversationsBlurb}
           </Txt>
+          {/* An empty list that only explains itself is still a dead end. */}
+          {!unreachable ? (
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <Button label={t.clubs} height={42} variant="ghost" onPress={() => router.push('/clubs')} />
+              <Button label={t.teamsTitle} height={42} variant="ghost" onPress={() => router.push('/teams')} />
+            </View>
+          ) : null}
         </View>
       ) : null}
 
