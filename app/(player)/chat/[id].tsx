@@ -8,10 +8,12 @@ import { Button } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
 import {
+  blockPlayer,
   conversationMessages,
   markConversationRead,
   myConversations,
   sendMessage,
+  submitReport,
   type Message,
 } from '@/data/social';
 import { useI18n } from '@/i18n';
@@ -37,6 +39,8 @@ export default function Thread() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  /** The message somebody long-pressed, if any. */
+  const [acting, setActing] = useState<Message | null>(null);
   const scroller = useRef<ScrollView | null>(null);
 
   const load = useCallback(async () => {
@@ -132,8 +136,15 @@ export default function Thread() {
         ) : null}
 
         {ordered.map((m) => (
-          <View
+          <Pressable
             key={m.messageId}
+            accessibilityRole="button"
+            accessibilityLabel={m.mine ? m.body : t.messageActions}
+            // Apple 1.2 asks for a way to report content and a way to block
+            // the person who wrote it. Long-press is where people look for it,
+            // and there is nothing to do to your own message.
+            onLongPress={m.mine || !m.senderId ? undefined : () => setActing(m)}
+            delayLongPress={350}
             style={{
               alignSelf: m.mine ? 'flex-end' : 'flex-start',
               maxWidth: '82%',
@@ -162,9 +173,21 @@ export default function Thread() {
             <Txt size={10} color={onVoid.dim} style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start' }}>
               {hour(m.at)}
             </Txt>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
+
+      {acting ? (
+        <MessageActions
+          message={acting}
+          onClose={() => setActing(null)}
+          onDone={(said) => {
+            setActing(null);
+            setNotice(said);
+            void load();
+          }}
+        />
+      ) : null}
 
       {notice ? (
         <Txt size={12} color={burgundy.action} style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
@@ -223,5 +246,86 @@ export default function Thread() {
         />
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+/**
+ * What you can do about somebody else's message.
+ *
+ * The two things the store rule for user-generated content actually asks for,
+ * in the place a person looks for them. Reporting goes to the same queue the
+ * console already works from; blocking takes their messages out of this room
+ * and stops them opening a direct one, and they are not told.
+ */
+function MessageActions({
+  message,
+  onClose,
+  onDone,
+}: {
+  message: Message;
+  onClose: () => void;
+  onDone: (said: string) => void;
+}) {
+  const { reason, t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const run = async (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await fn();
+      if (res.ok) onDone(said);
+      else setNotice(res.reason ? (reason(res.reason) ?? res.reason) : t.reportFailed);
+    } catch {
+      setNotice(t.offline);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View
+      style={{
+        marginHorizontal: 20,
+        marginBottom: 10,
+        padding: 14,
+        borderRadius: radius.control,
+        borderWidth: 1,
+        borderColor: onVoid.edge,
+        backgroundColor: void_.surface,
+        gap: 10,
+      }}
+    >
+      <Txt size={12.5} color={onVoid.muted} numberOfLines={2}>
+        {message.senderName}: {message.body}
+      </Txt>
+
+      {notice ? (
+        <Txt size={12} color={burgundy.action}>
+          {notice}
+        </Txt>
+      ) : null}
+
+      <Button
+        label={t.reportMessage}
+        variant="ghost"
+        height={42}
+        disabled={busy}
+        onPress={() =>
+          void run(() => submitReport('message', message.messageId, 'abuse'), t.reportSent)
+        }
+      />
+      <Button
+        label={t.blockPlayer}
+        variant="danger"
+        height={42}
+        disabled={busy || !message.senderId}
+        onPress={() =>
+          void run(() => blockPlayer(message.senderId!), t.blockBlurb)
+        }
+      />
+      <Button label={t.close} variant="ghost" height={42} disabled={busy} onPress={onClose} />
+    </View>
   );
 }

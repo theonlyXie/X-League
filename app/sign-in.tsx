@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
+import { ArrowLeft, Check } from '@/components/icons';
 import { VoidMark } from '@/components/VoidMark';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { face } from '@/theme/typography';
@@ -14,6 +14,7 @@ import { useI18n } from '@/i18n';
 import { myCard } from '@/data/api';
 import { myVenues } from '@/data/manage';
 import { COUNTRY_CODE, isEgyptianMobile, nationalDigits, toE164 } from '@/lib/phone';
+import { PRIVACY_URL, TERMS_URL, legalConfigured } from '@/lib/legal';
 
 /**
  * P-01 Onboarding — signing in, and joining.
@@ -52,6 +53,11 @@ export default function SignIn() {
   const [name, setName] = useState('');
   const [venueName, setVenueName] = useState('');
   const [venueArea, setVenueArea] = useState('');
+  // Said out loud rather than buried in a sentence nobody reads. The terms
+  // put the age at 18, the store rating has to agree with that, and a
+  // confirmation somebody actually ticked is the only version of it that means
+  // anything.
+  const [over18, setOver18] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +71,7 @@ export default function SignIn() {
       : phoneUsable &&
         password.length >= 8 &&
         name.trim().length >= 2 &&
+        over18 &&
         (role === 'player' || (venueName.trim().length >= 2 && venueArea.trim().length >= 2));
 
   /**
@@ -289,11 +296,66 @@ export default function SignIn() {
         </Pressable>
       ) : null}
 
-      {/* AUTH-004: acceptance is recorded against a version. */}
+      {/* AUTH-004: acceptance is recorded against a version. The documents are
+          published and linked now, because a sentence promising terms with
+          nothing to tap is what a reviewer reads as a missing document. */}
       {mode === 'join' ? (
-        <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
-          {t.authTerms}
-        </Txt>
+        <View style={{ gap: 10 }}>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: over18 }}
+            accessibilityLabel={t.over18}
+            onPress={() => setOver18((on) => !on)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+          >
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: over18 ? gold.base : goldAlpha.edge,
+                backgroundColor: over18 ? 'rgba(198,163,75,.16)' : void_.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {over18 ? <Check size={13} color={gold.base} /> : null}
+            </View>
+            <Txt size={13} color={onVoid.secondary}>
+              {t.over18}
+            </Txt>
+          </Pressable>
+
+          <Txt size={11.5} lh={1.6} color="rgba(243,238,229,.38)">
+            {t.authTerms}
+          </Txt>
+
+          {legalConfigured ? (
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={t.termsLink}
+                hitSlop={8}
+                onPress={() => void Linking.openURL(TERMS_URL)}
+              >
+                <Txt size={12} weight="semibold" color={gold.base}>
+                  {t.termsLink}
+                </Txt>
+              </Pressable>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={t.privacyLink}
+                hitSlop={8}
+                onPress={() => void Linking.openURL(PRIVACY_URL)}
+              >
+                <Txt size={12} weight="semibold" color={gold.base}>
+                  {t.privacyLink}
+                </Txt>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
       ) : null}
 
       {busy ? <ActivityIndicator color={gold.base} /> : null}

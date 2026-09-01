@@ -458,3 +458,74 @@ tr:last-child td {
   color: var(--ink-faint);
   margin-top: 3px;
 }
+
+/* --- the public documents ----------------------------------------------- */
+
+/* Privacy, terms and account deletion are the only pages here that are not the
+   console: no session, no shell, and read by people who are not operators. */
+.legal {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 22px 96px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.legal header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.legal .eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+  font-weight: 600;
+}
+
+.legal h1 {
+  margin: 0 0 6px;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+}
+
+.legal h2 {
+  margin: 32px 0 8px;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.legal p,
+.legal li {
+  color: var(--ink-secondary);
+}
+
+.legal .lede {
+  font-size: 17px;
+  color: var(--ink);
+}
+
+.legal ul,
+.legal ol {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.legal b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.legal footer {
+  margin-top: 44px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

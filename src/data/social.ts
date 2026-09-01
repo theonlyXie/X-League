@@ -115,6 +115,59 @@ export async function clubConversation(clubId: string): Promise<OpenResult> {
   return toOpen((data as any[])[0]);
 }
 
+/** Silence a room without leaving it. */
+export async function muteConversation(
+  conversationId: string,
+  muted: boolean,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('mute_conversation', {
+    p_conversation_id: conversationId,
+    p_muted: muted,
+  });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row?.ok ? { ok: true } : { ok: false, reason: row?.reason ?? undefined };
+}
+
+export type Blocked = {
+  playerId: string;
+  displayName: string;
+  photoUrl: string | null;
+  since: string;
+};
+
+/**
+ * Blocking, which the app had no way to do.
+ *
+ * A blocked person's messages stop existing for the person who blocked them,
+ * and in a room of two the message is refused outright. The blocked person is
+ * never told — that is the point of it.
+ */
+export async function blockPlayer(playerId: string): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('block_player', { p_player_id: playerId });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row?.ok ? { ok: true } : { ok: false, reason: row?.reason ?? undefined };
+}
+
+export async function unblockPlayer(playerId: string): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('unblock_player', { p_player_id: playerId });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return row?.ok ? { ok: true } : { ok: false, reason: row?.reason ?? undefined };
+}
+
+export async function myBlocks(): Promise<Blocked[]> {
+  const { data, error } = await supabase().rpc('my_blocks');
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    playerId: r.player_id,
+    displayName: r.display_name,
+    photoUrl: r.photo_url ?? null,
+    since: r.since,
+  }));
+}
+
 export async function directConversation(playerId: string): Promise<OpenResult> {
   const { data, error } = await supabase().rpc('direct_conversation', { p_player_id: playerId });
   if (error) throw error;
