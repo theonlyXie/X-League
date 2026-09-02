@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "remote"
+    "//": "local, so app.json's version and versionCode are the single source of what a build is called. 'remote' would let EAS keep its own counter, which the Gradle build in CI does not read and could not agree with.",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -9,24 +10,28 @@
       "distribution": "internal",
       "android": { "buildType": "apk" }
     },
+    "//": "No `env` block on any profile, deliberately. `.env.production` is the configuration; an environment variable set here would be set before the env loader runs, and an already-set variable is never overridden by a .env file. That is exactly how every APK CI built for a fortnight shipped with no database in it.",
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "android": {
-        "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://ymuknkhapibmtqkrlmia.supabase.co"
-      }
+      "android": { "buildType": "apk" },
+      "ios": { "simulator": true }
     },
     "production": {
       "channel": "production",
-      "android": {
-        "buildType": "app-bundle"
+      "autoIncrement": false,
+      "android": { "buildType": "app-bundle" },
+      "ios": {
+        "//": "Needs an Apple Developer membership. EAS creates the certificate and the provisioning profile itself the first time this runs.",
+        "resourceClass": "m-medium"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "//": "Filled in when the store records exist: ascAppId and appleTeamId for Apple, a service-account key path for Play.",
+      "ios": {},
+      "android": {}
+    }
   }
 }

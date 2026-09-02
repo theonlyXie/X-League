@@ -40,7 +40,14 @@ const tracked = sh('git', ['ls-files']).split('\n').filter(Boolean);
 // A service-role key is the whole database with the locks off. It is not used
 // anywhere in this project, and the day it is committed is the day the project
 // ends, so this is checked first and hardest.
-const serviceRole = sh('git', ['grep', '-lI', '-E', 'sb_secret_|service_role_key|SUPABASE_SERVICE_ROLE', '--', '.'])
+// This file is excluded from the two scans below, and only those two. It has to
+// contain the patterns it looks for, so without the exclusion the checker
+// reports itself — which it did, the first time it ran against a tree where it
+// was tracked. A tool that cries wolf about its own source is a tool people
+// learn to ignore.
+const SELF = ':!scripts/security-check.mjs';
+
+const serviceRole = sh('git', ['grep', '-lI', '-E', 'sb_secret_|service_role_key|SUPABASE_SERVICE_ROLE', '--', '.', SELF])
   .split('\n')
   .filter(Boolean);
 if (serviceRole.length) {
@@ -48,7 +55,7 @@ if (serviceRole.length) {
 }
 
 // `-e` because the pattern starts with a dash and git would read it as a flag.
-const privateKeys = sh('git', ['grep', '-lI', '-E', '-e', '-----BEGIN [A-Z ]*PRIVATE KEY', '--', '.'])
+const privateKeys = sh('git', ['grep', '-lI', '-E', '-e', '-----BEGIN [A-Z ]*PRIVATE KEY', '--', '.', SELF])
   .split('\n')
   .filter(Boolean);
 if (privateKeys.length) {

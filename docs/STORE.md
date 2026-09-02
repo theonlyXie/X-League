@@ -97,34 +97,106 @@ an app bundle; it has never been run, because that needs credentials.
 
 ## Apple, from nothing
 
-1. Apple Developer Program membership, and an organisation enrolment if the app
-   is published as X League rather than as a person.
-2. Register the bundle identifier `com.xleague.app`.
-3. A build. `eas build -p ios --profile production` needs the membership and
-   will create the certificate and profile itself.
-4. An App Store Connect record, then TestFlight, then the listing: name,
-   subtitle, description, keywords, support URL, privacy policy URL, screenshots.
-5. Privacy nutrition labels, and the age rating questionnaire.
-6. The demo account below goes in App Review Information, with the notes.
+Nothing here can be done from this repository, because every step needs an
+account that does not exist yet. `eas.json` now has a production profile that
+builds for iOS, so once the membership is in place the build command is one
+line — but the membership is the gate, and there is no way around it. A Mac is
+not needed; EAS builds on its own.
+
+**1 · Apple Developer Program membership**, $99 a year. Enrol as an
+organisation rather than an individual if the app is to be published as X League
+— that needs a D-U-N-S number and takes days to weeks, so start it first. This
+is the long pole in the whole submission.
+
+**2 · Register the bundle identifier** `com.xleague.app` in the developer
+portal. It already matches `app.json`.
+
+**3 · Build.** `npx eas login`, then:
+
+```
+npx eas build --platform ios --profile production
+```
+
+EAS creates the distribution certificate and the provisioning profile itself the
+first time, from the Apple account you sign in with. Nothing needs a Mac.
+
+**4 · App Store Connect**: create the app record, upload the build (`eas submit
+-p ios`), put it through TestFlight, then fill the listing — name, subtitle,
+description, keywords, support URL, privacy policy URL, screenshots.
+
+**5 · Privacy nutrition labels and the age rating questionnaire**, matching the
+privacy policy. The demo account below goes in App Review Information along with
+the review notes.
 
 Two things that are already right and worth not undoing: sign-in is a phone
 number and a password with no third-party login, so **Sign in with Apple is not
 required**; and a cup's entry fee buys a place in a real football match, which is
 a physical service, so it is **outside in-app purchase** rather than a 3.1.1
-violation. Neither of those is true any more if a social login or a digital
-subscription is added.
+violation. Neither stays true if a social login or a digital subscription is
+added.
 
-## Play, from a debug APK
+## Play, from here
 
-1. A Play Console developer account, and an upload key — let Play App Signing
-   hold the app key.
-2. `eas build -p android --profile production` for a signed `.aab`.
-3. Internal testing, then **closed testing**. A personal developer account
-   opened since November 2023 must run closed testing with a minimum number of
-   testers for fourteen continuous days before it may apply for production
-   access. An organisation account is exempt. Check which kind yours is before
-   planning the launch date, because this is a two-week wall, not a form.
-4. Store listing, Data safety form, content rating questionnaire, screenshots.
+The signing is now wired. `plugins/withReleaseSigning.js` adds a release signing
+config to the generated Gradle project — the native folder is generated rather
+than committed, so it had to be a config plugin; editing `build.gradle` by hand
+would survive exactly until the next `--clean`. When the four properties are
+absent it falls back to the debug key, which is what keeps the credential-free
+APK workflow working.
+
+**1 · Make the upload key.** Once, on your own machine. Keep the file and both
+passwords somewhere you will still have them in five years — losing the upload
+key means asking Google to reset it, and losing the *app* key means never
+updating the app again. (Let Play App Signing hold the app key; this is only the
+upload key.)
+
+```
+keytool -genkeypair -v \
+  -keystore x-league-upload.jks \
+  -alias x-league \
+  -keyalg RSA -keysize 4096 -validity 10000 \
+  -storetype JKS
+```
+
+**2 · Put it in the repository's secrets**, at Settings → Secrets and variables
+→ Actions. The key itself never enters the repository.
+
+```
+base64 -w0 x-league-upload.jks     # macOS: base64 -i x-league-upload.jks
+```
+
+| Secret | Value |
+|---|---|
+| `XLEAGUE_UPLOAD_KEYSTORE_BASE64` | the output of the line above |
+| `XLEAGUE_UPLOAD_STORE_PASSWORD` | the keystore password |
+| `XLEAGUE_UPLOAD_KEY_ALIAS` | `x-league` |
+| `XLEAGUE_UPLOAD_KEY_PASSWORD` | the key password |
+
+**3 · Run the *Android release* workflow** from the Actions tab. It stops at the
+first step if a secret is missing, builds an `.aab` and a matching `.apk`, and
+then refuses to publish either if the certificate turns out to be
+`CN=Android Debug` or if the bundle has no database in it. The run summary
+prints the certificate's SHA-256, which is what you register with anything that
+checks the app's signature.
+
+To build one locally instead, put the same four values in
+`~/.gradle/gradle.properties` as `XLEAGUE_UPLOAD_STORE_FILE`,
+`XLEAGUE_UPLOAD_STORE_PASSWORD`, `XLEAGUE_UPLOAD_KEY_ALIAS` and
+`XLEAGUE_UPLOAD_KEY_PASSWORD`, then `npx expo prebuild -p android --clean &&
+cd android && ./gradlew bundleRelease`.
+
+**4 · Bump the version before each upload.** `app.json` holds `version` and
+`android.versionCode`, and Play refuses a `versionCode` it has already seen.
+`eas.json` is set to `appVersionSource: local` so nothing keeps a second counter
+that could disagree.
+
+**5 · Then the console**: developer account, upload the bundle to internal
+testing, then closed testing. A personal developer account opened since November
+2023 must run closed testing with a minimum number of testers for **fourteen
+continuous days** before it may apply for production access. An organisation
+account is exempt. Check which kind yours is before choosing a launch date,
+because this is a two-week wall rather than a form. Then the store listing, the
+Data safety form, the content rating questionnaire and the screenshots.
 
 ## Done in the app
 

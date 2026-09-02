@@ -1,0 +1,152 @@
+# Builds the signed app bundle Play actually accepts.
+#
+# Separate from the APK workflow on purpose. That one exists so anybody can
+# install the app on a phone and needs no credentials at all; this one produces
+# something publishable and cannot run without the upload key. Neither should be
+# able to turn into the other by accident: an APK signed with the debug key
+# looks identical to a real one until Play refuses it.
+#
+# Four secrets are required, and the run stops at the first step if any is
+# missing rather than falling through to a build that would be debug-signed:
+#
+#   XLEAGUE_UPLOAD_KEYSTORE_BASE64   base64 of the .jks file
+#   XLEAGUE_UPLOAD_STORE_PASSWORD
+#   XLEAGUE_UPLOAD_KEY_ALIAS
+#   XLEAGUE_UPLOAD_KEY_PASSWORD
+#
+# docs/STORE.md has the command that makes the keystore and the one that
+# base64s it. The key itself never enters this repository.
+name: Android release
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # Before anything is built, rather than after forty minutes of Gradle.
+      - name: Refuse to build without the upload key
+        env:
+          KEYSTORE: ${{ secrets.XLEAGUE_UPLOAD_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.XLEAGUE_UPLOAD_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.XLEAGUE_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.XLEAGUE_UPLOAD_KEY_PASSWORD }}
+        run: |
+          missing=""
+          [ -n "$KEYSTORE" ]       || missing="$missing XLEAGUE_UPLOAD_KEYSTORE_BASE64"
+          [ -n "$STORE_PASSWORD" ] || missing="$missing XLEAGUE_UPLOAD_STORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ]      || missing="$missing XLEAGUE_UPLOAD_KEY_ALIAS"
+          [ -n "$KEY_PASSWORD" ]   || missing="$missing XLEAGUE_UPLOAD_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            echo "::error::See docs/STORE.md — a release signed with the debug key is not publishable."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+
+      - name: Check
+        run: npm run check
+
+      - name: Generate the native project
+        run: npx expo prebuild --platform android --clean
+
+      # Written outside the working directory so no step can archive it, and
+      # deleted whether or not the build succeeds.
+      - name: Unpack the upload key
+        run: |
+          echo "${{ secrets.XLEAGUE_UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          test -s "$RUNNER_TEMP/upload.jks" || { echo "::error::The keystore secret did not decode."; exit 1; }
+
+      # `.env.production` is the configuration, and nothing here may shadow it —
+      # the same rule as the APK workflow, for the same reason: an already-set
+      # environment variable is never overridden by a .env file, and the build
+      # that taught us this shipped with no database in it.
+      - name: Build the bundle and an APK
+        working-directory: android
+        run: |
+          ./gradlew bundleRelease assembleRelease --no-daemon \
+            -PXLEAGUE_UPLOAD_STORE_FILE="$RUNNER_TEMP/upload.jks" \
+            -PXLEAGUE_UPLOAD_STORE_PASSWORD="${{ secrets.XLEAGUE_UPLOAD_STORE_PASSWORD }}" \
+            -PXLEAGUE_UPLOAD_KEY_ALIAS="${{ secrets.XLEAGUE_UPLOAD_KEY_ALIAS }}" \
+            -PXLEAGUE_UPLOAD_KEY_PASSWORD="${{ secrets.XLEAGUE_UPLOAD_KEY_PASSWORD }}"
+
+      # The whole point of this workflow. A release signed with the debug key
+      # builds, installs and runs, and is refused at upload — so it is checked
+      # here, against the artefact, rather than assumed from the fact that four
+      # properties were passed in.
+      - name: Refuse to publish a debug-signed build
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          CERT=$(keytool -printcert -jarfile "$AAB" 2>/dev/null)
+          echo "$CERT" | grep -E "Owner:|SHA256:" || true
+          if echo "$CERT" | grep -q "CN=Android Debug"; then
+            echo "::error::This bundle carries the Android debug certificate. Play will refuse it."
+            exit 1
+          fi
+          if [ -z "$CERT" ]; then
+            echo "::error::The bundle is not signed at all."
+            exit 1
+          fi
+
+      - name: Refuse to ship a build with no database
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          unzip -p "$APK" assets/index.android.bundle > /tmp/bundle.hbc
+          URL=$(grep -oP '(?<=^EXPO_PUBLIC_SUPABASE_URL=).*' .env.production)
+          KEY=$(grep -oP '(?<=^EXPO_PUBLIC_SUPABASE_ANON_KEY=).*' .env.production)
+          fail=0
+          grep -qF "$URL" /tmp/bundle.hbc || { echo "::error::The Supabase URL is not in the bundle."; fail=1; }
+          grep -qF "$KEY" /tmp/bundle.hbc || { echo "::error::The Supabase key is not in the bundle."; fail=1; }
+          if [ "$fail" = 1 ]; then
+            echo "::error::This build would install, open, show no cups and offer nobody a way to sign in."
+            exit 1
+          fi
+
+      - name: Report what was built
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          {
+            echo "### Signed for Play"
+            echo '```'
+            keytool -printcert -jarfile "$AAB" 2>/dev/null | grep -E "Owner:|Valid from:|SHA256:" || true
+            "$ANDROID_HOME"/build-tools/*/aapt2 dump badging \
+              android/app/build/outputs/apk/release/app-release.apk \
+              | grep -E "^package|^application-label:|uses-permission" || true
+            ls -lh "$AAB" | awk '{print "bundle size: " $5}'
+            echo '```'
+            echo "Upload the .aab to Play. The .apk is the same build, for installing on a phone."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Shred the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x-league-${{ github.sha }}-play
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
