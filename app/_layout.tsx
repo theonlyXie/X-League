@@ -22,9 +22,14 @@ import { SessionProvider, useSession } from '@/state/session';
 import { CardProvider } from '@/state/card';
 import { RefreshProvider } from '@/state/refresh';
 import { Boundary } from '@/components/Boundary';
+import { installLastResortHandler } from '@/lib/lastResort';
 import { I18nProvider } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 import { void_ } from '@/theme/tokens';
+
+// Installed once, at module scope, so it is in place before anything renders
+// and before any effect has had a chance to throw.
+installLastResortHandler();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -59,6 +64,9 @@ export default function RootLayout() {
             <Stack.Screen name="(player)" />
             <Stack.Screen name="owner" />
             <Stack.Screen name="teams" />
+            {/* The only top-level route that was never declared here. Every
+                other one is, and clubs is the one that crashes. */}
+            <Stack.Screen name="clubs" />
             <Stack.Screen name="bookings" />
             <Stack.Screen name="notifications" />
             <Stack.Screen name="points" />
