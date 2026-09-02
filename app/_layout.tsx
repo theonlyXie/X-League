@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Stack, usePathname, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -16,13 +16,14 @@ import {
   IBMPlexSansArabic_600SemiBold,
   IBMPlexSansArabic_700Bold,
 } from '@expo-google-fonts/ibm-plex-sans-arabic';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { BookingProvider } from '@/state/booking';
 import { SessionProvider, useSession } from '@/state/session';
 import { CardProvider } from '@/state/card';
 import { RefreshProvider } from '@/state/refresh';
 import { Boundary } from '@/components/Boundary';
 import { installLastResortHandler } from '@/lib/lastResort';
+import { noteScreen, takeCrash } from '@/lib/breadcrumb';
 import { I18nProvider } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 import { void_ } from '@/theme/tokens';
@@ -60,12 +61,14 @@ export default function RootLayout() {
           <RefreshProvider>
           <StatusBar style="light" />
           <Gate />
+          <Trail />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
             <Stack.Screen name="(player)" />
             <Stack.Screen name="owner" />
             <Stack.Screen name="teams" />
-            {/* The only top-level route that was never declared here. Every
-                other one is, and clubs is the one that crashes. */}
+            {/* Declared for the same reason as its neighbours, not as a fix:
+                undeclared routes are appended anyway. It was the one omission
+                in this list and it cost nothing to close. */}
             <Stack.Screen name="clubs" />
             <Stack.Screen name="bookings" />
             <Stack.Screen name="notifications" />
@@ -86,6 +89,48 @@ export default function RootLayout() {
     </SafeAreaProvider>
     </Boundary>
   );
+}
+
+/**
+ * The breadcrumb, wired to the router.
+ *
+ * The note is read before the first one is written, or the launch after a
+ * crash would overwrite the evidence with the screen it landed on. Until that
+ * read finishes nothing is recorded, which costs a frame or two of trail and
+ * is worth it.
+ *
+ * What it shows is in English on purpose. It is meant to be screenshotted and
+ * sent, and a translated crash report is a crash report nobody can search.
+ */
+function Trail() {
+  const pathname = usePathname();
+  const [ready, setReady] = useState(false);
+  const told = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    takeCrash().then((where) => {
+      if (cancelled) return;
+      if (where && !told.current) {
+        told.current = true;
+        Alert.alert(
+          'X League closed unexpectedly',
+          `Last screen: ${where}\n\nScreenshot this and send it on.`,
+        );
+      }
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !pathname) return;
+    noteScreen(pathname);
+  }, [ready, pathname]);
+
+  return null;
 }
 
 /**
