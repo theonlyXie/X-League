@@ -69,13 +69,21 @@ export async function newPage(browser) {
  */
 export async function lookAround(page) {
   await page.goto(BASE + '/', { waitUntil: 'load' });
+
+  // `load` fires before the app has decided who you are: the session is read
+  // back asynchronously and the gate redirects to /sign-in after that. Looking
+  // for the link on the frame that just loaded finds nothing and reports a
+  // missing link, which is a lie about the screen. Wait for it instead.
   for (const label of ['Look around without an account', 'اتفرج من غير حساب']) {
-    const link = page.getByLabel(label);
-    if (await link.count()) {
-      await link.first().click();
-      await page.waitForTimeout(1200);
-      return true;
+    const link = page.getByLabel(label).first();
+    try {
+      await link.waitFor({ state: 'visible', timeout: 8000 });
+    } catch {
+      continue;
     }
+    await link.click();
+    await page.waitForTimeout(1200);
+    return true;
   }
   return false;
 }

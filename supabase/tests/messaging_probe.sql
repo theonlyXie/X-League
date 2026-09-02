@@ -142,6 +142,41 @@ begin
                       v_txt, v_txt = 'Stadium One lobby';
 
   -- -------------------------------------------------------------------------
+  -- A room is whoever is in the group, not whoever opened it first
+  --
+  -- The room above was opened while the squad happened to be complete, which is
+  -- the one ordering that used to work. Everything else wrote a room of one:
+  -- membership was snapshotted when somebody opened it, and the only thing that
+  -- wrote a membership row was opening it — so a player who joined afterwards
+  -- could never get in, and never knew there was anything to get into.
+  -- -------------------------------------------------------------------------
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  perform invite_to_booking(v_bk, KARIM, null, 'starter', 'FWD');
+
+  perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);
+  perform respond_to_invitation(
+    (select id from booking_participant where booking_id = v_bk and player_id = KARIM), true);
+
+  select count(*)::integer into v_n
+    from my_conversations() where conversation_id = v_conv;
+  return query select 'somebody who joins after the room opened still sees it',
+                      v_n::text, v_n = 1;
+
+  select count(*)::integer into v_n from conversation_messages(v_conv);
+  return query select 'and can read what was said before they arrived',
+                      v_n::text, v_n = 1;
+
+  select * into r from send_message(v_conv, 'On my way.');
+  return query select 'and can post without ever having opened the room',
+                      coalesce(r.reason, 'sent'), r.ok;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  perform send_message(v_conv, 'Karim is in.');
+  select count(*)::integer into v_n
+    from notification where player_id = KARIM and kind = 'message';
+  return query select 'and is notified like everybody else', v_n::text, v_n = 1;
+
+  -- -------------------------------------------------------------------------
   -- MSG-002 — a direct message needs a shared history
   -- -------------------------------------------------------------------------
   perform set_config('request.jwt.claims', json_build_object('sub', ALONE)::text, true);

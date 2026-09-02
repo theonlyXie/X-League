@@ -89,7 +89,7 @@ function PersonRow({
   u: User;
   may: boolean;
   busy: boolean;
-  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<void>;
+  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const [days, setDays] = useState(7);

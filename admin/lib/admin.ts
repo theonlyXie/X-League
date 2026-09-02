@@ -155,6 +155,47 @@ export async function clubQueue(state = 'pending'): Promise<PendingClub[]> {
 export const setClubVerification = (clubId: string, verification: string) =>
   act('admin_set_club_verification', { p_club_id: clubId, p_verification: verification });
 
+// ---------------------------------------------------------------------------
+// Referees
+//
+// The only account in the product that cannot be created from the app. X League
+// makes it here, hands over the number and the password, and the referee signs
+// in through the ordinary door with them.
+// ---------------------------------------------------------------------------
+
+export type Referee = {
+  refereeId: string;
+  displayName: string;
+  phone: string | null;
+  active: boolean;
+  matches: number;
+  createdAt: string;
+};
+
+export async function referees(): Promise<Referee[]> {
+  return (await call('admin_referees', {})).map((r) => ({
+    refereeId: r.referee_id as string,
+    displayName: r.display_name as string,
+    phone: (r.phone as string) ?? null,
+    active: r.active as boolean,
+    matches: r.matches as number,
+    createdAt: r.created_at as string,
+  }));
+}
+
+export const createReferee = (phone: string, password: string, displayName: string) =>
+  act('admin_create_referee', {
+    p_phone: phone,
+    p_password: password,
+    p_display_name: displayName,
+  });
+
+export const setRefereeActive = (refereeId: string, active: boolean) =>
+  act('admin_set_referee_active', { p_referee_id: refereeId, p_active: active });
+
+export const setRefereePassword = (refereeId: string, password: string) =>
+  act('admin_set_referee_password', { p_referee_id: refereeId, p_password: password });
+
 export const setVerification = (venueId: string, verification: string, note?: string) =>
   act('admin_set_verification', {
     p_venue_id: venueId,

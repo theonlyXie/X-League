@@ -40,6 +40,7 @@ declare
     'c1b00000-0000-0000-0000-000000000003',
     'c1b00000-0000-0000-0000-000000000004']::uuid[];
   SEVENTH uuid := 'c1b00000-0000-0000-0000-000000000005';
+  ADMIN   uuid := '99999999-9999-9999-9999-999999999999';
   v_club uuid;
   v_n    integer;
   p      uuid;
@@ -55,6 +56,19 @@ begin
   select * into r from create_club('Club Probe FC', 'Giza', null);
   v_club := r.club_id;
   return query select 'a club can be founded', coalesce(r.reason, 'founded'), r.ok;
+
+  -- Founding a club is an application, not an admission. Everything below is
+  -- about whether the squad is legal; none of it counts until X League has said
+  -- the club exists, and the club is told which of the two it is waiting on.
+  select * into e from club_eligibility(v_club);
+  return query select 'but a club nobody has admitted may not enter',
+                      coalesce(e.reason, '(silence)'),
+                      e.eligible = false
+                      and e.reason = 'This club is waiting to be admitted by X League.';
+
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  perform admin_set_club_verification(v_club, 'verified');
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
 
   select count(*)::integer into v_n
     from club_membership m where m.club_id = v_club and m.player_id = BASEL

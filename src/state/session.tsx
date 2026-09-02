@@ -82,6 +82,12 @@ type SessionContextValue = {
    * decides who may walk through one; every console function checks for itself.
    */
   platformRole: 'support' | 'moderator' | 'admin' | null;
+  /**
+   * True when X League has made this person a referee. Read for the same reason
+   * as `platformRole` — so the account screen can offer the door — and never to
+   * decide anything: every referee function checks for itself.
+   */
+  isReferee: boolean;
   /** Where this player plays, as a governorate code, or null for all of Egypt. */
   governorate: string | null;
   /** True until the stored session has been read back. */
@@ -165,6 +171,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [venues, setVenues] = useState<StaffVenue[]>([]);
   const [platformRole, setPlatformRole] =
     useState<SessionContextValue['platformRole']>(null);
+  const [isReferee, setIsReferee] = useState(false);
   const [restoring, setRestoring] = useState(isLive);
   const [guest, setGuest] = useState(false);
   const [identityFailed, setIdentityFailed] = useState(false);
@@ -181,6 +188,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setGovernorate(null);
       setVenues([]);
       setPlatformRole(null);
+      setIsReferee(false);
       setIdentityFailed(false);
       return;
     }
@@ -195,12 +203,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // around this could never fire for an RPC failure in the first place.
       // That is the mechanism that hid the 403: not that the failure was
       // caught, but that nothing ever looked at it.
-      const [profileRes, venuesRes, roleRes] = await Promise.all([
+      const [profileRes, venuesRes, roleRes, refRes] = await Promise.all([
         supabase().rpc('my_profile'),
         supabase().rpc('my_venues'),
         supabase().rpc('my_platform_role'),
+        supabase().rpc('is_referee'),
       ]);
-      const failure = profileRes.error ?? venuesRes.error ?? roleRes.error;
+      const failure = profileRes.error ?? venuesRes.error ?? roleRes.error ?? refRes.error;
       if (failure) {
         if (__DEV__) console.warn('[session] could not load identity:', failure.message);
         setIdentityFailed(true);
@@ -211,6 +220,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const { data: mine } = venuesRes;
       const { data: role } = roleRes;
       setPlatformRole((role as SessionContextValue['platformRole']) ?? null);
+      setIsReferee(refRes.data === true);
       const me = ((profile ?? []) as { display_name: string; governorate: string | null }[])[0];
       setDisplayName(me?.display_name ?? null);
       setGovernorate(me?.governorate ?? null);
@@ -241,6 +251,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setIdentityFailed(true);
       setVenues([]);
       setPlatformRole(null);
+      setIsReferee(false);
     }
   }, []);
 
@@ -379,6 +390,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       activeVenue: venues.find((v) => v.venueId === activeVenueId) ?? venues[0] ?? null,
       setActiveVenue: setActiveVenueId,
       platformRole,
+      isReferee,
       governorate,
       restoring,
       guest,
@@ -395,6 +407,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       venues,
       activeVenueId,
       platformRole,
+      isReferee,
       governorate,
       restoring,
       guest,

@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from '
 import * as Haptics from 'expo-haptics';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Eyebrow } from '@/components/ui';
+import { Button, Eyebrow } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
 import { CapacityBar, PressScale, Reveal } from '@/components/motion';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
@@ -302,6 +302,15 @@ export default function Cups() {
           </ScrollView>
         </View>
       ) : null}
+
+      {/* The record belongs on the competitive tab, not only in a row on the
+          account screen. Somebody looking for who is scoring looks here. */}
+      <Button
+        label={t.topScorersEverywhere}
+        variant="ghost"
+        height={44}
+        onPress={() => router.push('/leaderboard')}
+      />
 
       {!loading && all.length === 0 ? (
         <View style={{ gap: 6 }}>

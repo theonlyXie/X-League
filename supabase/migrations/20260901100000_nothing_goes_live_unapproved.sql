@@ -203,6 +203,11 @@ $$;
 
 -- The state itself, for the club's own page, so the app can say which of the
 -- two reasons it is rather than only that the club cannot enter.
+-- The row this returns gained a column, and Postgres will not let a function's
+-- OUT parameters change under `create or replace`. Dropping first is the only
+-- way to edit the shape, which is why this one is not a replace like the rest.
+drop function if exists club_detail(uuid);
+
 create or replace function club_detail(p_club_id uuid)
 returns table (
   club_id uuid, name text, crest_url text, home_area text,

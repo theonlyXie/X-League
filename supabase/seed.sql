@@ -16,7 +16,10 @@ with v as (
      array['Floodlights', 'Changing rooms', 'Parking', 'Showers', 'Café', 'Ball provided'],
      'Studs allowed on turf. No metal blades. Two guests per player. Please clear the pitch on the hour — the next match starts immediately.',
      'https://maps.google.com/?q=30.0601,31.3302'),
-    ('The Box', 'Nasr City', 'pending', 30.052900, 31.348800,
+    -- Verified, because the seed books it and checks people in at it, and a
+    -- venue that is not verified now refuses both. 'Nasr Sports Club' below is
+    -- the one left waiting, which is what the verification cases work on.
+    ('The Box', 'Nasr City', 'verified', 30.052900, 31.348800,
      'Reception, first floor', '+20 100 000 0020',
      array['Indoor', 'Air conditioning', 'Changing rooms', 'Parking'],
      'Indoor shoes only — no studs. Bibs provided at reception.',

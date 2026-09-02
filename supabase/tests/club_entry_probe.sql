@@ -19,6 +19,7 @@ declare
   v_venue uuid;
   v_trn   uuid;
   v_club  uuid;
+  v_reserves uuid;
   v_reg   uuid;
   v_code  text;
   v_pid   uuid;
@@ -44,6 +45,13 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
   select * into r from create_club('Entry Probe United', 'Giza', null);
   v_club := r.club_id;
+
+  -- A club has to be admitted before any of the money below means anything.
+  -- The admission gate is tested in club_probe; here it is simply satisfied,
+  -- the way a real club satisfies it, so the entry cases are about entry.
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  perform admin_set_club_verification(v_club, 'verified');
+  perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
 
   for v_i in 1 .. 7 loop
     v_pid := ('e1000000-0000-0000-0000-00000000000' || v_i)::uuid;
@@ -197,7 +205,11 @@ begin
   -- A club that cannot field a side.
   perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
   select * into r from create_club('Entry Probe Reserves', 'Giza', null);
-  select * into r from register_club_for_tournament(v_trn, r.club_id, null, 0, null);
+  v_reserves := r.club_id;
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  perform admin_set_club_verification(v_reserves, 'verified');
+  perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
+  select * into r from register_club_for_tournament(v_trn, v_reserves, null, 0, null);
   return query select 'a club short of a squad is refused, and told what by',
                       coalesce(r.reason, '(allowed!)'),
                       r.ok = false and r.reason like '%5 more starters and 2 more substitutes%';
@@ -238,6 +250,9 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
   select * into r from create_club('Entry Probe Rivals', 'Giza', 'starter');
   v_club := r.club_id;
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  perform admin_set_club_verification(v_club, 'verified');
+  perform set_config('request.jwt.claims', json_build_object('sub', CAP)::text, true);
   for v_i in 1 .. 7 loop
     v_pid := ('e2000000-0000-0000-0000-00000000000' || v_i)::uuid;
     insert into auth.users (id, instance_id, aud, role, created_at, updated_at)

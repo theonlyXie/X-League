@@ -30,7 +30,7 @@ import { pickAndUpload, setMyPhoto } from '@/lib/upload';
  */
 export default function Me() {
   const router = useRouter();
-  const { signedIn, session, displayName, venues, signOut } = useSession();
+  const { signedIn, session, displayName, venues, isReferee, signOut } = useSession();
   const { card, evidence, matches, awaitingResult, loading, unreachable, isFixture, reload } = useCard();
   const { reason, t, num, locale, setLocale, needsRestart, rtl } = useI18n();
 
@@ -209,6 +209,12 @@ export default function Me() {
           <RowLink label={t.teamsTitle} onPress={() => router.push('/teams')} />
           <RowLink label={t.leaderboards} onPress={() => router.push('/leaderboard')} />
           <RowLink label={t.notifications} onPress={() => router.push('/notifications')} />
+          {/* Only for the few X League has made referees. Nothing here decides
+              anything — every referee function checks for itself — but a door
+              that will not open should not be shown. */}
+          {isReferee ? (
+            <RowLink label={t.refereeTitle} onPress={() => router.push('/referee')} />
+          ) : null}
         </View>
       ) : null}
 

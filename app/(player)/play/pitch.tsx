@@ -243,6 +243,27 @@ export default function PitchDetail() {
             </>
           ) : null}
 
+          {/* The board for this ground existed and had no way in: nothing in the
+              app ever passed a venue to it, so the only leaderboard anybody
+              could open was the global one, from a row on the account screen.
+              Who scores most at the pitch you are looking at belongs on the
+              page for that pitch. */}
+          {venue ? (
+            <>
+              <Divider />
+              <Button
+                label={t.topScorersHere}
+                variant="ghost"
+                height={44}
+                onPress={() =>
+                  router.push(
+                    `/leaderboard?venue=${venue.venueId}&name=${encodeURIComponent(venue.name)}`,
+                  )
+                }
+              />
+            </>
+          ) : null}
+
           {/* VEN-008: the reviews sit under the rating they produced. */}
           {reviews.length ? (
             <>
