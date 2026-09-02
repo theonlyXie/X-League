@@ -2,6 +2,7 @@
   "expo": {
     "name": "X League",
     "slug": "x-league",
+    "owner": "cipherlabs",
     "scheme": "xleague",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -65,6 +66,11 @@
     "primaryColor": "#C6A34B",
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ff2b2f9d-9cdf-492f-9c5c-8a8b05e620d1"
+      }
     }
   }
 }

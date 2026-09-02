@@ -51,11 +51,11 @@ from the app, Me → Change password — and change it here too.
 
 ## What does not exist yet
 
-**There has never been an iOS build.** Not a failing one — none at all. `/ios`
-is generated at prebuild and gitignored, CI builds Android only, and no Apple
-Developer membership, bundle identifier, certificate or App Store Connect record
-has been created. Everything under "Apple" below starts from nothing, and it is
-the longest pole by a wide margin.
+**There has never been an iOS build.** Not a failing one — none at all. The
+Expo project exists and GitHub is connected to it, so the machine that would
+build one is ready; what is missing is the Apple Developer membership, the
+bundle identifier registered against it, and an App Store Connect record. That
+membership is now the single longest pole in the whole submission.
 
 **There has never been a release-signed Android artefact either.** CI runs
 `assembleRelease` with no signing config, so Gradle falls back to the debug
@@ -97,10 +97,16 @@ an app bundle; it has never been run, because that needs credentials.
 
 ## Apple, from nothing
 
-Nothing here can be done from this repository, because every step needs an
-account that does not exist yet. `eas.json` now has a production profile that
-builds for iOS, so once the membership is in place the build command is one
-line — but the membership is the gate, and there is no way around it. A Mac is
+The Expo side is done. The repository is linked to the EAS project
+`cipherlabs/x-league` (`ff2b2f9d-9cdf-492f-9c5c-8a8b05e620d1`, in `app.json`),
+GitHub is connected, and `eas.json` has a production profile that builds for
+iOS. **EAS builds iOS; the `Android release` workflow in this repository builds
+Android.** That division is not a preference: an app is published under exactly
+one upload key for its whole life, and asking EAS for an Android build offers to
+generate a second one. If the Expo dashboard's GitHub trigger is configured,
+set it to iOS only.
+
+What is left is the Apple membership, and there is no way around it. A Mac is
 not needed; EAS builds on its own.
 
 **1 · Apple Developer Program membership**, $99 a year. Enrol as an
@@ -118,7 +124,9 @@ npx eas build --platform ios --profile production
 ```
 
 EAS creates the distribution certificate and the provisioning profile itself the
-first time, from the Apple account you sign in with. Nothing needs a Mac.
+first time, from the Apple account you sign in with. Nothing needs a Mac. Until
+the membership exists this stops at the credentials step, which is the only
+thing still standing between here and a TestFlight build.
 
 **4 · App Store Connect**: create the app record, upload the build (`eas submit
 -p ios`), put it through TestFlight, then fill the listing — name, subtitle,
