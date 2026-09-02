@@ -78,9 +78,16 @@ begin
   return query select 'an admin can see every venue to hold a cup at',
                       v_n::text, v_n >= 3;
 
+  -- Not "a player sees none" any more. An empty list and a refusal look the
+  -- same on a screen, and this one meant the second; it now says so.
   perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
-  select count(*)::integer into v_n from admin_venues();
-  return query select 'a player sees none', v_n::text, v_n = 0;
+  begin
+    select count(*)::integer into v_n from admin_venues();
+    return query select 'a player is refused rather than shown an empty list',
+                        '(allowed! ' || v_n || ' rows)', false;
+  exception when insufficient_privilege then
+    return query select 'a player is refused rather than shown an empty list', 'refused', true;
+  end;
 
   perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
   select * into r from create_tournament(v_venue, 'Nasr City Cup', 'league', 4,
