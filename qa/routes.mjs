@@ -26,6 +26,7 @@ export const ROUTES = [
   { path: '/teams', name: 'Teams' },
   { path: '/clubs', name: 'Clubs' },
   { path: '/leaderboard', name: 'Leaderboards' },
+  { path: '/referee', name: 'Refereeing' },
 
   // The booking spine's later screens need state to be meaningful, but they
   // must still render rather than crash when reached cold.
@@ -41,6 +42,7 @@ export const ROUTES = [
   // Reached cold with an id that belongs to nobody, which is the case that has
   // to say so rather than render a club-shaped empty shell.
   { path: '/clubs/00000000-0000-0000-0000-000000000000', name: 'Club detail' },
+  { path: '/referee/00000000-0000-0000-0000-000000000000', name: 'A match to referee' },
   { path: '/cups/enter/00000000-0000-0000-0000-000000000000', name: 'Enter a cup' },
   { path: '/cups/draw/00000000-0000-0000-0000-000000000000', name: 'The draw' },
 

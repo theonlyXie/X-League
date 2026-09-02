@@ -49,7 +49,7 @@ function SettingRow({
   s: Setting;
   may: boolean;
   busy: boolean;
-  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<void>;
+  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<boolean>;
 }) {
   const [value, setValue] = useState(String(s.value));
   const changed = Number(value) !== s.value;

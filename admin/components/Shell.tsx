@@ -16,6 +16,7 @@ const NAV = [
   { href: '/people', label: 'People' },
   { href: '/reports', label: 'Reports' },
   { href: '/cups', label: 'Cups' },
+  { href: '/referees', label: 'Referees' },
   { href: '/cups/money', label: 'Entry money' },
   { href: '/money', label: 'Money' },
   { href: '/settings', label: 'Settings' },

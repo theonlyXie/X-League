@@ -307,6 +307,12 @@ const AR: Record<string, string> = {
     'أحد المذكورين في القائمة لم يشارك في المباراة.',
   'More goals on the sheet than in the score.':
     'عدد الأهداف في القائمة أكبر من نتيجة المباراة.',
+  'Nothing on the sheet can be negative.':
+    'لا يمكن أن يكون أي رقم في القائمة بالسالب.',
+  'The referee has recorded this match.':
+    'الحكم سجّل نتيجة هذه المباراة.',
+  'Give the referee a name.': 'اكتب اسم الحكم.',
+  'That referee does not exist.': 'هذا الحكم غير موجود.',
   'Only a knockout has rounds to draw.':
     'بطولات خروج المغلوب وحدها هي التي تُسحب لها جولات تالية.',
   'Make the draw first.': 'أجرِ القرعة أولًا.',

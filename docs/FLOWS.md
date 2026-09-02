@@ -241,6 +241,27 @@ never from a screen.
 recently nothing in the product could file one, so the queues could only ever
 say "Nothing reported."
 
+**Referees** are for cups and nothing else. There is no sign-up for one: the
+console creates the account with a number and a password (`/referees`), hands
+them over, and the referee signs into the ordinary app through the ordinary
+door. `is_referee()` decides who they are; the account is a `player_profile`
+like any other, so a referee can also be a player.
+
+In the app the referee gets two screens. `/referee` lists every fixture in a
+live cup — not a list somebody assigned, because appointing them at all is the
+appointment, and a referee standing on a pitch should not find the match missing
+because nobody ticked a box. `/referee/<fixture>` is the match: the score, and
+then both squads with goals, assists, fouls and cards per player. Score and
+sheet are saved in one act, because a score with nobody attached to it is how a
+cup ends up with a table nobody can explain.
+
+What a referee records is final. `award_match_points` fires immediately rather
+than waiting for the two captains to agree — nobody is coming to agree with the
+referee — and `report_side_result` refuses afterwards with "The referee has
+recorded this match", so two captains agreeing with each other cannot overwrite
+the person who was on the pitch. Coming back to correct a sheet replaces it
+rather than adding to it.
+
 ---
 
 ## 7. What holds all of this up

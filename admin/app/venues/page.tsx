@@ -198,7 +198,7 @@ function AddVenue({
   run,
 }: {
   busy: boolean;
-  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<void>;
+  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<boolean>;
 }) {
   const [name, setName] = useState('');
   const [area, setArea] = useState('');

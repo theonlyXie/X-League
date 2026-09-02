@@ -95,6 +95,10 @@ export function useSection<T>(fetch: () => Promise<T>, initial: T) {
       if (!res.ok) setError(res.reason ?? 'That was refused.');
       else setNote(said);
       setBusy(false);
+      // Most callers only want the note and the reload. A caller that has
+      // something to show only on success — a password it can never read back —
+      // needs to know which it was.
+      return res.ok;
     },
     [load],
   );
