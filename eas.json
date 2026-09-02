@@ -1,32 +1,36 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "remote"
+    "//": "local, so app.json's version and versionCode are the single source of what a build is called. 'remote' would let EAS keep its own counter, which the Gradle build in CI does not read and could not agree with.",
+    "appVersionSource": "local"
   },
+  "//": "EAS builds iOS. Android comes from the `Android release` workflow in this repository, signed with the upload key held in its secrets. That division is not a preference — an app is published under exactly one upload key for its whole life, and asking EAS for an Android build offers to generate a second one. If that ever needs to change, upload the existing keystore to EAS credentials first, and never the other way round.",
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "android": { "buildType": "apk" }
     },
+    "///": "No `env` block on any profile, deliberately. `.env.production` is the configuration, and it is committed and tracked so an EAS build gets it too. An environment variable set here would be set before the env loader runs, and an already-set variable is never overridden by a .env file — which is exactly how every APK CI built for a fortnight shipped with no database in it.",
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "android": {
-        "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://ymuknkhapibmtqkrlmia.supabase.co"
-      }
+      "ios": { "simulator": true }
     },
     "production": {
       "channel": "production",
-      "android": {
-        "buildType": "app-bundle"
+      "autoIncrement": false,
+      "ios": {
+        "//": "Needs the Apple Developer membership. EAS creates the distribution certificate and the provisioning profile itself the first time this runs, and no Mac is involved.",
+        "resourceClass": "m-medium"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "//": "ascAppId and appleTeamId go here once the App Store Connect record exists."
+      }
+    }
   }
 }
