@@ -40,6 +40,9 @@ const ALLOWED = new Set([
   // and sent to whoever is fixing it, next to a stack trace that is English
   // whatever the app's language is; a translated error report helps nobody.
   'Try again',
+  // The last-resort crash alert, English for the same reason: it exists to be
+  // screenshotted and sent on, beside a stack trace that is English anyway.
+  'Something went wrong',
 ]);
 
 /**
