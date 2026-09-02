@@ -411,6 +411,30 @@ export default function CupDetail() {
               ))}
             </View>
           )}
+
+          {/* Who is scoring at the ground this cup is played on. A cup across
+              several grounds has no single board to point at, so that one goes
+              to the whole record rather than picking a ground and implying the
+              goals were all scored there. */}
+          <Divider />
+          <Button
+            label={
+              cup.venues.length === 1
+                ? t.topScorersAt(cup.venues[0].name)
+                : t.topScorersEverywhere
+            }
+            variant="ghost"
+            height={44}
+            onPress={() =>
+              router.push(
+                cup.venues.length === 1
+                  ? `/leaderboard?venue=${cup.venues[0].venue_id}&name=${encodeURIComponent(
+                      cup.venues[0].name,
+                    )}`
+                  : '/leaderboard',
+              )
+            }
+          />
         </>
       ) : null}
     </Screen>

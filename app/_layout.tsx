@@ -73,6 +73,7 @@ export default function RootLayout() {
             <Stack.Screen name="bookings" />
             <Stack.Screen name="notifications" />
             <Stack.Screen name="points" />
+            <Stack.Screen name="leaderboard" />
             {/* Not a modal any more. It is the first thing the app shows to
                 somebody with no account, and a modal reads as an interruption
                 of a screen behind it — here there is nothing behind it. */}
