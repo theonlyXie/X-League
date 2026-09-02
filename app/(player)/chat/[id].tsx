@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from '@/components/Txt';
@@ -41,6 +49,8 @@ export default function Thread() {
   const [notice, setNotice] = useState<string | null>(null);
   /** The message somebody long-pressed, if any. */
   const [acting, setActing] = useState<Message | null>(null);
+  /** §4.7: a room we could not read is not a room with nothing in it. */
+  const [unreadable, setUnreadable] = useState(false);
   const scroller = useRef<ScrollView | null>(null);
 
   const load = useCallback(async () => {
@@ -48,8 +58,10 @@ export default function Thread() {
     try {
       const rows = await conversationMessages(conversationId, 60);
       setMessages(rows);
+      setUnreadable(false);
       void markConversationRead(conversationId);
     } catch {
+      setUnreadable(true);
       setNotice(t.errNotInConversation);
     }
   }, [conversationId]);
@@ -79,13 +91,31 @@ export default function Thread() {
     };
   }, [conversationId, load]);
 
+  // The keyboard opening changes how much of the room is visible, which is
+  // exactly when the newest message should still be the one you can see.
+  useEffect(() => {
+    const shown = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => scroller.current?.scrollToEnd({ animated: true }),
+    );
+    return () => shown.remove();
+  }, []);
+
   const ordered = [...messages].reverse();
 
   return (
+    /**
+     * Android had no keyboard avoidance at all here — `behavior` was left
+     * undefined on that platform, so the keyboard opened straight over the
+     * composer and over the last thing said. `padding` on iOS and `height` on
+     * Android is what the rest of the app uses, and this is the one screen that
+     * does not go through `Screen` to get it.
+     */
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: void_.bg, paddingTop: insets.top }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1, backgroundColor: void_.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <View style={{ flex: 1, paddingTop: insets.top }}>
       <View
         style={{
           flexDirection: 'row',
@@ -121,6 +151,8 @@ export default function Thread() {
         ref={scroller}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 14 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })}
       >
         {loading ? (
@@ -129,7 +161,7 @@ export default function Thread() {
           </View>
         ) : null}
 
-        {!loading && ordered.length === 0 ? (
+        {!loading && !unreadable && ordered.length === 0 ? (
           <Txt size={12.5} color={onVoid.dim}>
             {t.noMessages}
           </Txt>
@@ -244,6 +276,7 @@ export default function Thread() {
             }
           }}
         />
+      </View>
       </View>
     </KeyboardAvoidingView>
   );

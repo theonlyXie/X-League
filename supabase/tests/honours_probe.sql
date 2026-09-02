@@ -55,6 +55,12 @@ begin
   select * into r from create_club('Honours Beta', 'Giza', null);
   v_club_b := r.club_id;
 
+  -- Both admitted, because a club X League has not admitted cannot enter
+  -- anything, and what follows is about what winning does to a club.
+  perform set_config('request.jwt.claims', json_build_object('sub', ADMIN)::text, true);
+  perform admin_set_club_verification(v_club_a, 'verified');
+  perform admin_set_club_verification(v_club_b, 'verified');
+
   for v_i in 1 .. 14 loop
     v_pid := ('d1000000-0000-0000-0000-0000000000' || lpad(v_i::text, 2, '0'))::uuid;
     insert into auth.users (id, instance_id, aud, role, created_at, updated_at)
