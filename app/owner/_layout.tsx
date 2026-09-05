@@ -21,6 +21,10 @@ export default function OwnerLayout() {
             registered here appears only when something navigates to it — which
             is what the Money screen's link does. */}
         <Tabs.Screen name="customers" />
+        {/* Same reasoning: reached from the Money tab and from a notification,
+            not a sixth item in a bar that draws its own five. */}
+        <Tabs.Screen name="claims" />
+        <Tabs.Screen name="thread/[id]" />
       </Tabs>
     </View>
   );

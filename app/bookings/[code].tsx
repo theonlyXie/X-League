@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { TextInput } from '@/components/TextField';
 import { Txt } from '@/components/Txt';
-import { Divider } from '@/components/ui';
+import { Button, Divider } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
-import { gold, onVoid, radius, void_ } from '@/theme/tokens';
+import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { bookingTerms, myBookings, type BookingTerms, type PastBooking } from '@/data/discovery';
+import {
+  claimBookingPayment,
+  venueConversation,
+  venuePaymentChannels,
+  type ChannelKind,
+  type VenueChannel,
+} from '@/data/venueMoney';
 import { bookingSquad, type SquadMember } from '@/data/squad';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
@@ -207,6 +215,23 @@ export default function BookingDetail() {
             </View>
           ) : null}
 
+          {/* Where the money goes, and the captain's half of agreeing it went.
+              Only while there is still something outstanding: a settled booking
+              has nothing to send and nothing to claim, and offering either
+              would be inviting somebody to pay twice. */}
+          {terms &&
+          booking.state !== 'expired' &&
+          booking.state !== 'cancelled' &&
+          terms.balanceEgp > 0 ? (
+            <PayBlock
+              bookingId={booking.bookingId}
+              venueId={terms.venueId}
+              claimedAt={terms.paymentClaimedAt}
+              settled={terms.balanceSettled}
+              onClaimed={() => void load()}
+            />
+          ) : null}
+
           {squad.length ? (
             <View style={{ gap: 0 }}>
               <Txt size={11} weight="semibold" em={0.08} upper color={onVoid.faint} style={{ paddingBottom: 6 }}>
@@ -290,6 +315,198 @@ function Row({ label, value }: { label: string; value: string }) {
       <Txt size={13} weight="semibold" color={onVoid.primary}>
         {value}
       </Txt>
+    </View>
+  );
+}
+
+/**
+ * Where to send the money, and the captain saying they sent it.
+ *
+ * The venue's wallet is asked for rather than assumed: a venue that has not
+ * set one up is told about honestly — pay at the gate — instead of the screen
+ * showing an empty box or, worse, a number from somewhere else.
+ *
+ * "I have sent it" is a claim, and the copy says so. It does not mark the
+ * booking paid; it tells the venue to go and look. Once it is made, this
+ * becomes a statement of where things stand and a way into the room, because
+ * the next thing a captain wants after claiming is usually to ask whether it
+ * landed.
+ */
+function PayBlock({
+  bookingId,
+  venueId,
+  claimedAt,
+  settled,
+  onClaimed,
+}: {
+  bookingId: string;
+  venueId: string;
+  claimedAt: string | null;
+  settled: boolean;
+  onClaimed: () => void;
+}) {
+  const router = useRouter();
+  const { reason, t } = useI18n();
+  const [channels, setChannels] = useState<VenueChannel[]>([]);
+  const [note, setNote] = useState('');
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    venuePaymentChannels(venueId)
+      .then((rows) => {
+        if (!cancelled) setChannels(rows.filter((c) => c.active));
+      })
+      .catch(() => {
+        /* No channels is a real answer, and so is a failure to read them. Both
+           end at the same honest sentence below rather than an empty box. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [venueId]);
+
+  const kindLabel = (k: ChannelKind) =>
+    k === 'wallet'
+      ? t.payKindWallet
+      : k === 'instapay'
+        ? t.payKindInstapay
+        : k === 'bank'
+          ? t.payKindBank
+          : t.payKindContact;
+
+  const claim = async () => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await claimBookingPayment(bookingId, channels[0]?.kind ?? 'wallet', note);
+      if (res.ok) {
+        setOpen(false);
+        setNote('');
+        onClaimed();
+      } else {
+        setNotice(reason(res.reason) ?? null);
+      }
+    } catch {
+      setNotice(t.offline);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openRoom = async () => {
+    try {
+      const res = await venueConversation(bookingId);
+      if (res.ok && res.conversationId) router.push(`/chat/${res.conversationId}`);
+      else setNotice(reason(res.reason) ?? null);
+    } catch {
+      setNotice(t.offline);
+    }
+  };
+
+  if (settled) {
+    return (
+      <Txt size={12.5} color={gold.base}>
+        {t.paySettled}
+      </Txt>
+    );
+  }
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Txt size={11} weight="semibold" em={0.08} upper color={onVoid.faint}>
+        {t.payTitle}
+      </Txt>
+
+      {channels.length === 0 ? (
+        <Txt size={12.5} lh={1.5} color={onVoid.muted}>
+          {t.payNoChannels}
+        </Txt>
+      ) : (
+        <View style={{ gap: 10 }}>
+          <Txt size={11.5} color={onVoid.faint}>
+            {t.payWhereToSend}
+          </Txt>
+          {channels.map((c) => (
+            <View
+              key={c.channelId}
+              style={{
+                padding: 12,
+                borderRadius: radius.control,
+                borderWidth: 1,
+                borderColor: goldAlpha.edge,
+                backgroundColor: void_.surface,
+                gap: 3,
+              }}
+            >
+              <Txt size={10} weight="bold" em={0.08} upper color={onVoid.dim}>
+                {kindLabel(c.kind)} · {c.label}
+              </Txt>
+              <Txt size={15} weight="semibold" color={gold.base}>
+                {c.value}
+              </Txt>
+              {c.instructions ? (
+                <Txt size={11.5} lh={1.45} color={onVoid.muted}>
+                  {c.instructions}
+                </Txt>
+              ) : null}
+            </View>
+          ))}
+          <Txt size={11.5} color={onVoid.faint}>
+            {t.payAtGateInstead}
+          </Txt>
+        </View>
+      )}
+
+      {notice ? (
+        <Txt size={12} color={burgundy.action}>
+          {notice}
+        </Txt>
+      ) : null}
+
+      {claimedAt ? (
+        <View style={{ gap: 6 }}>
+          <Txt size={12.5} weight="semibold" color={gold.base}>
+            {t.payClaimed}
+          </Txt>
+          <Txt size={11.5} lh={1.5} color={onVoid.muted}>
+            {t.payClaimedBlurb}
+          </Txt>
+          <Button label={t.payTalkToVenue} variant="ghost" height={42} onPress={() => void openRoom()} />
+        </View>
+      ) : open ? (
+        <View style={{ gap: 10 }}>
+          <Txt size={11.5} color={onVoid.faint}>
+            {t.payNoteLabel}
+          </Txt>
+          <TextInput
+            value={note}
+            onChangeText={setNote}
+            placeholder={t.payNotePlaceholder}
+            placeholderTextColor={onVoid.disabled}
+            multiline
+            style={{
+              minHeight: 62,
+              borderRadius: radius.control,
+              borderWidth: 1,
+              borderColor: onVoid.line,
+              backgroundColor: void_.surface,
+              paddingHorizontal: 13,
+              paddingTop: 11,
+              color: onVoid.primary,
+            }}
+          />
+          <Button
+            label={t.payISentIt}
+            disabled={busy || note.trim().length < 3}
+            onPress={() => void claim()}
+          />
+        </View>
+      ) : (
+        <Button label={t.payISentIt} variant="ghost" height={44} onPress={() => setOpen(true)} />
+      )}
     </View>
   );
 }

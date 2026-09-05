@@ -66,6 +66,21 @@ export default function OwnerMoney() {
 
       <OpNotice text={error} />
 
+      {/* Money somebody says they have already sent, waiting to be checked
+          against the wallet. Above the takings on purpose: a player is waiting
+          on each of these, and the day's total is not. */}
+      <OpRow onPress={() => router.push('/owner/claims')}>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Txt size={13.5} weight="semibold" color={ink}>
+            {t.ownClaims}
+          </Txt>
+          <Txt size={10.5} color="rgba(20,18,16,.45)">
+            {t.ownClaimsBlurb}
+          </Txt>
+        </View>
+        <ChevronRight size={14} color={onOperative.dim} />
+      </OpRow>
+
       {/* The other half of the commercial picture, and the only way into it —
           Owner Mode's tab bar is five items by design and this is not a sixth. */}
       <OpRow onPress={() => router.push('/owner/customers')}>

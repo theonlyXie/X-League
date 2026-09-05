@@ -262,6 +262,12 @@ export type BookingTerms = {
   depositEgp: number;
   balanceEgp: number;
   depositState: 'due' | 'collected' | 'refunded' | 'waived' | 'forfeited';
+  /** Which venue's wallet to ask about. */
+  venueId: string;
+  /** When the captain said they had transferred it, or null. */
+  paymentClaimedAt: string | null;
+  /** True once the venue has said the money arrived, or it was paid at the gate. */
+  balanceSettled: boolean;
 };
 
 /**
@@ -281,6 +287,9 @@ export async function bookingTerms(bookingId: string): Promise<BookingTerms | nu
     depositEgp: r.deposit_egp,
     balanceEgp: r.balance_egp,
     depositState: r.deposit_state,
+    venueId: r.venue_id,
+    paymentClaimedAt: r.payment_claimed_at,
+    balanceSettled: r.balance_settled,
   };
 }
 

@@ -241,6 +241,25 @@ never from a screen.
 recently nothing in the product could file one, so the queues could only ever
 say "Nothing reported."
 
+**The money for a pitch** goes to the venue, not through X League. A manager
+puts their Vodafone Cash, InstaPay or bank details in Owner Mode → Setup →
+Where money is sent; a player who has booked there sees them on the booking, and
+nobody else does — a wallet number is a real-world identifier and a list of
+every venue's is worth not handing out. The player transfers, then says so:
+`claim_booking_payment` is a claim and settles nothing. Somebody at the venue
+looks at the wallet and answers with `confirm_booking_payment`, which is the
+half that moves the balance to collected — the same state cash at the gate
+produces, so the takings and the payout report never have to know which way it
+came.
+
+Both halves are posted into a room the booking gets of its own (`kind = 'venue'`,
+one per booking, between the captain and the venue's staff), as messages with no
+sender — the app reporting what happened rather than a person typing. It is a
+different room from the match lobby, which belongs to the squad and which the
+venue cannot read. The player finds it in the Chat tab; the venue finds it in
+Owner Mode → Money → Payments to confirm, which is also where the confirming is
+done.
+
 **Referees** are for cups and nothing else. There is no sign-up for one: the
 console creates the account with a number and a password (`/referees`), hands
 them over, and the referee signs into the ordinary app through the ordinary

@@ -58,6 +58,9 @@ export const ROUTES = [
   { path: '/owner/setup/closures', name: 'Closures' },
   { path: '/owner/setup/staff', name: 'Staff' },
   { path: '/owner/setup/profile', name: 'Venue profile' },
+  { path: '/owner/setup/money-in', name: 'Where money is sent' },
+  { path: '/owner/claims', name: 'Payments to confirm' },
+  { path: '/owner/thread/00000000-0000-0000-0000-000000000000', name: 'A venue thread' },
 
 ];
 
