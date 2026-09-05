@@ -312,6 +312,14 @@ const AR: Record<string, string> = {
   'The referee has recorded this match.':
     'الحكم سجّل نتيجة هذه المباراة.',
   'Give the referee a name.': 'اكتب اسم الحكم.',
+  'Give the destination a name.': 'اكتب اسمًا لوسيلة التحويل.',
+  'Give the number or handle to send to.': 'اكتب الرقم أو المعرّف اللي هيتحوّل عليه.',
+  'That destination is not this venue\'s.': 'وسيلة التحويل دي مش بتاعة الملعب ده.',
+  'That destination no longer exists.': 'وسيلة التحويل دي لم تعد موجودة.',
+  'That booking is not yours.': 'الحجز ده مش بتاعك.',
+  'Only the captain who booked can confirm the payment.':
+    'الكابتن اللي حجز هو الوحيد اللي يقدر يأكّد التحويل.',
+  'There is nothing outstanding on that booking.': 'مفيش مبلغ متبقّي على الحجز ده.',
   'That referee does not exist.': 'هذا الحكم غير موجود.',
   'Only a knockout has rounds to draw.':
     'بطولات خروج المغلوب وحدها هي التي تُسحب لها جولات تالية.',
