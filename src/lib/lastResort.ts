@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { noteError } from '@/lib/breadcrumb';
 
 /**
  * What happens when something throws where React cannot see it.
@@ -11,10 +12,18 @@ import { Alert } from 'react-native';
  * indistinguishable from a native crash, which is the thing that makes it so
  * hard to fix from a description.
  *
- * This replaces that handler. The app still cannot continue after a fatal
- * error, but it says what happened first, in an alert somebody can screenshot.
- * The previous handler is called afterwards so nothing about crash reporting
- * changes — this only adds a sentence before the lights go out.
+ * This replaces that handler, and the order it does things in is the whole
+ * point. The first version alerted and then called the previous handler on the
+ * next line. `Alert.alert` does not draw anything — it posts a message to the
+ * native UI thread and returns — and the default fatal handler kills the
+ * process before that thread gets a turn. So the alert was never seen once,
+ * and every fatal error in JavaScript arrived looking exactly like a crash in
+ * native code. Three reports of "it just closes" were read that way.
+ *
+ * Now the message is written down first, so it survives even a death that
+ * beats the alert, and the app is not killed until somebody has pressed OK on
+ * it. An app with a fatal error cannot carry on, but it can say what happened
+ * before it goes.
  *
  * English on purpose, for the same reason the boundary is: this text exists to
  * be sent to whoever is fixing it, beside a stack trace that is English anyway.
@@ -41,13 +50,18 @@ export function installLastResortHandler() {
         ? `${error.message}\n\n${(error.stack ?? '').split('\n').slice(0, 8).join('\n')}`
         : String(error);
 
+    // Written before anything else. If the process dies anyway — a second
+    // error while this one is being reported, or a native crash underneath it
+    // — the next launch still finds the sentence.
+    noteError(message);
+
     // Alert rather than a screen: by the time this fires the React tree may
     // already be unmountable, and an alert is drawn by the platform.
     Alert.alert(
       isFatal ? 'X League has to close' : 'Something went wrong',
       `Screenshot this and send it on.\n\n${message}`,
+      [{ text: 'OK', onPress: () => previous?.(error, isFatal) }],
+      { cancelable: false },
     );
-
-    previous?.(error, isFatal);
   });
 }

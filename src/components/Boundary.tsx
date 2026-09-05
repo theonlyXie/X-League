@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Txt } from '@/components/Txt';
+import { noteError } from '@/lib/breadcrumb';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 
 /**
@@ -31,6 +32,10 @@ export class Boundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     this.setState({ info: info?.componentStack ?? null });
+    // Written down as well as shown. The screen below is only any use if this
+    // component can itself render — and a failure deep enough to stop that is
+    // exactly the one worth having a record of on the next launch.
+    noteError(`${error?.message ?? String(error)}\n\n${(info?.componentStack ?? '').trim()}`);
     if (__DEV__) console.error('[boundary]', error, info?.componentStack);
   }
 

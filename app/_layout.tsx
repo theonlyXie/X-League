@@ -103,6 +103,10 @@ export default function RootLayout() {
  *
  * What it shows is in English on purpose. It is meant to be screenshotted and
  * sent, and a translated crash report is a crash report nobody can search.
+ *
+ * A note with a message is a JavaScript error the app outlived long enough to
+ * write down. A note with only a route is the other kind, and saying so is the
+ * difference between knowing where to look and knowing what to look at.
  */
 function Trail() {
   const pathname = usePathname();
@@ -111,13 +115,19 @@ function Trail() {
 
   useEffect(() => {
     let cancelled = false;
-    takeCrash().then((where) => {
+    takeCrash().then(({ path, error }) => {
       if (cancelled) return;
-      if (where && !told.current) {
+      if ((path || error) && !told.current) {
         told.current = true;
         Alert.alert(
           'X League closed unexpectedly',
-          `Last screen: ${where}\n\nScreenshot this and send it on.`,
+          [
+            path ? `Last screen: ${path}` : null,
+            error ? `\n${error}` : '\nNo message was recorded, which points at a crash below JavaScript.',
+            '\nScreenshot this and send it on.',
+          ]
+            .filter(Boolean)
+            .join('\n'),
         );
       }
       setReady(true);
