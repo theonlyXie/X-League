@@ -177,14 +177,35 @@ begin
   return query select 'and is notified like everybody else', v_n::text, v_n = 1;
 
   -- -------------------------------------------------------------------------
-  -- MSG-002 — a direct message needs a shared history
+  -- MSG-002 — a direct message goes as far as the other profile allows
+  --
+  -- The rule used to be "you must have shared a team or a pitch", which made
+  -- the chat list a record of who you had already met. It is now the same rule
+  -- that decides who turns up in a search: the other player's own visibility.
+  -- Anyone open to everyone can be messaged; anyone who has narrowed it is
+  -- reachable only by the people they have actually played with.
   -- -------------------------------------------------------------------------
   perform set_config('request.jwt.claims', json_build_object('sub', ALONE)::text, true);
   select * into r from direct_conversation(BASEL);
-  return query select 'a stranger cannot open a direct message',
+  return query select 'a stranger can open a room with a player open to everyone',
+                      coalesce(r.reason, 'opened'), r.ok;
+
+  update player_profile set visibility = 'connections' where id = BASEL;
+  perform set_config('request.jwt.claims', json_build_object('sub', ALONE)::text, true);
+  select * into r from direct_conversation(BASEL);
+  return query select 'but not with one who has narrowed it',
                       coalesce(r.reason, '(allowed!)'),
                       r.ok = false
-                      and r.reason = 'You can message players you have shared a team or a pitch with.';
+                      and r.reason = 'That player only takes messages from people they have played with.';
+
+  -- Somebody they have played with is still let through, which is the whole
+  -- point of 'connections' rather than 'nobody'.
+  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
+  select * into r from direct_conversation(BASEL);
+  return query select 'a player they shared a pitch with still gets through',
+                      coalesce(r.reason, 'opened'), r.ok;
+
+  update player_profile set visibility = 'everyone' where id = BASEL;
 
   perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
   select * into r from direct_conversation(BASEL);

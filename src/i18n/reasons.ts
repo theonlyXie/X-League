@@ -234,6 +234,8 @@ const AR: Record<string, string> = {
   'That person does not have an X League account.': 'هذا الشخص ليس له حساب في إكس ليج.',
   'That pitch no longer exists.': 'هذا الملعب لم يعد موجودًا.',
   'That place no longer exists.': 'هذا المكان لم يعد موجودًا.',
+  'That player only takes messages from people they have played with.':
+    'اللاعب ده مش بيستقبل رسائل غير من اللي لعبوا معاه.',
   'That player does not have an X League account.': 'هذا اللاعب ليس له حساب في إكس ليج.',
   'That report no longer exists.': 'هذا البلاغ لم يعد موجودًا.',
   'That slot is no longer available.': 'هذه الساعة لم تعد متاحة.',

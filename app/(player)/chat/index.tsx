@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { ActivityIndicator, AppState, Pressable, RefreshControl, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
@@ -14,11 +14,20 @@ import { isLive } from '@/lib/supabase';
 /**
  * P-12 — every room this player is in.
  *
- * The rooms are derived from relationships that already exist: a squad, a team,
- * or two people who have shared a pitch. There is deliberately no "new message"
- * button here, because there is no way to start a conversation with a stranger
- * — the way in is the lobby you were invited to or the team you joined.
+ * Most rooms are derived from relationships that already exist: a squad, a
+ * team, a club, the venue you owe money to. Those still appear on their own.
+ * What was missing was the other direction — finding one person and saying
+ * something to them — so there is now a way to start one, and `/chat/new` is
+ * where the searching happens.
+ *
+ * The list keeps itself current for the same reason a thread does: an unread
+ * badge that only updates when you pull it down is a badge that lies for as
+ * long as you leave it alone. The beat here is slower than a thread's, because
+ * this screen answers "is there anything new" and not "what did they say".
  */
+
+/** How often the list asks whether any room has moved. */
+const BEAT_MS = 12000;
 export default function ChatList() {
   const router = useRouter();
   const { signedIn } = useSession();
@@ -64,6 +73,23 @@ export default function ChatList() {
     };
   }, [signedIn, nonce, tick]);
 
+  /**
+   * Refreshed while somebody is looking at it, and not otherwise.
+   *
+   * Coming back to this screen is the moment the list is most likely to be
+   * wrong, so focus reloads before the first beat rather than after it.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLive || !signedIn) return;
+      reload();
+      const beat = setInterval(() => {
+        if (AppState.currentState === 'active') reload();
+      }, BEAT_MS);
+      return () => clearInterval(beat);
+    }, [signedIn, reload]),
+  );
+
   const sameDay = (iso: string) =>
     new Date(iso).toDateString() === new Date().toDateString();
 
@@ -76,9 +102,20 @@ export default function ChatList() {
         ) : undefined
       }
     >
-      <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-        {t.chatTitle}
-      </Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
+          {t.chatTitle}
+        </Txt>
+        {isLive && signedIn ? (
+          <Button
+            label={t.newMessage}
+            height={38}
+            size={12.5}
+            variant="ghost"
+            onPress={() => router.push('/chat/new')}
+          />
+        ) : null}
+      </View>
 
       {isLive && !signedIn ? (
         <View style={{ gap: 12, alignItems: 'flex-start' }}>
@@ -105,7 +142,8 @@ export default function ChatList() {
           </Txt>
           {/* An empty list that only explains itself is still a dead end. */}
           {!unreachable ? (
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+              <Button label={t.newMessage} height={42} onPress={() => router.push('/chat/new')} />
               <Button label={t.clubs} height={42} variant="ghost" onPress={() => router.push('/clubs')} />
               <Button label={t.teamsTitle} height={42} variant="ghost" onPress={() => router.push('/teams')} />
             </View>
