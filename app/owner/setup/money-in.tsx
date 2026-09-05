@@ -104,12 +104,12 @@ export default function MoneyIn() {
 
   const kindLabel = (k: ChannelKind) =>
     k === 'wallet'
-      ? t.payKindWallet
+      ? t.payWallet
       : k === 'instapay'
-        ? t.payKindInstapay
+        ? t.payInstapay
         : k === 'bank'
-          ? t.payKindBank
-          : t.payKindContact;
+          ? t.payBank
+          : t.payContact;
 
   return (
     <OpScreen>

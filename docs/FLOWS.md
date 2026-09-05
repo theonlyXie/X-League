@@ -242,7 +242,7 @@ recently nothing in the product could file one, so the queues could only ever
 say "Nothing reported."
 
 **The money for a pitch** goes to the venue, not through X League. A manager
-puts their Vodafone Cash, InstaPay or bank details in Owner Mode → Setup →
+puts their e-wallet, InstaPay or bank details in Owner Mode → Setup →
 Where money is sent; a player who has booked there sees them on the booking, and
 nobody else does — a wallet number is a real-world identifier and a list of
 every venue's is worth not handing out. The player transfers, then says so:

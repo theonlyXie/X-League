@@ -1510,7 +1510,7 @@ function Money({
           <input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Whose account — X League, Vodafone Cash"
+            placeholder="Whose account — X League, an e-wallet"
             style={{ minWidth: 240 }}
           />
           <input

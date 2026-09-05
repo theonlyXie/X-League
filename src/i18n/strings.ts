@@ -940,10 +940,10 @@ export const STRINGS = {
 
     // Owner Mode
     ownMoneyIn: 'Where money is sent',
-    ownMoneyInBlurb: 'Your Vodafone Cash, InstaPay or bank details, shown to players who book.',
+    ownMoneyInBlurb: 'Your e-wallet, InstaPay or bank details, shown to players who book.',
     ownAddDestination: 'Add a destination',
     ownDestinationName: 'Name',
-    ownDestinationNamePlaceholder: 'Vodafone Cash',
+    ownDestinationNamePlaceholder: 'Vodafone Cash, Orange Cash, WE Pay…',
     ownDestinationValue: 'Number or handle',
     ownDestinationValuePlaceholder: '01xxxxxxxxx',
     ownDestinationNote: 'Anything else they should know',
@@ -960,10 +960,6 @@ export const STRINGS = {
     ownConfirmed: 'Confirmed',
     ownWaitingOnYou: (n: string) => `${n} waiting on you`,
     ownOpenThread: 'Open the chat',
-    payKindWallet: 'Wallet',
-    payKindInstapay: 'InstaPay',
-    payKindBank: 'Bank transfer',
-    payKindContact: 'Call to arrange',
 
     // The referee
     refereeTitle: 'Refereeing',
@@ -1949,10 +1945,10 @@ export const STRINGS = {
 
     // Owner Mode
     ownMoneyIn: 'تحويل الفلوس',
-    ownMoneyInBlurb: 'فودافون كاش أو إنستاباي أو الحساب البنكي، بيظهروا للاعبين اللي بيحجزوا.',
+    ownMoneyInBlurb: 'محفظتك الإلكترونية أو إنستاباي أو الحساب البنكي، بيظهروا للاعبين اللي بيحجزوا.',
     ownAddDestination: 'أضف وسيلة تحويل',
     ownDestinationName: 'الاسم',
-    ownDestinationNamePlaceholder: 'فودافون كاش',
+    ownDestinationNamePlaceholder: 'فودافون كاش، أورانج كاش، وي باي…',
     ownDestinationValue: 'الرقم أو المعرّف',
     ownDestinationValuePlaceholder: '01xxxxxxxxx',
     ownDestinationNote: 'أي حاجة تانية لازم يعرفوها',
@@ -1969,10 +1965,6 @@ export const STRINGS = {
     ownConfirmed: 'مؤكَّد',
     ownWaitingOnYou: (n: string) => `${n} في انتظارك`,
     ownOpenThread: 'افتح المحادثة',
-    payKindWallet: 'محفظة',
-    payKindInstapay: 'إنستاباي',
-    payKindBank: 'تحويل بنكي',
-    payKindContact: 'اتصل للترتيب',
 
     // The referee
     refereeTitle: 'التحكيم',
