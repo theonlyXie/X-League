@@ -86,13 +86,13 @@ export default function Claims() {
 
   const kindLabel = (k: ChannelKind | null) =>
     k === 'wallet'
-      ? t.payKindWallet
+      ? t.payWallet
       : k === 'instapay'
-        ? t.payKindInstapay
+        ? t.payInstapay
         : k === 'bank'
-          ? t.payKindBank
+          ? t.payBank
           : k === 'contact'
-            ? t.payKindContact
+            ? t.payContact
             : '';
 
   const waiting = claims.filter((c) => !c.settled).length;

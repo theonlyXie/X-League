@@ -249,7 +249,7 @@ function Setup() {
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Label — X League, Vodafone Cash"
+              placeholder="Label — X League, an e-wallet"
               style={{ minWidth: 220 }}
             />
             <input
