@@ -325,6 +325,24 @@ the score down and the two squads that entered become the team sheet.
 collects it; a late cancellation forfeits it; a waived one stays as a record
 that it existed. Nothing is deleted to make a report tidy.
 
+### Starting a conversation
+
+Most rooms open themselves: booking a pitch makes a lobby, joining a team or a
+club makes its room, owing a venue money makes the room where that is settled.
+
+One does not. **Chat → New message** (`chat/new.tsx`) searches players by name
+and opens a direct room with whoever is picked. The search is `find_players`,
+the same one the squad and club invites use, which means it applies each
+profile's own visibility — and `direct_conversation` now reads that same
+setting rather than demanding a shared team or pitch. So the rule is one rule,
+said once: **you can message anyone you can find.** A player who narrows their
+visibility to connections disappears from strangers' searches and is refused if
+one reaches the function another way; blocking refuses before any of it.
+
+Opening a room is idempotent — the same two people always land in the same one
+— so nothing is created by tapping a name twice, and a room with nothing said
+in it is not shown in anybody's list.
+
 ---
 
 ## Known gaps
@@ -334,9 +352,6 @@ Honest list, as of this pass:
 - **Week view.** The calendar shows one day. The Day/Week toggle was removed
   rather than wired, because there is no week query behind it and a control
   that promises one and does nothing is worse than its absence.
-- **Direct messages.** `direct_conversation` exists and no screen opens one.
-  This is deliberate for now — chat opens with a match, not with a person —
-  but the lobby and a team page are the natural entry points when it changes.
 - **Photos.** `venue_photo` is read by the pitch page and written by nothing;
   every venue shows a placeholder.
 - **Date picker.** The third day chip is "Day after", not a picker.
@@ -344,8 +359,12 @@ Honest list, as of this pass:
   notification list puts them through the same table the refusals use — so the
   ones with a mapping arrive in Arabic and the rest fall back to English. Every
   notification kind wants a key eventually.
-- **Realtime.** Nothing is pushed. The owner surfaces pull to refresh and the
-  notification badge polls; a busy gate will want a subscription eventually.
+- **Realtime.** Nothing is pushed. Chat polls while it is open — four seconds
+  in a room, twelve on the list, stopped when the screen is behind another one
+  or the phone is asleep — and the owner surfaces still pull to refresh. A
+  socket needs a select grant and a policy on the table it watches, and this
+  schema grants no table access to anybody; that is a trade worth making for a
+  busy gate one day, not for a five-a-side chat.
 - **A second pitch has no price.** `add_pitch` inherits the venue's opening
   hours but not its price rules, so a newly added pitch shows EGP 0 until
   somebody sets one in Pricing. It is visible and correctable on the screen

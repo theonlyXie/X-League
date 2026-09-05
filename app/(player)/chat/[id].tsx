@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
+  AppState,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -33,7 +34,25 @@ import { isLive } from '@/lib/supabase';
  * Messages arrive newest-first from the server (that is the order a page of
  * history is fetched in) and are reversed here for display, so "load older"
  * stays a paging concern rather than something the transport has to know about.
+ *
+ * The room keeps itself current. It used to fetch once on open and then only
+ * again when you sent something, so the other half of a conversation arrived
+ * only if you left the screen and came back — two people messaging each other
+ * were each reading a snapshot taken before the other one replied. That is not
+ * a chat, and "pull to refresh to see what they said" is not an instruction
+ * anybody should be given.
+ *
+ * It polls rather than subscribing. Supabase's realtime channel delivers row
+ * changes to a client that can read the row, which means a select grant and a
+ * policy on `message` — and this schema deliberately grants no table access to
+ * anybody, reading everything through functions that decide who may see what.
+ * A socket is not worth putting the first hole in that. Four seconds on an open
+ * room is one small request, and it stops the moment the screen is not in front
+ * of somebody.
  */
+
+/** How often an open room asks whether anything was said. */
+const BEAT_MS = 4000;
 export default function Thread() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -53,18 +72,52 @@ export default function Thread() {
   const [unreadable, setUnreadable] = useState(false);
   const scroller = useRef<ScrollView | null>(null);
 
+  /**
+   * The newest message and how many there are, as they were last drawn.
+   *
+   * A poll that finds nothing new must not call `setMessages`: a new array of
+   * equal messages is still a new array, and the `ScrollView` would jump to the
+   * bottom every four seconds under somebody reading further up.
+   */
+  const seen = useRef<{ newest: string | null; count: number }>({ newest: null, count: 0 });
+
+  const apply = useCallback((rows: Message[]) => {
+    const newest = rows[0]?.messageId ?? null;
+    if (newest === seen.current.newest && rows.length === seen.current.count) return false;
+    seen.current = { newest, count: rows.length };
+    setMessages(rows);
+    return true;
+  }, []);
+
   const load = useCallback(async () => {
     if (!isLive || !conversationId) return;
     try {
       const rows = await conversationMessages(conversationId, 60);
-      setMessages(rows);
+      apply(rows);
       setUnreadable(false);
       void markConversationRead(conversationId);
     } catch {
       setUnreadable(true);
       setNotice(t.errNotInConversation);
     }
-  }, [conversationId]);
+  }, [conversationId, apply]);
+
+  /**
+   * The same read, quietly.
+   *
+   * A poll that fails changes nothing on screen. Marking the room read is
+   * hitched to something actually having arrived, so an idle room open on a
+   * table is one select every four seconds and no writes at all.
+   */
+  const poll = useCallback(async () => {
+    if (!isLive || !conversationId) return;
+    try {
+      const rows = await conversationMessages(conversationId, 60);
+      if (apply(rows)) void markConversationRead(conversationId);
+    } catch {
+      /* the room stays as it was */
+    }
+  }, [conversationId, apply]);
 
   useEffect(() => {
     if (!isLive || !conversationId) {
@@ -90,6 +143,27 @@ export default function Thread() {
       cancelled = true;
     };
   }, [conversationId, load]);
+
+  /**
+   * The beat, only while this room is the screen somebody is looking at.
+   *
+   * `useFocusEffect` stops it when the thread is pushed behind another screen,
+   * and the AppState check stops it when the phone is in a pocket — an interval
+   * carries on firing in the background otherwise, and polling a chat nobody is
+   * reading is just battery.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLive || !conversationId) return;
+      // Focus is also a return: whatever was said while this screen was behind
+      // another one should be there before the first beat, not four seconds in.
+      void poll();
+      const beat = setInterval(() => {
+        if (AppState.currentState === 'active') void poll();
+      }, BEAT_MS);
+      return () => clearInterval(beat);
+    }, [conversationId, poll]),
+  );
 
   // The keyboard opening changes how much of the room is visible, which is
   // exactly when the newest message should still be the one you can see.

@@ -216,6 +216,9 @@ export const STRINGS = {
     searchPlayers: 'Search players',
     searchPlayersHint: 'Type at least two letters',
     noPlayersFound: 'Nobody found',
+    newMessage: 'New message',
+    newMessageBlurb:
+      'Search by name. Players who have narrowed who can find them will not appear here.',
     invite: 'Invite',
     invited: 'Invited',
     inSquad: 'In squad',
@@ -1252,6 +1255,8 @@ export const STRINGS = {
     searchPlayers: 'ابحث عن لاعبين',
     searchPlayersHint: 'اكتب حرفين على الأقل',
     noPlayersFound: 'لا توجد نتائج',
+    newMessage: 'رسالة جديدة',
+    newMessageBlurb: 'ابحث بالاسم. اللاعبون اللي ضيّقوا مين يلاقيهم مش هيظهروا هنا.',
     invite: 'دعوة',
     invited: 'تمت الدعوة',
     inSquad: 'في الفريق',
