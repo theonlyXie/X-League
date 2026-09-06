@@ -208,12 +208,23 @@ export default function Lobby() {
             </View>
 
             {lobby.booking ? (
-              <Button
-                label={t.invitePlayers}
-                variant="ghost"
-                height={42}
-                onPress={() => router.push(`/play/invite?booking=${bookingId}`)}
-              />
+              <View style={{ gap: 8 }}>
+                <Button
+                  label={t.invitePlayers}
+                  variant="ghost"
+                  height={42}
+                  onPress={() => router.push(`/play/invite?booking=${bookingId}`)}
+                />
+                {/* Inviting is for the people you know. This is for the ones
+                    you do not, and a captain who is two short at ten o'clock
+                    the night before has run out of the first kind. */}
+                <Button
+                  label={t.callForPlayers}
+                  variant="ghost"
+                  height={42}
+                  onPress={() => router.push(`/play/call?booking=${bookingId}`)}
+                />
+              </View>
             ) : null}
           </View>
 

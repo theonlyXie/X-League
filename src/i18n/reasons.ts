@@ -236,6 +236,40 @@ const AR: Record<string, string> = {
   'That place no longer exists.': 'هذا المكان لم يعد موجودًا.',
   'That player only takes messages from people they have played with.':
     'اللاعب ده مش بيستقبل رسائل غير من اللي لعبوا معاه.',
+  'Only the captain can call for players.':
+    'الكابتن بس هو اللي ينادي على لاعبين.',
+  'Confirm the booking before calling for players.':
+    'أكّد الحجز الأول قبل ما تنادي على لاعبين.',
+  'That match has already kicked off.':
+    'الماتش ده بدأ خلاص.',
+  'That is not a position.':
+    'ده مش مركز.',
+  'A rating is between 1 and 99.':
+    'التقييم بين ١ و٩٩.',
+  'Ask for between one and ten players.':
+    'اطلب من لاعب لعشرة لاعبين.',
+  'That call is not open to you any more.':
+    'النداء ده مابقاش متاح ليك.',
+  'There is no call to close.':
+    'مافيش نداء تقفله.',
+  'There is nothing to withdraw.':
+    'مافيش حاجة تسحبها.',
+  'That offer is no longer open.':
+    'العرض ده مابقاش مفتوح.',
+  'Sign in to call for players.':
+    'سجّل الدخول عشان تنادي على لاعبين.',
+  'Sign in to answer a call.':
+    'سجّل الدخول عشان ترد على النداء.',
+  'Sign in to see this.':
+    'سجّل الدخول عشان تشوف ده.',
+  'Sign in to see who needs players.':
+    'سجّل الدخول عشان تشوف مين محتاج لاعبين.',
+  'Sign in to say you are available.':
+    'سجّل الدخول عشان تقول إنك فاضي.',
+  'Only the captain can see this.':
+    'الكابتن بس هو اللي يشوف ده.',
+  'Only the captain can see who answered.':
+    'الكابتن بس هو اللي يشوف مين رد.',
   'That player does not have an X League account.': 'هذا اللاعب ليس له حساب في إكس ليج.',
   'That report no longer exists.': 'هذا البلاغ لم يعد موجودًا.',
   'That slot is no longer available.': 'هذه الساعة لم تعد متاحة.',
