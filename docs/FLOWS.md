@@ -343,6 +343,45 @@ Opening a room is idempotent — the same two people always land in the same one
 — so nothing is created by tapping a name twice, and a room with nothing said
 in it is not shown in anybody's list.
 
+## Ready to play, and calling for players
+
+Two halves of one problem: a captain with a pitch and six people, and a player
+with a free Tuesday and no way to say so.
+
+**Ready.** A switch on **Me** (`set_availability`). It writes a *time*, not a
+flag — the end of today in Cairo — and expires by itself, because a permanent
+"available" would be wrong for half the people carrying it within a fortnight
+and a captain let down twice stops looking. Under the switch, when there are
+any, is the count of matches that currently match this player; that count is
+the reason to press it.
+
+**The call.** From the lobby: **Call for players** (`play/call.tsx`). Positions
+are chips and nothing is required — most captains are short of a body, not a
+left back, so picking none means anybody. Behind *Advanced settings* is a
+minimum rating. One open call per booking; calling again edits it rather than
+opening a second, so a captain who filled the keeper slot and now needs a
+defender does not have to find and close anything first.
+
+**Who it reaches** is decided once, by `calls_for`, and asked three times — for
+the badge, for the list, and for who to notify. Both filters treat a missing
+card the same way: a player who has not set a position, or has no rating yet,
+still sees a call that names one. That is deliberate and it is stated on the
+screen, because a captain who sets 70 and sees an unrated player answer would
+otherwise think it was broken. Most accounts in the live database have no
+recorded position, and the strict reading would have made a call for a defender
+reach nobody at all.
+
+**Answering is an offer, not a seat.** `answer_call` records it and notifies the
+captain; nothing about the squad changes. The captain reads who answered with
+their position and rating, and `accept_offer` puts them in. That goes through
+`invite_to_booking` rather than writing a participant row of its own — capacity,
+the duplicate check and the event log are its rules, and a second door into a
+squad is a second place for them to drift — and then moves the row straight to
+`accepted`, because the player's offer was their acceptance. Declining is
+silent: the player is told nothing, since a captain filling a five-a-side does
+not owe a stranger a reason and a notification that reads as a rejection is a
+good way to lose them.
+
 ---
 
 ## Known gaps

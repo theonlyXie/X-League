@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Pressable, Switch, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Eyebrow } from '@/components/ui';
+import { myAvailability, setAvailability, type Availability } from '@/data/ready';
 import { ChevronRight, TrendUp } from '@/components/icons';
 import { StrokeLine } from '@/components/StrokeLine';
 import { VoidMark } from '@/components/VoidMark';
@@ -198,6 +200,16 @@ export default function Me() {
       {signedIn && live ? (
         <PhotoControl userId={session?.user?.id ?? null} hasPhoto={!!card.photoUrl} onChanged={reload} />
       ) : null}
+
+      {/* Whether this player is open to being asked tonight. It sits above the
+          rooms because it is the one control on this screen that changes what
+          happens to you rather than where you go.
+
+          On `isLive` and not on `live`: the latter means "has built a card",
+          and a player who has not built one is precisely the person this is
+          for. Hiding it from them would have made the feature invisible to
+          every new account on the day they joined. */}
+      {signedIn && isLive ? <ReadyToPlay /> : null}
 
       {/* The rooms that are not tabs: this player's own bookings, their squad's
           team, and what the product has told them. All reachable from here
@@ -1055,6 +1067,94 @@ function PhotoControl({
         <Txt size={12} color={burgundy.action}>
           {notice}
         </Txt>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * "I can play tonight."
+ *
+ * One press, and it lapses by itself at the end of the day. That expiry is the
+ * whole design: a permanent flag would be wrong for half the people carrying
+ * it within a fortnight, and a captain let down twice stops trusting the list.
+ * Saying so under the switch matters as much as the switch — somebody who
+ * thinks they have set it for good will not understand why nobody calls.
+ *
+ * The count of matching calls is the reason to press it. "Available" on its
+ * own is a setting; "2 matches are looking for players" is an invitation.
+ */
+function ReadyToPlay() {
+  const router = useRouter();
+  const { t, num } = useI18n();
+  const [state, setState] = useState<Availability | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setState(await myAvailability());
+    } catch {
+      /* The switch simply does not appear rather than showing a wrong one. */
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (!state) return null;
+
+  const toggle = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await setAvailability(!state.available);
+      await load();
+      void Haptics.selectionAsync();
+    } catch {
+      /* Left as it was; the next read corrects it. */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View
+      style={{
+        width: '100%',
+        padding: 14,
+        borderRadius: radius.control,
+        borderWidth: 1,
+        borderColor: state.available ? goldAlpha.frame : onVoid.edgeFaint,
+        backgroundColor: state.available ? goldAlpha.fill : void_.surface,
+        gap: 10,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Txt size={14} weight="semibold" color={state.available ? gold.base : onVoid.primary}>
+            {state.available ? t.readyOn : t.readyOff}
+          </Txt>
+          <Txt size={11.5} lh={1.5} color={onVoid.faint}>
+            {state.available ? t.readyOnBlurb : t.readyOffBlurb}
+          </Txt>
+        </View>
+        <Switch
+          value={state.available}
+          onValueChange={() => void toggle()}
+          disabled={busy}
+          trackColor={{ false: void_.inset, true: goldAlpha.frame }}
+          thumbColor={state.available ? gold.base : onVoid.dim}
+        />
+      </View>
+
+      {state.available && state.openCalls > 0 ? (
+        <Button
+          label={t.callsWaiting(num(state.openCalls))}
+          height={40}
+          size={13}
+          onPress={() => router.push('/play/calls')}
+        />
       ) : null}
     </View>
   );
