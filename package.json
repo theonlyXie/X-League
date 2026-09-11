@@ -14,7 +14,8 @@
     "check": "npm run typecheck && npm run check:i18n && npm run check:copy && npm run check:reasons && npm run security",
     "check:reasons": "node scripts/check-reasons.mjs",
     "check:copy": "node scripts/check-copy.mjs",
-    "security": "node scripts/security-check.mjs"
+    "security": "node scripts/security-check.mjs",
+    "check:rpc": "node scripts/check-rpc.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",
@@ -46,5 +47,8 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.2"
   }
 }

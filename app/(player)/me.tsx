@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Image, Pressable, Switch, View } from 'react-native';
+import { Image, Linking, Pressable, Switch, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +22,7 @@ import { useI18n } from '@/i18n';
 import { useSession } from '@/state/session';
 import { deleteMyAccount } from '@/data/api';
 import { isLive } from '@/lib/supabase';
+import { PRIVACY_URL, TERMS_URL, legalConfigured } from '@/lib/legal';
 import { pickAndUpload, setMyPhoto } from '@/lib/upload';
 
 /**
@@ -363,6 +364,14 @@ export default function Me() {
               onPress={() => router.push('/blocked')}
             />
           ) : null}
+
+          {/* The policy and the terms were linked from the sign-up screen and
+              nowhere else, so a reviewer signing in with the demo account — or
+              anybody who accepted them once and wanted to read them again —
+              could not reach either from inside the app. Two links rather than
+              one row, because they are two documents and picking between them
+              should not depend on knowing about a long press. */}
+          {legalConfigured ? <LegalLinks /> : null}
 
           {signedIn ? (
             <WorkspaceRow
@@ -889,6 +898,36 @@ function PasswordField({
           fontSize: 14,
         }}
       />
+    </View>
+  );
+}
+
+/** The two published documents, reachable from inside the app. */
+function LegalLinks() {
+  const { t } = useI18n();
+  const link = (label: string, url: string) => (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      hitSlop={10}
+      onPress={() => void Linking.openURL(url)}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+    >
+      <Txt size={12.5} weight="semibold" color={gold.base}>
+        {label}
+      </Txt>
+    </Pressable>
+  );
+
+  return (
+    <View style={{ gap: 8, paddingHorizontal: 14, paddingTop: 4 }}>
+      <Txt size={11.5} color={onVoid.faint}>
+        {t.legalRowDetail}
+      </Txt>
+      <View style={{ flexDirection: 'row', gap: 18 }}>
+        {link(t.termsLink, TERMS_URL)}
+        {link(t.privacyLink, PRIVACY_URL)}
+      </View>
     </View>
   );
 }

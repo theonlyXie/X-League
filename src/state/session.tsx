@@ -311,7 +311,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const addressFor = useCallback(async (phone: string) => {
     const { data, error } = await supabase().rpc('auth_email_for_sign_in', { p_phone: phone });
     if (error) throw error;
-    const row = (data as { auth_email: string; exists_already: boolean }[])[0];
+    const row = (data as { auth_email: string; exists_already: boolean | null }[])[0];
     return row ?? null;
   }, []);
 
@@ -323,7 +323,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (!found) return t.authBadNumber;
         // Said before asking GoTrue, because "no account" and "wrong password"
         // are different problems and only one of them is fixed by trying again.
-        if (!found.exists_already) return t.authNoAccountYet;
+        //
+        // `null` is a third answer and not the same as `false`: the lookup is
+        // rate limited per caller, and past the allowance it declines to say
+        // rather than guessing. Treating that as "no account" would send
+        // somebody who has one to create a second; falling through to GoTrue
+        // signs them in exactly as before, just without the nicety.
+        if (found.exists_already === false) return t.authNoAccountYet;
 
         const { error } = await supabase().auth.signInWithPassword({
           email: found.auth_email,

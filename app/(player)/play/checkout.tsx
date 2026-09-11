@@ -40,7 +40,6 @@ export default function Checkout() {
   } = useBooking();
   const { t, money, clock, num, longDate, hourLabel, moment } = useI18n();
   const { signedIn } = useSession();
-  const expired = hold === 'expired';
 
   const [venueLine, setVenueLine] = useState<string | null>(null);
   const [standing, setStanding] = useState<Standing | null>(null);
@@ -51,6 +50,17 @@ export default function Checkout() {
   // A signed-out visitor and the demo build are shown the design's booking.
   // A real player is never quoted a fixture price or sent to a fixture venue.
   const showcase = !isLive || !venueId;
+
+  // `idle` counts as expired, and used not to.
+  //
+  // Reached cold — a deep link, a notification, or coming back to a process the
+  // OS had killed — there is no hold, so the countdown rendered `0:00` under
+  // "Slot held for you" and the screen still offered Confirm booking for an
+  // hour nobody was holding. There is no useful difference between a hold that
+  // ran out and one that never existed: in both cases this hour is on sale and
+  // the only honest thing to offer is a way back to the grid. The showcase
+  // build is exempt, because there the whole booking is the design's.
+  const expired = hold === 'expired' || (!showcase && hold === 'idle');
 
   // AC-03: leaving checkout without confirming returns the slot to inventory.
   useEffect(() => () => releaseHold(), [releaseHold]);

@@ -9,7 +9,8 @@ import { Star } from '@/components/icons';
 import { SlotGrid } from '@/components/SlotGrid';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
-import { HOUSE_RULES, PITCH_AMENITIES } from '@/data/player';
+import { BOOKING, HOUSE_RULES, PITCH_AMENITIES } from '@/data/player';
+import { amenityKey } from '@/data/amenities';
 import { DEMO_VENUE_ID, today } from '@/data/venue';
 import { venueDetail, venueReviews, type Review, type VenueDetail } from '@/data/discovery';
 import { useBooking } from '@/state/booking';
@@ -108,7 +109,12 @@ export default function PitchDetail() {
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Txt size={24} weight="bold" em={-0.02} color={onVoid.primary}>
-                {name || (loadingVenue ? '' : '—')}
+                {/* A bare em dash where the venue's name goes reads as a
+                    rendering fault rather than as an answer. In the showcase
+                    build the name is the design's, like the amenities and the
+                    house rules beside it; on a live build that could not read
+                    the venue, the line below says so. */}
+                {name || (showcase ? BOOKING.venue : '')}
               </Txt>
               {verified ? (
                 <View
@@ -134,6 +140,14 @@ export default function PitchDetail() {
                   : (venue?.area ?? '')}
               </Txt>
             </View>
+            {/* A live build that could not read the venue used to draw a bare
+                em dash where its name goes, which reads as a rendering fault
+                rather than as an answer. */}
+            {!showcase && !loadingVenue && !venue ? (
+              <Txt size={12.5} color={onVoid.muted}>
+                {t.ownVenueUnreadable}
+              </Txt>
+            ) : null}
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
@@ -149,7 +163,14 @@ export default function PitchDetail() {
                 }}
               >
                 <Txt size={11.5} color="rgba(243,238,229,.65)">
-                  {a}
+                  {/* Recognised amenities are shown in the reader's language;
+                      anything a venue typed that this does not know is shown
+                      exactly as typed, because dropping it would hide something
+                      true about the ground. */}
+                  {(() => {
+                    const k = amenityKey(a);
+                    return k ? (t[k] as string) : a;
+                  })()}
                 </Txt>
               </View>
             ))}

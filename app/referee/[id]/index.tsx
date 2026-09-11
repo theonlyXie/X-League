@@ -140,6 +140,22 @@ export default function RefereeMatch() {
         </Txt>
       ) : null}
 
+      {/* Reached with an id that resolves to nothing — a fixture that was
+          removed, a cup that is not running, or somebody else's match — this
+          screen used to render its title and then stop, which reads as a
+          broken page rather than an answer. Every other detail route in the
+          app says what happened; this one now does too. */}
+      {!loading && !unreadable && !fixture ? (
+        <View style={{ gap: 6 }}>
+          <Txt size={14} weight="semibold" color={onVoid.primary}>
+            {t.refereeNoSuchMatch}
+          </Txt>
+          <Txt size={12.5} lh={1.5} color={onVoid.muted}>
+            {t.refereeNoSuchMatchBlurb}
+          </Txt>
+        </View>
+      ) : null}
+
       {fixture ? (
         <>
           <View style={{ gap: 6 }}>

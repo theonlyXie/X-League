@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Screen } from '@/components/Screen';
 import { TextInput } from '@/components/TextField';
 import { Txt } from '@/components/Txt';
 import { Button, Divider } from '@/components/ui';
@@ -112,12 +113,11 @@ export default function BookingDetail() {
     </Pressable>
   );
 
+  // `Screen` for the same three reasons as the list next door: the safe-area
+  // inset this drew over, the top bar it was missing, and the keyboard that
+  // used to sit on top of the payment-reference field near the bottom.
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: void_.bg }}
-      contentContainerStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}
-      showsVerticalScrollIndicator={false}
-    >
+    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         {back}
         <View style={{ gap: 2, flex: 1 }}>
@@ -302,7 +302,7 @@ export default function BookingDetail() {
           </View>
         </>
       ) : null}
-    </ScrollView>
+    </Screen>
   );
 }
 

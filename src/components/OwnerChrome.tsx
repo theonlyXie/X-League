@@ -139,6 +139,8 @@ export function OwnerHeader() {
             {venue ? longDate(new Date().toISOString()) : t.shShift}
           </Txt>
         </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <LanguageSwitch />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.ownSwitchBack}
@@ -168,7 +170,60 @@ export function OwnerHeader() {
             {t.ownerBadge}
           </Txt>
         </Pressable>
+        </View>
       </View>
+    </View>
+  );
+}
+
+/**
+ * The language switch, in Operative.
+ *
+ * Owner Mode is fully translated and had no way to change language from inside
+ * it: the switch lives on the player top bar, which owner screens do not draw,
+ * so a manager who opened the app in the wrong language had to go back to
+ * Player Mode to fix it. Same control as the top bar's, in ink on bone rather
+ * than gold on void, because on this surface gold means money.
+ */
+function LanguageSwitch() {
+  const { locale, setLocale } = useI18n();
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        padding: 2,
+        borderRadius: radius.pill,
+        backgroundColor: operative.band,
+        borderWidth: 1,
+        borderColor: onOperative.edge,
+      }}
+    >
+      {(['ar', 'en'] as const).map((code) => {
+        const on = code === locale;
+        return (
+          <Pressable
+            key={code}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={code === 'ar' ? 'العربية' : 'English'}
+            hitSlop={8}
+            onPress={() => {
+              if (!on) void setLocale(code);
+            }}
+            style={{
+              paddingVertical: 3,
+              paddingHorizontal: 9,
+              borderRadius: radius.pill,
+              backgroundColor: on ? operative.surface : 'transparent',
+            }}
+          >
+            <Txt size={10.5} weight={on ? 'bold' : 'semibold'} color={on ? ink : onOperative.dim}>
+              {code === 'ar' ? 'ع' : 'EN'}
+            </Txt>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

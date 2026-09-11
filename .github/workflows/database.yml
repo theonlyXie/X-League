@@ -13,10 +13,19 @@ name: Database
 
 on:
   push:
-    branches: [main, 'claude/**']
-    paths: ['supabase/**', '.github/workflows/database.yml']
+    branches: [main, 'claude/**', 'xie/**']
+    paths: &watched
+      - 'supabase/**'
+      # The clients are watched too, because `check-rpc.mjs` below compares what
+      # they call against what the schema has, and a change to either half can
+      # break that agreement.
+      - 'src/**'
+      - 'app/**'
+      - 'admin/**'
+      - 'scripts/check-rpc.mjs'
+      - '.github/workflows/database.yml'
   pull_request:
-    paths: ['supabase/**', '.github/workflows/database.yml']
+    paths: *watched
   workflow_dispatch:
 
 concurrency:
@@ -74,6 +83,14 @@ jobs:
 
       - name: Every refusal has an Arabic translation
         run: node scripts/check-reasons.mjs
+
+      # The seam between the two halves of this product: TypeScript that names
+      # a function and arguments, and a schema that either has them or does not.
+      # `tsc` cannot see across it and the SQL suites never make the call the app
+      # makes, which is how sign-up stayed broken for ten days. `run_all.sh`
+      # above has already built the schema this reads.
+      - name: Every RPC the clients call exists
+        run: node scripts/check-rpc.mjs
 
       - name: Summarise
         if: always()

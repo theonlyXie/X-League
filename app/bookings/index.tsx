@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
+import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Divider } from '@/components/ui';
 import { ArrowLeft, ChevronRight } from '@/components/icons';
@@ -121,11 +122,14 @@ export default function Bookings() {
       </View>
     );
 
+  // `Screen` rather than a bare ScrollView: this screen used to draw its own,
+  // which meant it reserved no safe-area inset — its back arrow sat under the
+  // status bar on any device with a notch — and it was one of only two player
+  // screens with no top bar, so the refresh control and the language switch
+  // that every other screen carries were missing from it.
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: void_.bg }}
-      contentContainerStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}
-      showsVerticalScrollIndicator={false}
+    <Screen
+      contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}
       refreshControl={
         <RefreshControl
           refreshing={loading}
@@ -204,6 +208,6 @@ export default function Bookings() {
           </Txt>
         </Pressable>
       ) : null}
-    </ScrollView>
+    </Screen>
   );
 }

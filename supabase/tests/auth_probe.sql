@@ -129,6 +129,128 @@ begin
                       r.exists_already::text, r.exists_already = false;
 
   -- -------------------------------------------------------------------------
+  -- The three questions sign-up asks (20260911090000)
+  -- -------------------------------------------------------------------------
+  --
+  -- These exist because the clients were shipped calling for them and the
+  -- schema never was: `sign_up` was called with three parameters it did not
+  -- have, which PostgREST answers by refusing to find the function at all. Not
+  -- a degraded feature — nobody could create an account.
+  select * into r from sign_up('+201000000077', 'longenough1', 'Mariam Adel',
+                               'player', null, null, 2100, 'woman', 'cairo');
+  return query select 'a year of birth in the future is refused',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason = 'Enter the year you were born.';
+
+  select * into r from sign_up('+201000000077', 'longenough1', 'Mariam Adel',
+                               'player', null, null, 1998, 'neither', 'cairo');
+  return query select 'and a gender that is not one of the two',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason = 'Choose one.';
+
+  select * into r from sign_up('+201000000077', 'longenough1', 'Mariam Adel',
+                               'player', null, null, 1998, 'woman', 'cairo');
+  return query select 'a player signs up with all three',
+                      coalesce(r.reason, r.auth_email), r.ok;
+
+  select count(*)::integer into v_n
+    from player_profile p
+    join auth.users u on u.id = p.id
+   where u.email = '201000000077@xleague.app'
+     and p.birth_year = 1998 and p.gender = 'woman' and p.governorate = 'cairo';
+  return query select 'and all three are on the profile', v_n::text, v_n = 1;
+
+  -- All three stay optional. Every account made before the questions existed
+  -- has none of them, and an app that will not work until somebody states their
+  -- gender is worse than one that asks nicely.
+  select * into r from sign_up('+201000000078', 'longenough1', 'Omar Fathy');
+  return query select 'and all three stay optional',
+                      coalesce(r.reason, r.auth_email), r.ok;
+
+  -- -------------------------------------------------------------------------
+  -- F1 — the lookup answers, and then stops answering (20260911091000)
+  -- -------------------------------------------------------------------------
+  --
+  -- Rate limiting keys on the address the gateway saw. A direct connection has
+  -- no request context and is never limited, which is why the cases above all
+  -- pass however many times they run; these set one so the limit can be seen.
+  perform set_config('request.headers', '{"x-forwarded-for":"203.0.113.9, 10.0.0.1"}', true);
+
+  return query select 'the caller is identified by the first forwarded address',
+                      coalesce(request_ip(), '(none)'), request_ip() = '203.0.113.9';
+
+  select exists_already into r from auth_email_for_sign_in('+201000000042');
+  return query select 'and inside the allowance the answer is the truth',
+                      r.exists_already::text, r.exists_already = true;
+
+  -- Forty an hour. Walk past it and the truth stops being handed out.
+  for v_n in 1 .. 45 loop
+    perform auth_email_for_sign_in('+20100000' || lpad(v_n::text, 4, '0'));
+  end loop;
+
+  select auth_email, exists_already into r from auth_email_for_sign_in('+201000000042');
+  return query select 'past the allowance it will not say whether an account exists',
+                      coalesce(r.exists_already::text, 'null'), r.exists_already is null;
+
+  -- Crucially not `false`. A lie there would send somebody who has an account
+  -- to create a second one; null means "ask GoTrue", which still signs them in.
+  return query select 'but it still hands back the address, so sign-in works',
+                      r.auth_email, r.auth_email = '201000000042@xleague.app';
+
+  -- A different address has its own allowance, so one abusive caller cannot
+  -- lock out everybody else.
+  perform set_config('request.headers', '{"x-forwarded-for":"198.51.100.4"}', true);
+  select exists_already into r from auth_email_for_sign_in('+201000000042');
+  return query select 'and another caller is unaffected',
+                      r.exists_already::text, r.exists_already = true;
+
+  perform set_config('request.headers', '', true);
+
+  -- -------------------------------------------------------------------------
+  -- F2 — there is no unclaimed console account to race for (20260911091000)
+  -- -------------------------------------------------------------------------
+  select count(*)::integer into v_n
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'staff_set_first_password';
+  return query select 'nothing can set a first console password any more',
+                      v_n::text, v_n = 0;
+
+  return query select 'and nobody may ask which console usernames exist',
+                      case when has_function_privilege('anon', 'staff_auth_status(text)', 'execute')
+                            or has_function_privilege('authenticated', 'staff_auth_status(text)', 'execute')
+                           then '(reachable!)' else 'closed' end,
+                      not has_function_privilege('anon', 'staff_auth_status(text)', 'execute')
+                  and not has_function_privilege('authenticated', 'staff_auth_status(text)', 'execute');
+
+  -- The property is "nothing is claimable", and claiming goes through
+  -- `staff_user_id`, which resolves a username to an account by its email. An
+  -- account with no email — the seeded fixtures, and the ten test rows the
+  -- security pass found in production — has no username to be claimed by and
+  -- never had one. An account with an email and no password is the dangerous
+  -- shape, and there must be none.
+  select count(*)::integer into v_n
+    from auth.users u
+    join platform_role pr on pr.user_id = u.id and pr.active
+   where u.email is not null and u.email <> ''
+     and (u.encrypted_password is null or u.encrypted_password = '');
+  return query select 'and no console account is sitting without a password',
+                      v_n::text, v_n = 0;
+
+  select count(*)::integer into v_n
+    from auth.users u
+   where (u.encrypted_password is null or u.encrypted_password = '')
+     and staff_user_id(coalesce(u.email, '')) is not null;
+  return query select 'nor is any of them reachable by a username',
+                      v_n::text, v_n = 0;
+
+  -- Creating one is an admin act, and it is refused without the role rather
+  -- than quietly doing nothing.
+  select * into r from admin_create_console_account('probe', 'Probe Person', 'support');
+  return query select 'creating a console account needs the admin role',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false and r.reason = 'You do not have permission to do that.';
+
+  -- -------------------------------------------------------------------------
   -- A venue owner
   -- -------------------------------------------------------------------------
   select * into r from sign_up('+201000000043', 'longenough1', 'Omar Fathy', 'venue_owner');
@@ -252,10 +374,10 @@ begin
   -- -------------------------------------------------------------------------
   return query select 'sign_up is callable before there is a session',
                       case when has_function_privilege(
-                             'anon', 'sign_up(text,text,text,text,text,text)', 'execute')
+                             'anon', 'sign_up(text,text,text,text,text,text,integer,text,text)', 'execute')
                            then 'granted' else '(closed!)' end,
                       has_function_privilege(
-                        'anon', 'sign_up(text,text,text,text,text,text)', 'execute');
+                        'anon', 'sign_up(text,text,text,text,text,text,integer,text,text)', 'execute');
 
   -- The mapping itself is not an API: exposing it would let anyone enumerate
   -- the address for a number without telling us they had.

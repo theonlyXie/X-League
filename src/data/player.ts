@@ -106,7 +106,7 @@ export const VENUES: Venue[] = [
 export const PITCH_AMENITIES = ['5-a-side', 'Artificial turf', 'Floodlit', 'Parking', 'Showers'];
 
 export const HOUSE_RULES =
-  'Deposit is paid in cash at the gate. Free cancellation until 6 hours before kick-off. No metal studs. Gate 2, ask for Pitch A.';
+  'The full price is paid in cash at the gate. Free cancellation until 6 hours before kick-off. No metal studs. Gate 2, ask for Pitch A.';
 
 export type RosterEntry = {
   name: string;

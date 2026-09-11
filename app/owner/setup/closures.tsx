@@ -19,8 +19,21 @@ import { today } from '@/data/venue';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
 import { useI18n } from '@/i18n';
+import type { TextKey } from '@/i18n/strings';
 
-const KINDS: Closure['kind'][] = ['maintenance', 'private', 'holiday', 'closure'];
+/**
+ * The four reasons an hour comes off sale, and the key each is written with.
+ *
+ * The enum value is what the database stores and what an owner used to be
+ * shown — so an Arabic manager picked between `maintenance`, `private`,
+ * `holiday` and `closure`, in English, on an otherwise translated screen.
+ */
+const KINDS: { kind: Closure['kind']; label: TextKey }[] = [
+  { kind: 'maintenance', label: 'ownKindMaintenance' },
+  { kind: 'private', label: 'ownKindPrivate' },
+  { kind: 'holiday', label: 'ownKindHoliday' },
+  { kind: 'closure', label: 'ownKindClosure' },
+];
 
 /**
  * O-04 — taking hours off sale.
@@ -31,7 +44,7 @@ const KINDS: Closure['kind'][] = ['maintenance', 'private', 'holiday', 'closure'
  * the server: the venue has to speak to them, and cancelling is the honest way.
  */
 export default function Closures() {
-  const { reason, t } = useI18n();
+  const { reason, t, hourLabel } = useI18n();
   const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
@@ -132,7 +145,7 @@ export default function Closures() {
         </View>
       </OpSection>
 
-      <OpSection title={t.ownCloseHour} hint="Pick from the same grid a player sees. An hour somebody has already booked cannot be closed — cancel the booking first.">
+      <OpSection title={t.ownCloseHour} hint={t.ownCloseHourHint}>
         {pitches.length > 1 ? (
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {pitches.map((p) => {
@@ -165,14 +178,14 @@ export default function Closures() {
         <OpField label={t.ownDate} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" width={140} />
 
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          {KINDS.map((k) => {
+          {KINDS.map(({ kind: k, label }) => {
             const on = k === kind;
             return (
               <Pressable
                 key={k}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={k}
+                accessibilityLabel={t[label]}
                 onPress={() => setKind(k)}
                 style={{
                   paddingVertical: 7,
@@ -183,7 +196,7 @@ export default function Closures() {
                 }}
               >
                 <Txt size={11.5} weight={on ? 'semibold' : 'regular'} color={ink}>
-                  {k}
+                  {t[label]}
                 </Txt>
               </Pressable>
             );
@@ -197,7 +210,7 @@ export default function Closures() {
             <Pressable
               key={s.startsAt}
               accessibilityRole="button"
-              accessibilityLabel={`Close ${s.hour}:00`}
+              accessibilityLabel={t.ownCloseHourAt(hourLabel(s.hour))}
               disabled={!s.available}
               onPress={async () => {
                 if (!pitchId) return;

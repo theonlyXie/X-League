@@ -81,7 +81,29 @@ const LATIN_RUN = /(\+?[A-Za-z0-9][A-Za-z0-9\u0027\u2019.,:;!?()\/+\-–—&%#@ 
 
 function isolate(children: ReactNode): ReactNode {
   if (typeof children === 'string') return children.replace(LATIN_RUN, '\u2068$1\u2069');
-  if (typeof children === 'number') return children;
-  if (Array.isArray(children)) return children.map(isolate);
+  if (typeof children === 'number') return isolate(String(children));
+
+  if (Array.isArray(children)) {
+    // Text and interpolated values are joined before the runs are found, and
+    // used not to be.
+    //
+    // `<Txt>VOID CARD \u00b7 LVL {level}</Txt>` reaches here as two children \u2014 the
+    // string, and the number \u2014 and isolating each separately produced two units
+    // rather than one run. Bidi then ordered those two units right-to-left like
+    // any other pair, so the player card read "12 LVL \u00b7 VOID CARD" in Arabic
+    // instead of "VOID CARD \u00b7 LVL 12". Isolating the number on its own would
+    // not have helped: two isolates side by side are still two units.
+    //
+    // Joining first makes `LVL {level}` exactly what `LVL 12` written as one
+    // string already was, which is what whoever wrote the line meant. Done here
+    // rather than at the call site for the same reason as the rest of this
+    // function: interpolating a value into a line of type is the ordinary way
+    // to write one, and no screen should have to remember it is also a hazard.
+    if (children.every((c) => typeof c === 'string' || typeof c === 'number')) {
+      return isolate(children.join(''));
+    }
+    return children.map(isolate);
+  }
+
   return children;
 }
