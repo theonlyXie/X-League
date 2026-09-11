@@ -20,13 +20,19 @@ declare
   -- what makes that acceptable is what it cannot write: it never touches
   -- platform_role, which auth_probe asserts directly.
   --
-  -- The three `staff_*` functions widen this set deliberately. Somebody
-  -- recovering a console password has no session, so they cannot be reached any
-  -- other way, and what makes that acceptable is what they refuse: they act
-  -- only on accounts holding an active platform role, first-time setup declines
-  -- an account that already has a password, and the reset needs a hashed
-  -- recovery code and locks after five failures. The list is exact so that
-  -- growing it is a decision somebody writes down.
+  -- `staff_reset_password` widens this set deliberately. Somebody recovering a
+  -- console password has no session, so it cannot be reached any other way, and
+  -- what makes that acceptable is what it refuses: it acts only on accounts
+  -- holding an active platform role, it needs a hashed recovery code, and it
+  -- locks the account after five wrong ones. The list is exact so that growing
+  -- it is a decision somebody writes down.
+  --
+  -- It used to be three. `staff_set_first_password` let whoever arrived first
+  -- claim a console account that had no password yet, and `staff_auth_status`
+  -- told an anonymous caller which usernames those were; both are gone, and a
+  -- console account is now created with a password already on it
+  -- (`admin_create_console_account`), so there is no unclaimed account to race
+  -- for. See 20260911091000.
   --
   -- The record widens it again, and on purpose. Who won what, who is scoring
   -- and where the cups are is the reason somebody opens this before they have
@@ -37,7 +43,7 @@ declare
     'auth_email_for_sign_in', 'club_honours', 'featured_clubs', 'hold_slot',
     'keeper_leaderboard', 'leaderboard', 'list_tournaments',
     'nearest_alternatives', 'search_availability', 'search_venues', 'sign_up',
-    'staff_auth_status', 'staff_reset_password', 'staff_set_first_password',
+    'staff_reset_password',
     'tournament_awards', 'tournament_detail', 'tournament_regions',
     'tournament_venues', 'venue_detail', 'venue_reviews'
   ];

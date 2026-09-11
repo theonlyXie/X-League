@@ -83,31 +83,30 @@ function Centre({ children }: { children: ReactNode }) {
  */
 const FORGOT_WORD = 'su';
 
-type Step = 'signIn' | 'claim' | 'recover' | 'done';
+/**
+ * One way back in, not two.
+ *
+ * There used to be a `claim` step as well: an account that had never had a
+ * password could be given one by anybody who knew the username, and the screen
+ * asked the server which usernames those were so it could offer the option. Both
+ * halves are gone — an account is created with a password already set and a
+ * recovery code handed over with it, so the first sign-in and the hundredth use
+ * the same door.
+ */
+type Step = 'signIn' | 'recover' | 'done';
 
 function SignIn() {
-  const { signIn, authStatus, setFirstPassword, resetPassword } = useSession();
+  const { signIn, resetPassword } = useSession();
   const [step, setStep] = useState<Step>('signIn');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [fresh, setFresh] = useState('');
   const [issued, setIssued] = useState<string | null>(null);
-  const [needsFirstPassword, setNeedsFirstPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const name = username.trim();
-
-  /**
-   * Asked when the username is finished with, not on every keystroke: it is a
-   * round trip, and it tells us which of two screens this person needs.
-   */
-  const look = async () => {
-    if (name.length < 2) return;
-    const status = await authStatus(name);
-    setNeedsFirstPassword(status.exists && !status.hasPassword);
-  };
 
   const submit = async () => {
     setBusy(true);
@@ -124,7 +123,7 @@ function SignIn() {
     setBusy(false);
   };
 
-  const finish = async (result: Awaited<ReturnType<typeof setFirstPassword>>) => {
+  const finish = async (result: Awaited<ReturnType<typeof resetPassword>>) => {
     setBusy(false);
     if (!result.ok) {
       setError(result.reason ?? 'That did not work.');
@@ -170,9 +169,8 @@ function SignIn() {
     );
   }
 
-  if (step === 'recover' || step === 'claim') {
-    const claiming = step === 'claim';
-    const ready = name.length >= 2 && fresh.length >= 8 && (claiming || code.trim().length >= 8);
+  if (step === 'recover') {
+    const ready = name.length >= 2 && fresh.length >= 8 && code.trim().length >= 8;
     return (
       <Centre>
         <div className="brand" style={{ marginBottom: 20 }}>
@@ -180,25 +178,27 @@ function SignIn() {
           <span>X League — Admin</span>
         </div>
 
-        <h1 style={{ marginTop: 0 }}>{claiming ? 'Set your password' : 'Reset your password'}</h1>
+        <h1 style={{ marginTop: 0 }}>Set your password</h1>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Your recovery code is the one you were given when the account was made, or the last one a
+          reset issued.
+        </p>
         {error ? <div className="notice error">{error}</div> : null}
 
         <label htmlFor="ruser">Username</label>
         <input id="ruser" autoCapitalize="none" value={username} onChange={(e) => setUsername(e.target.value)} />
 
-        {claiming ? null : (
-          <div style={{ marginTop: 14 }}>
-            <label htmlFor="code">Recovery code</label>
-            <input
-              id="code"
-              className="mono"
-              autoCapitalize="characters"
-              placeholder="XXXX-XXXX-XXXX-XXXX"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-          </div>
-        )}
+        <div style={{ marginTop: 14 }}>
+          <label htmlFor="code">Recovery code</label>
+          <input
+            id="code"
+            className="mono"
+            autoCapitalize="characters"
+            placeholder="XXXX-XXXX-XXXX-XXXX"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+        </div>
 
         <div style={{ marginTop: 14 }}>
           <label htmlFor="fresh">New password</label>
@@ -219,13 +219,10 @@ function SignIn() {
             onClick={() => {
               setBusy(true);
               setError(null);
-              void (claiming
-                ? setFirstPassword(name, fresh)
-                : resetPassword(name, code.trim().toUpperCase(), fresh)
-              ).then(finish);
+              void resetPassword(name, code.trim().toUpperCase(), fresh).then(finish);
             }}
           >
-            {busy ? 'Working…' : claiming ? 'Set password' : 'Reset password'}
+            {busy ? 'Working…' : 'Set password'}
           </button>
         </div>
 
@@ -264,24 +261,8 @@ function SignIn() {
         placeholder="Xie"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
-        onBlur={() => void look()}
         onKeyDown={(e) => e.key === 'Enter' && ready && void submit()}
       />
-
-      {needsFirstPassword ? (
-        <div className="notice" style={{ marginTop: 12 }}>
-          This account has no password yet.{' '}
-          <button
-            style={{ padding: 0, background: 'none', border: 0 }}
-            onClick={() => {
-              setStep('claim');
-              setError(null);
-            }}
-          >
-            Set one now
-          </button>
-        </div>
-      ) : null}
 
       <div style={{ marginTop: 14 }}>
         <label htmlFor="password">Password</label>
@@ -307,7 +288,8 @@ function SignIn() {
       </div>
 
       <p className="faint" style={{ marginTop: 16, marginBottom: 0 }}>
-        Staff accounts only. Players use the app. Forgotten it? Type <b>Su</b> as the password.
+        Staff accounts only. Players use the app. First time here, or forgotten it? Type <b>Su</b> as
+        the password and use your recovery code.
       </p>
     </Centre>
   );

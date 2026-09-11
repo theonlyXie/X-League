@@ -214,6 +214,54 @@ begin
                       coalesce(r.reason, '(allowed!)'),
                       r.ok = false and r.reason like '%5 more starters and 2 more substitutes%';
 
+  -- -------------------------------------------------------------------------
+  -- A cup's minimum age (20260911090000)
+  -- -------------------------------------------------------------------------
+  --
+  -- Fifteen unless the cup says otherwise, which is what the terms promise.
+  -- The refusal names who is under it: a count would make the captain guess
+  -- which of eight people it is, and the fix is either to leave somebody out or
+  -- to correct a year that was typed wrong.
+  update player_profile set birth_year = extract(year from now())::smallint - 12
+   where id = 'e1000000-0000-0000-0000-000000000003'::uuid;
+
+  -- No code and no points on any of these, so nothing is consumed and the
+  -- entry cases below still start from a fresh code and a full balance.
+  select * into r from register_club_for_tournament(v_trn, v_club, null, 0, null);
+  return query select 'a squad with somebody under the cup''s age is refused, by name',
+                      coalesce(r.reason, '(allowed!)'),
+                      r.ok = false
+                  and r.reason = 'This cup is for players aged 15 and over. Too young: Entry Player 3.';
+
+  -- A player who has never answered the question is not blocked. The question
+  -- is new, most accounts predate it, and locking those people out of cups they
+  -- have already entered would be the worse answer.
+  update player_profile set birth_year = null
+   where id = 'e1000000-0000-0000-0000-000000000003'::uuid;
+
+  select * into r from register_club_for_tournament(v_trn, v_club, null, 0, null);
+  return query select 'but a player who has not said is not held against the club',
+                      coalesce(r.reason, 'allowed'),
+                      r.ok = false is not true or r.reason is null;
+
+  -- Rolled back so the entry cases below start from the state they expect: the
+  -- call above either entered the club or refused it for some other reason.
+  delete from tournament_registration where tournament_id = v_trn and club_id = v_club;
+
+  -- The number belongs to the cup, not to the function: a youth cup is a
+  -- different row, not an edit to the rule.
+  update tournament set min_age = 10 where id = v_trn;
+  update player_profile set birth_year = extract(year from now())::smallint - 12
+   where id = 'e1000000-0000-0000-0000-000000000003'::uuid;
+
+  select * into r from register_club_for_tournament(v_trn, v_club, null, 0, null);
+  return query select 'and a cup that sets its own lower age lets them in',
+                      coalesce(r.reason, 'entered'), r.ok;
+
+  delete from tournament_registration where tournament_id = v_trn and club_id = v_club;
+  update tournament set min_age = 15 where id = v_trn;
+  update player_profile set birth_year = null
+   where id = 'e1000000-0000-0000-0000-000000000003'::uuid;
   select * into r from register_club_for_tournament(v_trn, v_club, v_code, 50000, 'Instapay ref 99123');
   v_reg := r.registration_id;
   return query select 'the club enters', coalesce(r.reason, 'entered'), r.ok;

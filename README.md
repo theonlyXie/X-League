@@ -63,10 +63,12 @@ looked at with an empty `.env`.
 
 ### Platform
 
-`/admin` carries all of A-01 – A-08 in one console: overview, verification
-queue, users and suspensions, moderation, ledger, policy settings and the audit
-log. Which sections appear depends on the caller's platform role, though every
-function checks authority for itself regardless.
+The console at `admin/` carries all of A-01 – A-08: overview, verification
+queue, club admissions, users and suspensions, moderation, the ledger, cups end
+to end, referees, policy settings and the audit log. It is a separate Next.js
+deployment rather than a screen in the app — staff run it from a desk, not a
+handset. Which sections appear depends on the caller's platform role, though
+every function checks authority for itself regardless.
 
 The three surfaces share one identity, so Player and Owner mode switch without
 signing out (RBAC-005): the switch lives on the player card under **Workspace**,
@@ -99,10 +101,10 @@ To point a build at the database, set `EXPO_PUBLIC_SUPABASE_URL`,
 builds). Without them the APK still installs and runs — on fixtures, in demo
 mode. The anon key is publishable by design and ships inside any client build.
 
-Permissions are deliberately narrow: `INTERNET` and `VIBRATE`. Storage,
+Permissions are deliberately narrow: `INTERNET`, and nothing else. Storage,
 overlay and microphone permissions that arrive from library manifests are
-stripped via `android.blockedPermissions`, because the app does not use them
-and each one is something Play review would want justified.
+stripped by name via `android.blockedPermissions`, because the app does not use
+them and each one is something Play review would want justified.
 
 ## Layout
 
@@ -115,7 +117,7 @@ app/                     expo-router routes; directory structure is the URL stru
   owner/                 owner tabs, Operative surfaces
     setup/               pricing, closures, staff, venue profile
   teams/  notifications  reachable from the profile rather than a tab
-  admin.tsx              the console's own fixed 1180pt canvas
+admin/                   the platform console, deployed separately (Next.js)
 src/
   theme/tokens.ts        every colour, radius and metric, lifted from the design
   theme/typography.ts    Inter faces by name + em→pt tracking
@@ -383,9 +385,6 @@ it is used at.
 - **No painted device chrome.** The artboards draw a phone bezel, a `9:41`
   status bar and a home indicator. A real app gets those from the OS, so screens
   reserve the safe-area insets instead of drawing over them.
-- **Cups and Chat are inert.** They are in the tab bar because the spec's IA
-  has them, but the design ships no screens behind them, so they are drawn
-  disabled rather than filled with invented product.
 - **Hold expiry exists.** The artboards only draw a running countdown. AC-03
   requires the hold to expire and the slot to return to inventory, so checkout
   has an expired state that releases the hold and offers the nearest
@@ -399,24 +398,56 @@ it is used at.
 
 ## Not yet built
 
-**Whole subsystems, no screens.** Tournaments (P-15–P-20), messaging and
-recruitment (P-10–P-12, P-14), the remaining owner screens (O-03–O-08) and
-admin sections (A-02–A-08). These are the M2/M3 surfaces; most have no
-artboards, so building them means designing them too. Of the 26 entities in
-§7.1 the schema carries 8 — Team, Match, PeerRating, PointLedger, Message,
-Tournament and the rest of the M2/M3 tables do not exist.
+This list went stale and has been rewritten against the tree rather than against
+the plan. Tournaments, messaging, clubs, refereeing, the owner setup screens and
+the console all exist; `docs/FLOWS.md` describes what the product actually does,
+screen by screen, and is the document to trust.
 
-**Screens on fixtures.** Home (P-02) and the admin console (A-01) read no live
-data at all. Venue discovery is fixtures everywhere: the pitch the app books is
-the one named in `.env`, so search returns a list of one real pitch dressed in
-fixture venues. The card's form and rater tiles read empty for a real account,
-because peer ratings, XP and levels have no tables behind them yet.
+What is genuinely still missing:
+
+**Venue photos.** `venue_photo` is read by the pitch page and written by
+nothing, so every venue draws the hatched placeholder. It is the one gap that
+shows on the screen whose job is to sell an hour of football.
+
+**A week view.** The calendar shows one day. The Day/Week toggle was removed
+rather than wired, because there is no week query behind it and a control that
+promises one and does nothing is worse than its absence.
+
+**A date picker.** The third day chip is "Day after", not a picker.
+
+**Realtime.** Nothing is pushed. Chat polls while it is open — four seconds in a
+room, twelve on the list, stopped when the screen is behind another one — and
+the owner surfaces pull to refresh. A socket needs a select grant and a policy on
+the table it watches, and this schema grants no table access to anybody.
 
 **Phone OTP, when there is an SMS provider.** The password path above is what
 runs today and needs no provider. Switching to OTP later is a provider account,
 an SMS provider under Authentication → Providers → Phone, and deleting the
 derived-address mapping — the rest of the identity model is unchanged.
 
-**Partial.** Arabic covers the player surface; Owner Mode and admin are wired
-to the database but untranslated. Cancellation and refunds are copy on the
-checkout screen, not a code path.
+**Notification copy.** The server composes notifications in English; the ones
+with a mapping in `src/i18n/reasons.ts` arrive in Arabic and the rest fall back.
+Every notification kind wants a key eventually.
+
+**A venue's own amenities, beyond the vocabulary.** `src/data/amenities.ts`
+recognises the common facilities in both languages and shows anything else as the
+venue typed it, which is honest rather than complete.
+
+## Keeping the two halves in step
+
+The clients name functions and arguments; the schema either has them or does not.
+Nothing else in this repository can see across that seam — `tsc` does not know
+what a database is, and the SQL suites test the schema against itself without ever
+making the call the app makes. That gap cost ten days of a product nobody could
+sign up to: a change added three questions to the sign-up screen, passed them to
+`sign_up`, and shipped no migration, so PostgREST answered PGRST202 to every
+attempt.
+
+```
+supabase/tests/bootstrap.sh && node scripts/check-rpc.mjs
+```
+
+reads every `.rpc('name', { … })` in `app/`, `src/` and `admin/` and checks it
+against `pg_proc`, by PostgREST's own resolution rule. It runs in CI beside the
+suites, and the workflow watches the clients as well as the migrations, because
+either half can break the agreement.

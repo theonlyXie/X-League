@@ -82,7 +82,7 @@ export default function Home() {
         <Link href="/me" asChild>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Your card, level ${level}`}
+            accessibilityLabel={t.yourCardAtLevel(num(level))}
             style={{
               flexDirection: 'row',
               alignItems: 'center',

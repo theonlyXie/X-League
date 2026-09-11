@@ -18,7 +18,7 @@ import { useI18n } from '@/i18n';
  * problem to fix.
  */
 export default function OwnerReviews() {
-  const { t } = useI18n();
+  const { t, num } = useI18n();
   const { activeVenue } = useSession();
   const venue = activeVenue;
 
@@ -60,18 +60,18 @@ export default function OwnerReviews() {
         <OpTile
           label={t.ownRating}
           value={summary?.ratingAvg != null ? summary.ratingAvg.toFixed(2) : '—'}
-          sub={`${summary?.ratingCount ?? 0} reviews`}
+          sub={t.reviewCount(num(summary?.ratingCount ?? 0), summary?.ratingCount ?? 0)}
           accent
         />
         <OpTile
           label={t.ownFiveStar}
           value={`${summary?.histogram.find((h) => h.stars === 5)?.count ?? 0}`}
-          sub="of all reviews"
+          sub={t.ownOfAllReviews}
         />
         <OpTile
           label={t.ownOneStar}
           value={`${summary?.histogram.find((h) => h.stars === 1)?.count ?? 0}`}
-          sub="worth reading"
+          sub={t.ownWorthReading}
         />
       </View>
 

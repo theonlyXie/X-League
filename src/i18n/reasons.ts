@@ -128,6 +128,7 @@ const AR: Record<string, string> = {
   'Give the pitch a name.': 'أعطِ الملعب اسمًا.',
   'Give the team a name.': 'أعطِ الفريق اسمًا.',
   'Give the tournament a name.': 'أعطِ البطولة اسمًا.',
+  'Give them a name.': 'اكتب اسمه.',
   'Give the venue a name and an area.': 'أعطِ الملعب اسمًا ومنطقة.',
   'You are not in that club.': 'إنت مش في النادي ده.',
   'This club is waiting to be admitted by X League.':
@@ -295,6 +296,10 @@ const AR: Record<string, string> = {
   'They did not play in that match.': 'لم يلعب في هذه المباراة.',
   'Too many attempts. Try again in a few minutes.':
     'محاولات كثيرة. أعد المحاولة بعد دقائق.',
+  'That username is taken.': 'اسم المستخدم ده متاخد.',
+  'Too many attempts. Try again later.': 'محاولات كثيرة. جرّب تاني بعدين.',
+  'Use a username of at least two letters, digits, dot, dash or underscore.':
+    'اسم المستخدم لازم يكون حرفين على الأقل، حروف أو أرقام أو نقطة أو شرطة أو شرطة سفلية.',
   'Use a password of at least 8 characters.': 'استخدم كلمة مرور من ٨ حروف على الأقل.',
   'Use at least 8 characters.': 'استخدم ٨ حروف على الأقل.',
   'Write something first.': 'اكتب شيئًا أولًا.',

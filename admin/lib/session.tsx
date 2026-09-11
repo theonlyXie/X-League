@@ -43,11 +43,17 @@ type SessionValue = {
   signIn: (username: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 
-  /** Whether to ask for a password, or offer to set the first one. */
-  authStatus: (username: string) => Promise<{ exists: boolean; hasPassword: boolean }>;
-  /** The first password on an account that has never had one. Returns the recovery code. */
-  setFirstPassword: (username: string, password: string) => Promise<Claimed>;
-  /** A new password, for somebody holding the recovery code. Issues a fresh one. */
+  /**
+   * A new password, for somebody holding the recovery code. Issues a fresh one.
+   *
+   * This is the only way into a console account other than knowing its
+   * password, and that is the point. There used to be a second — setting the
+   * first password on an account that had never had one, with nothing but the
+   * username — and it meant every staff account sat claimable by whoever
+   * guessed the username first. An account is now created with a password
+   * already on it and a code handed over with it, so there is no unclaimed
+   * account to race for. See 20260911091000.
+   */
   resetPassword: (username: string, code: string, password: string) => Promise<Claimed>;
 };
 
@@ -127,13 +133,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       : error.message;
   }, []);
 
-  const authStatus = useCallback(async (username: string) => {
-    const { data, error } = await supabase().rpc('staff_auth_status', { p_username: username });
-    if (error) return { exists: false, hasPassword: false };
-    const row = (data as { account_exists: boolean; has_password: boolean }[])[0];
-    return { exists: !!row?.account_exists, hasPassword: !!row?.has_password };
-  }, []);
-
   const claim = async (fn: string, args: Record<string, string>): Promise<Claimed> => {
     const { data, error } = await supabase().rpc(fn, args);
     // `rpc` resolves with an error rather than rejecting, so this is checked
@@ -142,12 +141,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const row = (data as { ok: boolean; reason: string | null; recovery_code: string | null }[])[0];
     return { ok: !!row?.ok, reason: row?.reason ?? null, recoveryCode: row?.recovery_code ?? null };
   };
-
-  const setFirstPassword = useCallback(
-    (username: string, password: string) =>
-      claim('staff_set_first_password', { p_username: username, p_password: password }),
-    [],
-  );
 
   const resetPassword = useCallback(
     (username: string, code: string, password: string) =>
@@ -161,8 +154,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<SessionValue>(
-    () => ({ session, restoring, role, roleLoading, signIn, signOut, authStatus, setFirstPassword, resetPassword }),
-    [session, restoring, role, roleLoading, signIn, signOut, authStatus, setFirstPassword, resetPassword],
+    () => ({ session, restoring, role, roleLoading, signIn, signOut, resetPassword }),
+    [session, restoring, role, roleLoading, signIn, signOut, resetPassword],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

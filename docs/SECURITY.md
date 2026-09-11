@@ -9,7 +9,7 @@ Re-run the whole thing at any time:
 ```
 npm run security                      # the repository: secrets, code, dependencies
 psql -f supabase/tests/security_probe.sql   # the schema: eight invariants
-supabase/tests/run_all.sh             # everything, 635 cases
+supabase/tests/run_all.sh             # everything, 730 cases
 ```
 
 ---
@@ -44,9 +44,9 @@ Every attempt below was made against the live project, as the role named.
 | `select * from player_profile` | permission denied |
 | `my_conversations`, `find_players` | permission denied for function |
 | Hold a pitch | Sign in to hold a slot. |
-| Claim a staff account | refused (none is claimable today — see F2) |
+| Claim a staff account | no such function any more — see F2 |
 | Browse venues, cups, the boards | allowed, and meant to be |
-| **Ask whether a phone number has an account** | **answered** — see F1 |
+| **Ask whether a phone number has an account** | answered, forty times an hour — see F1 |
 
 ### The schema itself
 
@@ -92,53 +92,76 @@ both classes are now asserted by the probe.
 
 ---
 
+## Closed since this pass
+
+**F1 · Rate limited.** `auth_email_for_sign_in` still answers — the sign-in
+screen needs it before there is a session — but the part worth protecting is now
+allowanced: forty lookups an hour from one address, keyed on the `x-forwarded-for`
+the gateway sets. Past the allowance the function still returns the derived
+address, so sign-in keeps working, and returns `exists_already` as **null**
+rather than false. Null means "not saying", and the client reads it as "ask
+GoTrue and report what it says". Answering false would have been worse than
+saying nothing: it would send somebody who has an account to create a second.
+
+Degrading rather than refusing is deliberate. Egypt is heavily carrier-NAT'd and
+one address is routinely a whole neighbourhood, so a limit that locked people out
+would be a worse bug than the one it fixed.
+
+**F2 · There is no unclaimed console account.** The old answer was
+`staff_set_first_password`, callable by anybody, which set the first password on
+any staff account that did not have one — so every account created sat claimable
+by whoever guessed the username, and `staff_auth_status` told an anonymous caller
+which usernames those were.
+
+Hardening it would have meant asking for a code. But if an account must hold a
+code before it can be claimed, it may as well hold a password too — and then
+there is nothing for the function to act on. So both are gone rather than
+guarded: `admin_create_console_account` creates the account with an unguessable
+password already on it and hands back a recovery code, and `staff_reset_password`
+— which has always required a hashed code and locked after five wrong ones — is
+the only door. The anon surface got smaller instead of more complicated, and
+`access_probe` asserts the shorter list.
+
+**F3 · Sign-up is allowanced too.** Two limits, because they protect against
+different things: `sign_up_call` counts every call including the ones that fail
+validation, which stops the function's own "that number already has an account"
+being used as a free oracle; `sign_up_made` counts accounts actually created.
+120 and 30 an hour per address — far past any real group of friends signing up
+together at a pitch, and far short of what an abuse run wants.
+
+Both F1 and F3 key on `request_ip()`, which returns null when there is no request
+context at all. A direct `psql` connection is already inside, and lumping the
+suites into one shared bucket would have made them fail in a different place
+each run.
+
+**Dependencies.** The console's critical advisory is gone: `next` is on 16.3.4
+and `sharp` came with it. `js-yaml` — reached only through `@expo/xcpretty`,
+which pretty-prints Xcode build output — is pinned to 4.3.2 by an `overrides`
+entry in the app's `package.json` rather than by the SDK-wide bump `npm audit fix`
+wanted, which moved fifty-four Expo packages to fix one build-time DoS.
+`npm run security` now reports nothing standing.
+
+---
+
 ## Open — your decisions, not mine
 
-**F1 · Anyone can ask whether a phone number has an X League account.**
-`auth_email_for_sign_in` is callable without an account and answers truthfully,
-with no rate limit. Walking every Egyptian mobile prefix produces a list of X
-League users' phone numbers. The sign-in screen needs the answer — that is how
-it knows whether to offer sign-in or sign-up — so this cannot simply be closed.
-The options are a rate limit keyed on IP, a captcha in front of it, or removing
-the distinction from the client and letting the sign-in attempt fail generically.
-*Severity: medium — privacy, not access.*
-
-**F2 · A staff account can be claimed by whoever gets there first.**
-`staff_set_first_password(username, password)` is callable without an account and
-sets the password on any staff account that does not have one yet.
-`staff_auth_status(username)` — also open — says which usernames exist and which
-are unclaimed, so an attacker is told exactly what to aim at. **Nothing is
-claimable today**: the only accounts without a password are ten test rows with no
-username at all. But the window opens every time you create a staff account and
-closes only when that person signs in. The fix is to require the recovery code
-for the first claim as well as for a reset, which is one migration and a small
-change to the console's staff screen. *Severity: high when a staff account is
-pending, none otherwise.*
-
-**F3 · Sign-up bypasses Supabase Auth entirely.** `sign_up` writes `auth.users`
-directly rather than going through GoTrue. That was a deliberate choice — it is
-what makes a phone number and a password work as credentials — but it means
-GoTrue's rate limiting, its captcha hook, and its leaked-password check never
-run. An attacker can create accounts in a loop. The database's own guards
-(`send_message` allows ten messages in ten seconds, `submit_report` deduplicates)
-show the shape of the fix: a per-IP or per-number throttle inside `sign_up`.
-*Severity: medium — abuse and junk data, not access.*
-
-Related: Supabase's **leaked-password protection is off** for this project. It is
-one toggle in the dashboard, and worth turning on for the console's own sign-in
-— but note it will not cover player sign-up, for the reason above.
-
-**F4 · Ten test accounts are live in production.** `Basel Elsayed`,
+**F4 · Test accounts are live in production.** `Basel Elsayed`,
 `Salma Rashad`, `Karim Tarek` and `Test Squad 1` through `7`, plus seven
 `a9000000-…` players sitting in a club called "QA Test FC". They have no
 password and no email, so nobody can sign in as them, but they are real rows
 that can appear in a squad, a club and a table. This is the same class of defect
 the product has been clearing for weeks — a screen showing something that is not
 true — and it needs a decision about which of them the demo account still
-depends on before they are deleted.
+depends on before they are deleted. Nothing in this repository can make that
+decision, and a migration that deleted them would be a migration that might
+delete the account App Review signs in with.
 *Severity: low as a vulnerability, higher as a correctness problem.*
 
----
+**Leaked-password protection is off** for this project. It is one toggle in the
+Supabase dashboard, and worth turning on for the console's own sign-in — but note
+it will not cover player sign-up, because `sign_up` writes `auth.users` directly
+rather than going through GoTrue. That is the same trade F3 describes and the
+reason the throttle lives in the function.
 
 ## Carried on purpose
 
@@ -150,7 +173,8 @@ rewrites three hundred lines of lockfile and leaves the count at eighteen,
 because the fixed versions sit outside what Expo SDK 57 pins, and going past
 that pin has broken this build before. They are listed by name in
 `scripts/security-check.mjs`, so a *new* advisory in anything else still fails
-the check.
+the check — which is how `js-yaml` was noticed, and why it is pinned by an
+override rather than added to that list.
 
 The Supabase linter reports 200 `SECURITY DEFINER` functions callable by
 `anon` or `authenticated`, and 43 tables with RLS on and no policies. Both are

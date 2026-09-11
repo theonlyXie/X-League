@@ -28,7 +28,7 @@ export function SlotGrid({
   columns?: number;
   gap?: number;
 }) {
-  const { t: strings, hourLabel } = useI18n();
+  const { t: strings, hourLabel, rtl } = useI18n();
   const [width, setWidth] = useState(0);
   const cell = width > 0 ? (width - gap * (columns - 1)) / columns : 0;
 
@@ -70,7 +70,21 @@ export function SlotGrid({
               size={12.5}
               weight={on ? 'bold' : 'medium'}
               color={on ? void_.bg : isTaken ? onVoid.disabled : 'rgba(243,238,229,.72)'}
-              style={isTaken ? { textDecorationLine: 'line-through' } : undefined}
+              // Struck through in English, not in Arabic.
+              //
+              // A rule through Latin digits crosses them at the waist and they
+              // still read. Arabic-Indic numerals are built from dots and short
+              // strokes sitting on that same line — ٠ is a dot — so the rule
+              // does not cross them, it replaces them: `٦:٠٠ م` at the disabled
+              // step came out as a smear rather than a time. The token's own
+              // note says a sold hour still has to be read, which is right and
+              // was not what happened.
+              //
+              // What carries the state instead is what already carried it
+              // alongside the rule: the dimmer ink, the fainter border, and the
+              // screen-reader label above, which says "already booked" in
+              // either language rather than relying on a line nobody hears.
+              style={isTaken && !rtl ? { textDecorationLine: 'line-through' } : undefined}
             >
               {label}
             </Txt>

@@ -15,6 +15,7 @@ import {
 } from '@/data/referee';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
+import { useSession } from '@/state/session';
 
 /**
  * One match, as the referee saw it.
@@ -32,19 +33,28 @@ export default function RefereeMatch() {
   const params = useLocalSearchParams<{ id?: string }>();
   const fixtureId = params.id ?? null;
   const { reason, t, num, moment } = useI18n();
+  const { signedIn } = useSession();
 
   const [fixture, setFixture] = useState<RefFixture | null>(null);
   const [lines, setLines] = useState<SheetLine[]>([]);
   const [home, setHome] = useState(0);
   const [away, setAway] = useState(0);
-  const [loading, setLoading] = useState(isLive);
+  const [loading, setLoading] = useState(isLive && signedIn);
   const [unreadable, setUnreadable] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const load = useCallback(async () => {
-    if (!isLive || !fixtureId) {
+    // `signedIn` as well as `isLive`, and it used not to be.
+    //
+    // Both calls below need a session, so reaching this route signed out fired
+    // them anyway and PostgREST answered 401 twice. Nothing broke — the catch
+    // draws the unreadable state — but two 401s went into the console on every
+    // visit, and "could not be read" is the wrong sentence for "you are not
+    // signed in". The browser check has been red on main since this route was
+    // added, for exactly this.
+    if (!isLive || !signedIn || !fixtureId) {
       setLoading(false);
       return;
     }
@@ -62,7 +72,7 @@ export default function RefereeMatch() {
     } finally {
       setLoading(false);
     }
-  }, [fixtureId]);
+  }, [fixtureId, signedIn]);
 
   useEffect(() => {
     void load();
@@ -132,12 +142,37 @@ export default function RefereeMatch() {
         </Txt>
       </View>
 
+      {!signedIn ? (
+        <View style={{ gap: 12 }}>
+          <Txt size={13} lh={1.5} color={onVoid.muted}>
+            {t.signInToSee}
+          </Txt>
+          <Button label={t.signIn} onPress={() => router.push('/sign-in?next=/referee')} />
+        </View>
+      ) : null}
+
       {loading ? <ActivityIndicator color={gold.base} /> : null}
 
-      {!loading && unreadable ? (
+      {signedIn && !loading && unreadable ? (
         <Txt size={13} color={onVoid.muted}>
           {t.refereeSheetUnreadable}
         </Txt>
+      ) : null}
+
+      {/* Reached with an id that resolves to nothing — a fixture that was
+          removed, a cup that is not running, or somebody else's match — this
+          screen used to render its title and then stop, which reads as a
+          broken page rather than an answer. Every other detail route in the
+          app says what happened; this one now does too. */}
+      {signedIn && !loading && !unreadable && !fixture ? (
+        <View style={{ gap: 6 }}>
+          <Txt size={14} weight="semibold" color={onVoid.primary}>
+            {t.refereeNoSuchMatch}
+          </Txt>
+          <Txt size={12.5} lh={1.5} color={onVoid.muted}>
+            {t.refereeNoSuchMatchBlurb}
+          </Txt>
+        </View>
       ) : null}
 
       {fixture ? (

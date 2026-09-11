@@ -221,21 +221,26 @@ verified — that is the entire value of the badge.
 
 ## 6. The platform
 
-Two doors, same database.
+**The console** (`admin/`, deployed separately) is the whole of it: an overview,
+the verification queue, club admissions, the report queue, user search and
+suspension, the ledger, the settings, the audit log — and running cups. It used
+to have a twin inside the app, for staff on a phone; that was removed rather than
+kept in step, because two consoles over one schema is two places for authority to
+drift.
 
-**In the app** (`app/admin.tsx`), for staff on a phone: an overview, the
-verification queue, the report queue, user search and suspension, the ledger,
-the settings and the audit log.
-
-**On the web** (`admin/`, deployed separately), for running cups. A cup is
-created as a draft, opened for entries, entries are accepted or declined one
-by one, the draw is made, each fixture is scheduled onto a real booked
-pitch-hour, and the result is read off the match the captain reported rather
-than typed in. The table is computed from the fixtures and never submitted.
+A cup is created as a draft, opened for entries, entries are accepted or
+declined one by one, the draw is made, each fixture is scheduled onto a real
+booked pitch-hour, and the result is read off the match the captain reported
+rather than typed in. The table is computed from the fixtures and never
+submitted.
 
 Staff sign in with a username and password — they are not players and the
-account is not tied to a handset. A platform role is granted in the database,
-never from a screen.
+account is not tied to a handset. The account is made by
+`admin_create_console_account`, which creates it with a password nobody knows and
+hands back a recovery code; that code is the only thing passed on, and
+`staff_reset_password` is the only door it opens. There is deliberately no way to
+claim an account by knowing its username, and no way to ask which usernames
+exist.
 
 **Reports** reach both queues from the report sheet on a venue's page. Until
 recently nothing in the product could file one, so the queues could only ever

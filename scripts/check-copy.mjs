@@ -43,6 +43,8 @@ const ALLOWED = new Set([
   // The last-resort crash alert, English for the same reason: it exists to be
   // screenshotted and sent on, beside a stack trace that is English anyway.
   'Something went wrong',
+  // Part of the same crash trail, and English for the same reason.
+  'Last screen: ${path}',
 ]);
 
 /**
@@ -67,7 +69,14 @@ const REASONS = new Set(
  * Translating them is worth doing and is not this check's business: the point
  * here is that no *product* copy escapes the string table.
  */
-const FIXTURES = ['src/data/player.ts', 'src/data/owner.ts'];
+const FIXTURES = [
+  'src/data/player.ts',
+  'src/data/owner.ts',
+  // Not copy: the spellings a venue might type for an amenity, matched against
+  // free text so the chip can be drawn in the reader's language. Nothing here
+  // reaches a screen — the label that does is a key in the string table.
+  'src/data/amenities.ts',
+];
 
 // The run may contain an apostrophe — `Live from ${venue}'s calendar` was
 // hardcoded on the owner's calendar in English, next to the key that already
@@ -75,9 +84,32 @@ const FIXTURES = ['src/data/player.ts', 'src/data/owner.ts'];
 // The word cap used to be eight, which meant a *longer* English sentence
 // escaped — exactly backwards. "Verify your number to book and to reach owner
 // mode" is ten words and sat hardcoded on the account screen because of it.
-const LITERAL = /(['"`])([A-Z][A-Za-z]+(?:[ ][A-Za-z${}.'\u2019]+){1,24})\1/g;
+//
+// Two holes this pattern used to have, both of which shipped English into the
+// Arabic interface and both of which this check reported as clean:
+//
+//   * it required a capital first letter, so `of all reviews` and
+//     `worth reading` — two labels on the owner's review screen — never
+//     matched at all;
+//   * its character class had no comma and no em dash, so a literal containing
+//     either could never reach its own closing quote. The whole
+//     "Pick from the same grid a player sees. An hour somebody has already
+//     booked cannot be closed — cancel the booking first." sentence sat
+//     hardcoded on the closures screen behind that one gap.
+//
+// So the first word may now be lower case, and the run may contain the
+// punctuation real sentences contain. What keeps that from matching every
+// identifier and CSS value in the tree is the two-word minimum, the ALLOWED
+// list, and NOT_COPY below.
+const LITERAL =
+  /(['"`])([A-Za-z][A-Za-z]+(?:[ ][A-Za-z0-9${}.,;:!?\u2019\u2014\u2013()%-]+){1,24})\1/g;
+//
+// `throw new Error` and the matchers are not copy, they are code that happens to
+// contain English. A developer exception is read by a developer, and a needle
+// like `'did not play'` is matching a message Postgres sent — translating either
+// would break the thing it is part of.
 const NOT_COPY =
-  /(accessibilityRole|fontFamily|import |from ['"]|require\(|@\/|https?:\/\/|StyleSheet|Platform\.|process\.env|console\.)/;
+  /(accessibilityRole|fontFamily|import |from ['"]|require\(|@\/|https?:\/\/|StyleSheet|Platform\.|process\.env|console\.|throw new Error\(|\.includes\(|\bhas\()/;
 
 function walk(dir) {
   const out = [];
