@@ -74,6 +74,31 @@ The three surfaces share one identity, so Player and Owner mode switch without
 signing out (RBAC-005): the switch lives on the player card under **Workspace**,
 and the black `OWNER` chip in the venue header switches back.
 
+## Running it on an iPhone
+
+On a Mac, with Xcode and a paid Apple Developer account. No cloud build and no
+Expo account: `prebuild` generates an ordinary Xcode project from `app.json`,
+and everything after that is `xcodebuild`.
+
+```bash
+npm run ios:device                        # debug build, on a connected iPhone
+npm run ios:device -- --release           # what a player gets: no bundler attached
+npm run ios:device -- --team ABCDE12345   # set the signing team without the GUI
+npm run ios:device -- --clean             # regenerate ios/ after an app.json change
+```
+
+`scripts/ios-dev.sh` is `expo prebuild` and `expo run:ios` with the checks in
+front of them, and the checks are the point: Command Line Tools selected instead
+of Xcode, Developer Mode off on the phone, a missing signing team and pods out of
+step are between them almost every first-run failure, and each one is minutes to
+diagnose from the error Xcode prints and seconds from a sentence naming it.
+
+Two things it will not do. It does not apply migrations — a build pointed at a
+database missing them shows a working app that cannot sign anybody up, so the
+script says so before it starts. And it only reaches phones you can plug in:
+TestFlight is Xcode → Product → Archive, and `ios.buildNumber` in `app.json` has
+to go up before every upload.
+
 ## Building an APK
 
 The native projects are not committed — `android/` and `ios/` are generated from
