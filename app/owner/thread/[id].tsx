@@ -22,6 +22,7 @@ import {
 } from '@/data/social';
 import { isLive } from '@/lib/supabase';
 import { useI18n } from '@/i18n';
+import { useSession } from '@/state/session';
 
 /**
  * The venue's side of a settling-up room.
@@ -42,10 +43,11 @@ export default function OwnerThread() {
   const params = useLocalSearchParams<{ id?: string }>();
   const conversationId = params.id ?? null;
   const { reason, t, hour } = useI18n();
+  const { signedIn } = useSession();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [title, setTitle] = useState('');
-  const [loading, setLoading] = useState(isLive);
+  const [loading, setLoading] = useState(isLive && signedIn);
   const [unreadable, setUnreadable] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -53,7 +55,11 @@ export default function OwnerThread() {
   const scroller = useRef<ScrollView | null>(null);
 
   const load = useCallback(async () => {
-    if (!isLive || !conversationId) return;
+    // Every call here needs a session. Signed out they were fired anyway and
+    // PostgREST answered 401, which the catch turned into "you are not in this
+    // conversation" — true-ish, and not the reason. Two 401s per visit is also
+    // what has kept the browser check red on main.
+    if (!isLive || !signedIn || !conversationId) return;
     try {
       setMessages(await conversationMessages(conversationId, 60));
       setUnreadable(false);
@@ -62,10 +68,10 @@ export default function OwnerThread() {
       setUnreadable(true);
       setNotice(t.errNotInConversation);
     }
-  }, [conversationId]);
+  }, [conversationId, signedIn, t]);
 
   useEffect(() => {
-    if (!isLive || !conversationId) {
+    if (!isLive || !signedIn || !conversationId) {
       setLoading(false);
       return;
     }
@@ -85,7 +91,7 @@ export default function OwnerThread() {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, load]);
+  }, [conversationId, signedIn, load]);
 
   useEffect(() => {
     const shown = Keyboard.addListener(
@@ -120,7 +126,15 @@ export default function OwnerThread() {
             </View>
           ) : null}
 
-          {!loading && !unreadable && ordered.length === 0 ? (
+          {/* "No messages yet" is the wrong sentence for somebody who is not
+              signed in — the room may be full of them. */}
+          {!signedIn ? (
+            <Txt size={12.5} color="rgba(20,18,16,.5)">
+              {t.signInToSee}
+            </Txt>
+          ) : null}
+
+          {signedIn && !loading && !unreadable && ordered.length === 0 ? (
             <Txt size={12.5} color="rgba(20,18,16,.5)">
               {t.noMessages}
             </Txt>
