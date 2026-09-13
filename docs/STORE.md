@@ -118,8 +118,14 @@ organisation rather than an individual if the app is to be published as X League
 — that needs a D-U-N-S number and takes days to weeks, so start it first. This
 is the long pole in the whole submission.
 
-**2 · Register the bundle identifier** `com.xleague.app` in the developer
+**2 · Register the bundle identifier** `com.thedevark.xleague` in the developer
 portal. It already matches `app.json`.
+
+It was `com.xleague.app` until somebody tried to register it and got "Failed
+Registering Bundle Identifier": identifiers are unique across every Apple
+developer account in the world, and that one was already taken. The lesson for
+next time is that the error does not say so — it reads like a problem with your
+account rather than with the name.
 
 **3 · Build.** `npx eas login`, then:
 

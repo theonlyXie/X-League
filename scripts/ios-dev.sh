@@ -198,14 +198,19 @@ if [ -n "$TEAM_ID" ] && [ -n "$PBXPROJ" ]; then
   # take BSD's `-i ''`. Both settings go on one line rather than two: a literal
   # newline in a BSD sed replacement needs escaping, `\t` there inserts the
   # letter t rather than a tab, and a pbxproj parses `A = x; B = y;` on one line
-  # exactly as it parses two. Anchored on the bundle identifier so nothing else
-  # is touched, idempotent so a second run is harmless, and verified below
-  # rather than assumed — and ios/ is disposable if it ever does go wrong.
+  # exactly as it parses two. Idempotent so a second run is harmless, and
+  # verified below rather than assumed — ios/ is disposable if it ever does go
+  # wrong.
+  #
+  # Anchored on the *setting* rather than on a particular identifier. It used to
+  # name `com.xleague.app` literally, which meant renaming the app in app.json
+  # silently took `--team` out of service until somebody noticed the die below.
+  # The backreference keeps whatever identifier prebuild actually wrote.
   if grep -q 'DEVELOPMENT_TEAM = [A-Za-z0-9]*;' "$PBXPROJ"; then
     /usr/bin/sed -i '' "s/DEVELOPMENT_TEAM = [A-Za-z0-9]*;/DEVELOPMENT_TEAM = ${TEAM_ID};/g" "$PBXPROJ"
   else
     /usr/bin/sed -i '' \
-      "s/PRODUCT_BUNDLE_IDENTIFIER = com\.xleague\.app;/DEVELOPMENT_TEAM = ${TEAM_ID}; PRODUCT_BUNDLE_IDENTIFIER = com.xleague.app;/g" \
+      "s/PRODUCT_BUNDLE_IDENTIFIER = \([A-Za-z0-9._-]*\);/DEVELOPMENT_TEAM = ${TEAM_ID}; PRODUCT_BUNDLE_IDENTIFIER = \1;/g" \
       "$PBXPROJ"
   fi
 

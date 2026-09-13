@@ -11,7 +11,7 @@
     "backgroundColor": "#080808",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.xleague.app",
+      "bundleIdentifier": "com.thedevark.xleague",
       "buildNumber": "2",
       "infoPlist": {
         "CADisableMinimumFrameDurationOnPhone": true,
@@ -20,7 +20,7 @@
       }
     },
     "android": {
-      "package": "com.xleague.app",
+      "package": "com.thedevark.xleague",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#F7F0E6",
