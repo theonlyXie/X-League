@@ -141,6 +141,13 @@ export default function CupDetail() {
                   {t.entryFee(money(cup.entryFeeEgp))}
                 </Txt>
               ) : null}
+              {/* What the winner takes. A player weighing a share promised on
+                  a club invitation is weighing it against this number. */}
+              {cup.prizePoolEgp > 0 ? (
+                <Txt size={11.5} weight="semibold" color={gold.base}>
+                  {t.prizePool} {money(cup.prizePoolEgp)}
+                </Txt>
+              ) : null}
             </View>
             <CapacityBar
               filled={cup.teams.length}

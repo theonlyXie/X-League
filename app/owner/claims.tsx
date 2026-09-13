@@ -6,11 +6,12 @@ import { OpButton, OpHeader, OpNotice, OpRow, OpScreen, OpSection } from '@/comp
 import { ink, onOperative, radius } from '@/theme/tokens';
 import {
   confirmBookingPayment,
-  venueConversation,
   venuePaymentClaims,
   type ChannelKind,
   type PaymentClaim,
 } from '@/data/venueMoney';
+import { bookingWhatsapp } from '@/data/social';
+import { openWhatsApp } from '@/lib/whatsapp';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
 import { useI18n } from '@/i18n';
@@ -23,9 +24,10 @@ import { useI18n } from '@/i18n';
  * the wallet and found it. Only the second one settles what the venue is owed,
  * which is why the button says "it arrived" rather than "accept".
  *
- * Every row opens the room it came from. A transfer that needs explaining —
- * short, late, to the wrong number — needs somewhere to explain it, and the
- * list is not that place.
+ * Every row reaches the captain who made the claim. A transfer that needs
+ * explaining — short, late, to the wrong number — needs somewhere to explain
+ * it, and the list is not that place. That used to be a thread inside the
+ * app; it is now the captain's own number, opened in WhatsApp.
  */
 export default function Claims() {
   const { reason, t, num, moment } = useI18n();
@@ -74,11 +76,14 @@ export default function Claims() {
     }
   };
 
-  const openThread = async (c: PaymentClaim) => {
+  const reachCaptain = async (c: PaymentClaim) => {
     try {
-      const res = await venueConversation(c.bookingId);
-      if (res.ok && res.conversationId) router.push(`/owner/thread/${res.conversationId}`);
-      else setNotice(reason(res.reason) ?? null);
+      const res = await bookingWhatsapp(c.bookingId);
+      if (!res.ok || !res.reachable) {
+        setNotice(reason(res.reason) ?? null);
+        return;
+      }
+      if (!(await openWhatsApp(res.reachable.waNumber))) setNotice(t.couldNotOpenWhatsApp);
     } catch {
       setNotice(t.offline);
     }
@@ -166,12 +171,12 @@ export default function Claims() {
                 )}
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${t.ownOpenThread} ${c.code}`}
-                  onPress={() => void openThread(c)}
+                  accessibilityLabel={`${t.ownMessageCaptain} ${c.code}`}
+                  onPress={() => void reachCaptain(c)}
                   hitSlop={8}
                 >
                   <Txt size={11.5} weight="semibold" color={ink}>
-                    {t.ownOpenThread}
+                    {t.ownMessageCaptain}
                   </Txt>
                 </Pressable>
               </View>

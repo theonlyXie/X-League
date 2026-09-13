@@ -6,6 +6,7 @@ import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Divider, Eyebrow } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { PressScale, Reveal } from '@/components/motion';
 import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
@@ -23,7 +24,6 @@ import {
   type Honour,
   type SlotKind,
 } from '@/data/clubs';
-import { clubConversation } from '@/data/social';
 import { pickAndUpload } from '@/lib/upload';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
@@ -114,23 +114,6 @@ export default function ClubPage() {
     }
   }
 
-  // The way into the club's room. Opening it is idempotent on the server, so
-  // this is safe to press repeatedly and never makes a second empty room.
-  async function openRoom() {
-    if (!club || busy) return;
-    setBusy(true);
-    setNotice(null);
-    try {
-      const res = await clubConversation(club.clubId);
-      if (res.ok && res.conversationId) router.push(`/chat/${res.conversationId}`);
-      else setNotice(reason(res.reason) ?? t.offline);
-    } catch {
-      setNotice(t.offline);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function changeCrest() {
     if (!club || busy) return;
     setBusy(true);
@@ -157,8 +140,10 @@ export default function ClubPage() {
     canManage,
     captainId,
     clubId: club?.clubId ?? '',
+    meId: session?.user?.id ?? null,
     busy,
     act,
+    setNotice,
     t,
     num,
   };
@@ -292,16 +277,6 @@ export default function ClubPage() {
             </Txt>
           ) : null}
 
-          {/* Every member gets the room, not only the captain: the squad is
-              the point of a club, and a chat one person can open is a notice
-              board. */}
-          <Button
-            label={t.clubRoom}
-            variant="ghost"
-            disabled={busy}
-            onPress={openRoom}
-          />
-
           {canManage ? (
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Button
@@ -392,8 +367,11 @@ type RowProps = {
   canManage: boolean;
   captainId: string | null;
   clubId: string;
+  /** The viewer, so nobody is offered a button that opens their own number. */
+  meId: string | null;
   busy: boolean;
   act: (fn: () => Promise<{ ok: boolean; reason?: string }>) => void;
+  setNotice: (sentence: string | null) => void;
   t: ReturnType<typeof useI18n>['t'];
   num: ReturnType<typeof useI18n>['num'];
 };
@@ -410,8 +388,10 @@ function Row({
   canManage,
   captainId,
   clubId,
+  meId,
   busy,
   act,
+  setNotice,
   t,
   num,
 }: RowProps) {
@@ -450,6 +430,14 @@ function Row({
               ? t.doesNotPlay
               : ''}
           </Txt>
+          {/* What this member was promised. On the row rather than behind the
+              expander, because the captain's own record of who is owed what is
+              the thing this feature exists to keep. */}
+          {member.bountyPct != null ? (
+            <Txt size={11} color={gold.base}>
+              {t.bountyShare(num(member.bountyPct))}
+            </Txt>
+          ) : null}
         </View>
         {member.ovr != null ? (
           <Txt size={13} weight="bold" color={gold.base}>
@@ -457,6 +445,18 @@ function Row({
           </Txt>
         ) : null}
       </PressScale>
+
+      {/* The club room was a chat this app hosted. This is the same squad,
+          reached where they already talk. */}
+      {member.playerId !== meId && member.state === 'active' ? (
+        <WhatsAppButton
+          playerId={member.playerId}
+          label={t.whatsapp}
+          height={32}
+          size={11.5}
+          onNotice={setNotice}
+        />
+      ) : null}
 
       {expanded ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 6 }}>

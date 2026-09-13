@@ -1,132 +1,64 @@
 import { supabase } from '@/lib/supabase';
 
 /**
- * Conversations, notifications and reports.
+ * Reaching somebody, notifications and reports.
  *
- * Opening a conversation is idempotent — `lobbyConversation` and
- * `directConversation` return the existing room if there is one — so a screen
- * can call them on mount without accumulating empty rooms.
+ * The messaging that used to live here is gone. What replaced it is a number:
+ * the server decides whether the caller is entitled to somebody's WhatsApp —
+ * the same relationship rule that used to decide whether a direct conversation
+ * could be opened at all — and the app opens WhatsApp with it.
  */
 
-export type ConversationKind = 'lobby' | 'team' | 'club' | 'direct';
-
-export type ConversationSummary = {
-  conversationId: string;
-  kind: ConversationKind;
-  /** Already resolved to something readable: a venue, a team, or a person. */
-  title: string;
-  lastBody: string | null;
-  lastAt: string | null;
-  unread: number;
-  bookingId: string | null;
-  teamId: string | null;
-  clubId: string | null;
+export type Reachable = {
+  displayName: string;
+  /** Digits in `wa.me` form: country code, no plus. Never built on the client. */
+  waNumber: string;
 };
 
-export async function myConversations(limit = 30): Promise<ConversationSummary[]> {
-  const { data, error } = await supabase().rpc('my_conversations', { p_limit: limit });
-  if (error) throw error;
-  return (data as any[]).map((r) => ({
-    conversationId: r.conversation_id,
-    kind: r.kind,
-    title: r.title,
-    lastBody: r.last_body,
-    lastAt: r.last_at,
-    unread: r.unread,
-    bookingId: r.booking_id,
-    teamId: r.team_id,
-    clubId: r.club_id ?? null,
-  }));
-}
+type ReachResult = { ok: boolean; reachable?: Reachable; reason?: string };
 
-export type Message = {
-  messageId: string;
-  senderId: string | null;
-  senderName: string;
-  body: string;
-  mine: boolean;
-  at: string;
-};
-
-export async function conversationMessages(
-  conversationId: string,
-  limit = 50,
-  before?: string,
-): Promise<Message[]> {
-  const { data, error } = await supabase().rpc('conversation_messages', {
-    p_conversation_id: conversationId,
-    p_limit: limit,
-    p_before: before ?? null,
-  });
-  if (error) throw error;
-  return (data as any[]).map((r) => ({
-    messageId: r.message_id,
-    senderId: r.sender_id,
-    senderName: r.sender_name,
-    body: r.body,
-    mine: r.mine,
-    at: r.at,
-  }));
-}
-
-export async function sendMessage(
-  conversationId: string,
-  body: string,
-): Promise<{ ok: boolean; reason?: string }> {
-  const { data, error } = await supabase().rpc('send_message', {
-    p_conversation_id: conversationId,
-    p_body: body,
+/**
+ * A player's number, if this player is entitled to it.
+ *
+ * Refused for a stranger, exactly as opening a conversation with one used to
+ * be, and refused in both directions of a block. The refusal is a sentence the
+ * screen can show, because "no" has to be explainable.
+ */
+export async function whatsappForPlayer(playerId: string): Promise<ReachResult> {
+  const { data, error } = await supabase().rpc('whatsapp_for_player', {
+    p_player_id: playerId,
   });
   if (error) throw error;
   const row = (data as any[])[0];
-  return row.ok ? { ok: true } : { ok: false, reason: row.reason ?? undefined };
+  if (!row?.ok) return { ok: false, reason: row?.reason ?? undefined };
+  return {
+    ok: true,
+    reachable: { displayName: row.display_name, waNumber: row.wa_number },
+  };
 }
 
-type OpenResult = { ok: boolean; conversationId?: string; reason?: string };
-
-const toOpen = (row: any): OpenResult =>
-  row.ok ? { ok: true, conversationId: row.conversation_id } : { ok: false, reason: row.reason };
-
-/** MSG-001: the lobby exists because the squad does. */
-export async function lobbyConversation(bookingId: string): Promise<OpenResult> {
-  const { data, error } = await supabase().rpc('lobby_conversation', { p_booking_id: bookingId });
-  if (error) throw error;
-  return toOpen((data as any[])[0]);
-}
-
-export async function teamConversation(teamId: string): Promise<OpenResult> {
-  const { data, error } = await supabase().rpc('team_conversation', { p_team_id: teamId });
-  if (error) throw error;
-  return toOpen((data as any[])[0]);
-}
+/** Which side of the booking came back — the app words the button accordingly. */
+export type BookingSide = 'venue' | 'captain';
 
 /**
- * MSG-002: refused unless the two have shared a team or a pitch. The reason
- * comes back as copy the screen can show, because "no" needs to be explainable.
+ * The other side of a booking: the venue to its captain, the captain to the
+ * venue's staff. One call rather than two, because a booking has exactly one
+ * counterparty and the screen should not have to work out which it is.
  */
-/**
- * A club's own room. The squad that enters a cup together is the group that
- * most needs somewhere to talk, and until this existed a conversation could
- * only come from a booking lobby or a team — so a club had no way in at all.
- */
-export async function clubConversation(clubId: string): Promise<OpenResult> {
-  const { data, error } = await supabase().rpc('club_conversation', { p_club_id: clubId });
-  if (error) throw error;
-  return toOpen((data as any[])[0]);
-}
-
-/** Silence a room without leaving it. */
-export async function muteConversation(
-  conversationId: string,
-  muted: boolean,
-): Promise<{ ok: boolean; reason?: string }> {
-  const { data, error } = await supabase().rpc('mute_conversation', {
-    p_conversation_id: conversationId,
-    p_muted: muted,
+export async function bookingWhatsapp(
+  bookingId: string,
+): Promise<ReachResult & { who?: BookingSide }> {
+  const { data, error } = await supabase().rpc('booking_whatsapp', {
+    p_booking_id: bookingId,
   });
   if (error) throw error;
   const row = (data as any[])[0];
-  return row?.ok ? { ok: true } : { ok: false, reason: row?.reason ?? undefined };
+  if (!row?.ok) return { ok: false, who: row?.who ?? undefined, reason: row?.reason ?? undefined };
+  return {
+    ok: true,
+    who: row.who,
+    reachable: { displayName: row.display_name, waNumber: row.wa_number },
+  };
 }
 
 export type Blocked = {
@@ -137,11 +69,13 @@ export type Blocked = {
 };
 
 /**
- * Blocking, which the app had no way to do.
+ * Blocking.
  *
- * A blocked person's messages stop existing for the person who blocked them,
- * and in a room of two the message is refused outright. The blocked person is
- * never told — that is the point of it.
+ * It used to mean a blocked person's messages stopped existing for the person
+ * who blocked them. With no messages it means something simpler and just as
+ * necessary: neither of you can get the other's number out of X League. What
+ * happens on WhatsApp after that is WhatsApp's own block list, which is the
+ * one that can actually stop a message arriving.
  */
 export async function blockPlayer(playerId: string): Promise<{ ok: boolean; reason?: string }> {
   const { data, error } = await supabase().rpc('block_player', { p_player_id: playerId });
@@ -168,26 +102,12 @@ export async function myBlocks(): Promise<Blocked[]> {
   }));
 }
 
-export async function directConversation(playerId: string): Promise<OpenResult> {
-  const { data, error } = await supabase().rpc('direct_conversation', { p_player_id: playerId });
-  if (error) throw error;
-  return toOpen((data as any[])[0]);
-}
-
-export async function markConversationRead(conversationId: string): Promise<boolean> {
-  const { data, error } = await supabase().rpc('mark_conversation_read', {
-    p_conversation_id: conversationId,
-  });
-  if (error) throw error;
-  return Boolean(data);
-}
-
 export type Notification = {
   notificationId: string;
   kind: string;
   title: string;
   body: string | null;
-  /** Where tapping it goes: {screen, booking_id | conversation_id | ...}. */
+  /** Where tapping it goes: {screen, booking_id | club_id | ...}. */
   payload: Record<string, string>;
   read: boolean;
   at: string;
@@ -225,7 +145,7 @@ export async function markNotificationsRead(notificationId?: string): Promise<nu
 export type ReportReason = 'abuse' | 'no_show' | 'unsafe' | 'spam' | 'wrong_info' | 'other';
 
 export async function submitReport(
-  subjectKind: 'player' | 'venue' | 'message' | 'booking',
+  subjectKind: 'player' | 'venue' | 'booking',
   subjectId: string,
   reason: ReportReason,
   body?: string,

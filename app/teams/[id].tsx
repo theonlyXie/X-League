@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { Button, Divider, Eyebrow } from '@/components/ui';
 import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
@@ -16,7 +17,6 @@ import {
   type Team,
   type TeamMember,
 } from '@/data/squad';
-import { teamConversation } from '@/data/social';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 
@@ -195,21 +195,20 @@ export default function TeamDetail() {
                     {num(m.ovr)}
                   </Txt>
                 ) : null}
+                {/* The team room was one button for everybody. This is one
+                    button per person, which is what a squad actually uses. */}
+                {m.state === 'active' ? (
+                  <WhatsAppButton
+                    playerId={m.playerId}
+                    label={t.whatsapp}
+                    height={30}
+                    size={11}
+                    onNotice={setNotice}
+                  />
+                ) : null}
               </View>
             ))}
           </View>
-
-          <Button
-            label={t.messageSquad}
-            variant="ghost"
-            height={44}
-            onPress={async () => {
-              if (!teamId) return;
-              const room = await teamConversation(teamId);
-              if (room.ok && room.conversationId) router.push(`/chat/${room.conversationId}`);
-              else setNotice(reason(room.reason) ?? null);
-            }}
-          />
 
           {isCaptain ? (
             <>

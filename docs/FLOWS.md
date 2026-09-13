@@ -117,8 +117,8 @@ The screen is reached **only when a booking was actually made.** It used to be
 reached unconditionally, so a player whose hold had expired got the full
 ceremony — code and all — for a booking that did not exist.
 
-**Lobby** (`play/lobby.tsx`). The match, once it is real: the squad, the chat
-room that opened with the booking, and the captain's controls. A captain sees
+**Lobby** (`play/lobby.tsx`). The match, once it is real: the squad, a WhatsApp
+button beside each player in it, and the captain's controls. A captain sees
 Cancel booking; a squad member sees Leave match. Cancelling before the cutoff
 returns the hour to sale and nothing is owed; after it, the full price is
 still owed to the venue, and the player is told which of the two just
@@ -257,13 +257,12 @@ half that moves the balance to collected — the same state cash at the gate
 produces, so the takings and the payout report never have to know which way it
 came.
 
-Both halves are posted into a room the booking gets of its own (`kind = 'venue'`,
-one per booking, between the captain and the venue's staff), as messages with no
-sender — the app reporting what happened rather than a person typing. It is a
-different room from the match lobby, which belongs to the squad and which the
-venue cannot read. The player finds it in the Chat tab; the venue finds it in
-Owner Mode → Money → Payments to confirm, which is also where the confirming is
-done.
+Both halves leave a `booking_event` row and a notification to the other side.
+When a transfer needs explaining — short, late, to the wrong number — each side
+can open WhatsApp on the other: `booking_whatsapp` gives the captain the venue's
+number and the venue the captain's, and nothing to anybody else. The venue does
+its confirming in Owner Mode → Money → Payments to confirm, which is where that
+button sits.
 
 **Referees** are for cups and nothing else. There is no sign-up for one: the
 console creates the account with a number and a password (`/referees`), hands
@@ -330,23 +329,46 @@ the score down and the two squads that entered become the team sheet.
 collects it; a late cancellation forfeits it; a waived one stays as a record
 that it existed. Nothing is deleted to make a report tidy.
 
-### Starting a conversation
+### Reaching somebody
 
-Most rooms open themselves: booking a pitch makes a lobby, joining a team or a
-club makes its room, owing a venue money makes the room where that is settled.
+X League hosts no conversations. It used to — lobby rooms, team rooms, club
+rooms, direct messages, and a thread for settling a payment — and all of it is
+gone, because running a message channel means running the moderation behind it
+every hour of every day and the product's job is to get a match booked and
+played.
 
-One does not. **Chat → New message** (`chat/new.tsx`) searches players by name
-and opens a direct room with whoever is picked. The search is `find_players`,
-the same one the squad and club invites use, which means it applies each
-profile's own visibility — and `direct_conversation` now reads that same
-setting rather than demanding a shared team or pitch. So the rule is one rule,
-said once: **you can message anyone you can find.** A player who narrows their
-visibility to connections disappears from strangers' searches and is refused if
-one reaches the function another way; blocking refuses before any of it.
+What is left is a button. Beside each player in a lobby, in a club squad and in
+a team roster there is **WhatsApp**, and pressing it asks
+`whatsapp_for_player` for that person's number and opens it.
 
-Opening a room is idempotent — the same two people always land in the same one
-— so nothing is created by tapping a name twice, and a room with nothing said
-in it is not shown in anybody's list.
+The rule is the one that used to gate opening a room, and it did not get
+looser: **a club-mate, a team-mate, or somebody in the same match.** A phone
+number is more exposing than a message box, so a stranger is refused even if
+their profile is open to searches, and a block withdraws the number in both
+directions — the person who blocked cannot be reached, and cannot reach.
+
+The lookup happens on press rather than on render. A roster of eleven would
+otherwise make eleven requests to draw a screen nobody has touched, and more to
+the point the app would then be holding a list of numbers it was never shown
+for a reason.
+
+### A share of a cup
+
+A captain inviting somebody into a club (`clubs/[id]/invite.tsx`) can name a
+percentage of a cup prize. It rides on the invitation: the notification carries
+it, and the clubs list shows it on the card with the two buttons — beside what
+it is worth in pounds against every cup the club is entered in, because "10%"
+cannot be weighed until it says EGP 1,200. After accepting, the same figures sit
+under **What you are playing for**.
+
+The pot itself is named by whoever runs the cup, in the console under **Prize**,
+and shown on both cup screens. X League neither holds nor pays it: the
+percentage is a recorded term and the captain settles with their players. A club
+cannot promise away more than 100%, which is the argument this exists to prevent
+rather than formalise.
+
+An ordinary match has none of it. A Thursday booking has no prize, so a squad
+invitation is accept or decline, exactly as before.
 
 ## Ready to play, and calling for players
 
@@ -403,12 +425,11 @@ Honest list, as of this pass:
   notification list puts them through the same table the refusals use — so the
   ones with a mapping arrive in Arabic and the rest fall back to English. Every
   notification kind wants a key eventually.
-- **Realtime.** Nothing is pushed. Chat polls while it is open — four seconds
-  in a room, twelve on the list, stopped when the screen is behind another one
-  or the phone is asleep — and the owner surfaces still pull to refresh. A
-  socket needs a select grant and a policy on the table it watches, and this
-  schema grants no table access to anybody; that is a trade worth making for a
-  busy gate one day, not for a five-a-side chat.
+- **Realtime.** Nothing is pushed. The unread count polls once a minute and the
+  owner surfaces pull to refresh. A socket needs a select grant and a policy on
+  the table it watches, and this schema grants no table access to anybody; that
+  is a trade worth making for a busy gate one day, not for a notification
+  badge.
 - **A second pitch has no price.** `add_pitch` inherits the venue's opening
   hours but not its price rules, so a newly added pitch shows EGP 0 until
   somebody sets one in Pricing. It is visible and correctable on the screen

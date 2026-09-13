@@ -90,8 +90,6 @@ export const STRINGS = {
     matchLobbyTitle: 'Match lobby',
     squad: 'Squad · 5-a-side',
     confirmedCount: (n: string) => `${n} of 5 confirmed`,
-    lobbyChat: 'Lobby chat',
-    messageSquad: 'Message squad',
     cancelBooking: 'Cancel booking',
     held: 'Held',
     confirmed: 'Confirmed',
@@ -178,12 +176,10 @@ export const STRINGS = {
     govSouthSinai: 'South Sinai',
     govRedSea: 'Red Sea',
     govNewValley: 'New Valley',
-    clubRoom: 'Club chat',
     clubPending: 'Waiting to be admitted',
     clubPendingBlurb: 'X League reviews every new club. You can build the squad and set the crest now — the club can enter competitions once it is admitted.',
     clubRejected: 'Not admitted',
     clubRejectedBlurb: 'X League did not admit this club. Get in touch if you think that is wrong.',
-    clubRoomBlurb: 'Everyone in the squad, in one room.',
     signOut: 'Sign out',
     noCardYet: 'No card yet',
     cardUnreachable: 'Could not read your card',
@@ -332,7 +328,6 @@ export const STRINGS = {
     // are different problems and only the second is worth retrying.
     errNotYourTeam: 'You are not a member of that team.',
     errTeamUnreadable: 'Could not load that team.',
-    errNotInConversation: 'You are not in that conversation.',
     errBookingUnreadable: 'Could not load that booking.',
     errNotInMatch: 'You did not play in that match.',
     errMatchUnreadable: 'Could not load that match.',
@@ -482,15 +477,8 @@ export const STRINGS = {
     ptsMatchVerified: 'Match verified',
     ptsNoShow: 'Did not turn up',
     ptsAdjustment: 'Adjustment',
-    // Chat (P-12 / P-14)
-    chatTitle: 'Chat',
-    noConversations: 'No conversations yet',
     listUnreachable: 'Could not reach X League',
     listUnreachableBlurb: 'This is a connection problem, not an empty list. Pull down to try again.',
-    noConversationsBlurb: 'A room opens when you book a match, join a team, or found a club. Open your club to talk to the squad.',
-    messagePlaceholder: 'Message',
-    send: 'Send',
-    noMessages: 'Nothing said yet',
 
     // Notifications
     notifications: 'Notifications',
@@ -913,6 +901,24 @@ export const STRINGS = {
 
 
     // Clubs (§ clubs are what enter a league; teams are for Thursday)
+    // Reaching somebody, now that the app does not host the conversation.
+    whatsapp: 'WhatsApp',
+    couldNotOpenWhatsApp: 'Could not open WhatsApp on this phone.',
+    ownMessageCaptain: 'Message the captain',
+
+    // A share of a cup, promised on a club invitation.
+    bountyLabel: 'Share of the prize',
+    bountyHint: 'Percentage, or leave empty',
+    bountyBlurb:
+      'What this player takes of a cup prize if the club wins one. X League records the promise; the captain pays it.',
+    bountyShare: (pct: string) => `${pct}% of a cup prize`,
+    bountyOffered: (pct: string) => `You are offered ${pct}% of the prize`,
+    bountyWorth: (cup: string, share: string, pot: string) =>
+      `${cup}: ${share} of a ${pot} prize.`,
+    bountyNoPotYet: (cup: string) => `${cup}: the prize has not been named yet.`,
+    bountyPromiseNote: 'Paid by the captain, not by X League.',
+    bountyPlayingFor: 'What you are playing for',
+    prizePool: 'Prize',
     clubs: 'Clubs',
     myClubs: 'Your clubs',
     clubsBlurb: 'A club is a standing side. It has a crest, a squad and a record, and it is what enters a league.',
@@ -1034,7 +1040,6 @@ export const STRINGS = {
     ownConfirmArrived: 'It arrived',
     ownConfirmed: 'Confirmed',
     ownWaitingOnYou: (n: string) => `${n} waiting on you`,
-    ownOpenThread: 'Open the chat',
 
     // The referee
     refereeTitle: 'Refereeing',
@@ -1127,7 +1132,6 @@ export const STRINGS = {
     home: 'Home',
     play: 'Play',
     cups: 'Cups',
-    chat: 'Chat',
     me: 'Me',
   },
 
@@ -1209,8 +1213,6 @@ export const STRINGS = {
     matchLobbyTitle: 'غرفة المباراة',
     squad: 'الفريق · خماسي',
     confirmedCount: (n: string) => `${n} من ٥ مؤكدين`,
-    lobbyChat: 'دردشة الغرفة',
-    messageSquad: 'راسل الفريق',
     cancelBooking: 'إلغاء الحجز',
     held: 'محجوز',
     confirmed: 'مؤكد',
@@ -1294,12 +1296,10 @@ export const STRINGS = {
     govSouthSinai: 'جنوب سيناء',
     govRedSea: 'البحر الأحمر',
     govNewValley: 'الوادي الجديد',
-    clubRoom: 'شات النادي',
     clubPending: 'في انتظار القبول',
     clubPendingBlurb: 'إكس ليج بتراجع كل نادي جديد. تقدر تجهّز الفريق والشعار من دلوقتي — النادي هيقدر يشترك في البطولات بعد ما يتقبل.',
     clubRejected: 'لم يتم القبول',
     clubRejectedBlurb: 'إكس ليج ما قبلتش النادي ده. كلّمنا لو تفتكر إن ده غلط.',
-    clubRoomBlurb: 'كل اللي في الفريق في مكان واحد.',
     signOut: 'تسجيل الخروج',
     noCardYet: 'لا يوجد كارت بعد',
     cardUnreachable: 'مش قادرين نقرأ الكارت بتاعك',
@@ -1391,7 +1391,6 @@ export const STRINGS = {
     restricted: 'الحجز مقيّد',
     restrictedBlurb: (n: string) => `${n} حالات غياب مسجّلة. كلّم الملعب للحجز.`,
 
-    chatTitle: 'الرسائل',
     reviewVenue: 'الملعب كان عامل إيه؟',
     reviewVenueBlurb: 'اختياري. بيظهر في صفحة الملعب وبيأثر على تقييمه.',
     reviewNote: 'أي حاجة تستاهل تتقال',
@@ -1437,7 +1436,6 @@ export const STRINGS = {
 
     errNotYourTeam: 'إنت مش عضو في الفريق ده.',
     errTeamUnreadable: 'مش قادرين نحمّل الفريق ده.',
-    errNotInConversation: 'إنت مش في المحادثة دي.',
     errBookingUnreadable: 'مش قادرين نحمّل الحجز ده.',
     errNotInMatch: 'إنت مالعبتش الماتش ده.',
     errMatchUnreadable: 'مش قادرين نحمّل الماتش ده.',
@@ -1583,13 +1581,8 @@ export const STRINGS = {
     ptsMatchVerified: 'الماتش اتوثّق',
     ptsNoShow: 'محضرتش',
     ptsAdjustment: 'تعديل',
-    noConversations: 'لا توجد محادثات بعد',
     listUnreachable: 'مش قادرين نوصل لإكس ليج',
     listUnreachableBlurb: 'دي مشكلة اتصال، مش قايمة فاضية. اسحب لتحت وجرّب تاني.',
-    noConversationsBlurb: 'الغرفة بتتفتح لما تحجز ماتش، أو تنضم لفريق، أو تعمل نادي. افتح ناديك عشان تكلم الفريق.',
-    messagePlaceholder: 'اكتب رسالة',
-    send: 'إرسال',
-    noMessages: 'لا توجد رسائل بعد',
 
     notifications: 'الإشعارات',
     noNotifications: 'لا يوجد جديد',
@@ -1985,10 +1978,27 @@ export const STRINGS = {
     home: 'الرئيسية',
     play: 'العب',
     cups: 'البطولات',
-    chat: 'الرسائل',
     me: 'حسابي',
 
     // Clubs
+    // Reaching somebody, now that the app does not host the conversation.
+    whatsapp: 'واتساب',
+    couldNotOpenWhatsApp: 'مش قادرين نفتح واتساب على الموبايل ده.',
+    ownMessageCaptain: 'كلّم الكابتن',
+
+    // A share of a cup, promised on a club invitation.
+    bountyLabel: 'نصيبك من الجايزة',
+    bountyHint: 'النسبة، أو سيبها فاضية',
+    bountyBlurb:
+      'اللاعب ده هياخد قد إيه من جايزة البطولة لو النادي كسب. إكس ليج بتسجّل الوعد، والكابتن هو اللي بيدفعه.',
+    bountyShare: (pct: string) => `${pct}% من جايزة البطولة`,
+    bountyOffered: (pct: string) => `معروض عليك ${pct}% من الجايزة`,
+    bountyWorth: (cup: string, share: string, pot: string) =>
+      `${cup}: ${share} من جايزة ${pot}.`,
+    bountyNoPotYet: (cup: string) => `${cup}: الجايزة لسه متحددتش.`,
+    bountyPromiseNote: 'الكابتن هو اللي بيدفعها، مش إكس ليج.',
+    bountyPlayingFor: 'إنت بتلعب على إيه',
+    prizePool: 'الجايزة',
     clubs: 'الأندية',
     myClubs: 'أنديتك',
     clubsBlurb: 'النادي فريق دائم. له شعار وتشكيلة وسجل، وهو ما يدخل الدوري.',
@@ -2111,7 +2121,6 @@ export const STRINGS = {
     ownConfirmArrived: 'وصلت',
     ownConfirmed: 'مؤكَّد',
     ownWaitingOnYou: (n: string) => `${n} في انتظارك`,
-    ownOpenThread: 'افتح المحادثة',
 
     // The referee
     refereeTitle: 'التحكيم',

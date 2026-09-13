@@ -26,6 +26,8 @@ export type TournamentSummary = {
   entered: number;
   /** Where the cup is, falling back to the host venue's area. */
   region: string | null;
+  /** What the winner takes. Zero where the organiser has not named a pot. */
+  prizePoolEgp: number;
 };
 
 export async function listTournaments(limit = 25, region?: string | null): Promise<TournamentSummary[]> {
@@ -47,6 +49,7 @@ export async function listTournaments(limit = 25, region?: string | null): Promi
     entryFeeEgp: r.entry_fee_egp,
     maxTeams: r.max_teams,
     entered: r.entered,
+    prizePoolEgp: Number(r.prize_pool_egp ?? 0),
   }));
 }
 
@@ -124,6 +127,12 @@ export type TournamentDetail = {
   standings: StandingRow[];
   /** Every ground the cup is played across, the host first. */
   venues: CupVenue[];
+  /**
+   * What the winner takes, in EGP. Recorded so that a share promised to a
+   * player on their club invitation can be shown as a figure rather than a
+   * percentage of something nobody has named.
+   */
+  prizePoolEgp: number;
 };
 
 export async function tournamentDetail(tournamentId: string): Promise<TournamentDetail | null> {
@@ -150,6 +159,7 @@ export async function tournamentDetail(tournamentId: string): Promise<Tournament
     fixtures: r.fixtures ?? [],
     standings: r.standings ?? [],
     venues: r.venues ?? [],
+    prizePoolEgp: Number(r.prize_pool_egp ?? 0),
   };
 }
 
@@ -323,4 +333,24 @@ export async function recordFixtureResult(
   if (error) throw error;
   const row = (data as any[])[0];
   return row.ok ? { ok: true } : { ok: false, reason: row.reason ?? undefined };
+}
+
+/**
+ * Name what the winner takes.
+ *
+ * The organiser of the cup, or a platform admin. Separate from creating the
+ * cup because the pot is usually settled after the draft exists and changed
+ * again as entries come in.
+ */
+export async function setTournamentPrizePool(
+  tournamentId: string,
+  prizePoolEgp: number,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('set_tournament_prize_pool', {
+    p_tournament_id: tournamentId,
+    p_prize_pool_egp: prizePoolEgp,
+  });
+  if (error) throw error;
+  const row = (data as any[])[0];
+  return { ok: !!row?.ok, reason: row?.reason ?? undefined };
 }

@@ -9,7 +9,14 @@ import { Avatar } from '@/components/Avatar';
 import { PressScale, Reveal } from '@/components/motion';
 import { ArrowLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { createClub, myClubs, respondToClubInvite, type ClubSummary } from '@/data/clubs';
+import {
+  createClub,
+  myBounties,
+  myClubs,
+  respondToClubInvite,
+  type Bounty,
+  type ClubSummary,
+} from '@/data/clubs';
 import { useI18n } from '@/i18n';
 import { useRefreshTick } from '@/state/refresh';
 import { isLive } from '@/lib/supabase';
@@ -26,11 +33,18 @@ import { useSession } from '@/state/session';
 export default function Clubs() {
   const { signedIn } = useSession();
   const router = useRouter();
-  const { reason, t, num } = useI18n();
+  const { reason, t, num, money } = useI18n();
 
   // The refresh button in the top bar.
   const tick = useRefreshTick();
   const [clubs, setClubs] = useState<ClubSummary[]>([]);
+  /**
+   * What each share is actually worth, cup by cup. A percentage cannot be
+   * weighed on its own, and the moment somebody needs to weigh it is before
+   * they press Join — so this is loaded beside the clubs rather than on a
+   * screen they would reach after accepting.
+   */
+  const [bounties, setBounties] = useState<Bounty[]>([]);
   const [loading, setLoading] = useState(isLive);
   /** §4.7: a list we could not read is not an empty list. */
   const [unreachable, setUnreachable] = useState(false);
@@ -51,14 +65,21 @@ export default function Clubs() {
     (async () => {
       setLoading(true);
       try {
-        const rows = await myClubs();
+        const [rows, shares] = await Promise.all([
+          myClubs(),
+          // A pot nobody has named yet is the ordinary case, and a failure
+          // here must not make the club list itself unreadable.
+          myBounties().catch(() => [] as Bounty[]),
+        ]);
         if (!cancelled) {
           setClubs(rows);
+          setBounties(shares);
           setUnreachable(false);
         }
       } catch {
         if (!cancelled) {
           setClubs([]);
+          setBounties([]);
           setUnreachable(true);
         }
       } finally {
@@ -72,6 +93,9 @@ export default function Clubs() {
 
   const invited = clubs.filter((c) => c.state === 'invited');
   const active = clubs.filter((c) => c.state === 'active');
+
+  /** The cups a club is in that this share would be paid out of. */
+  const sharesFor = (clubId: string) => bounties.filter((b) => b.clubId === clubId);
 
   async function found() {
     if (!name.trim() || creating) return;
@@ -183,6 +207,37 @@ export default function Clubs() {
                   ) : null}
                 </View>
               </View>
+              {/* The offer, before the answer. A captain promising a cut of
+                  a cup is how sides are actually assembled here, and the
+                  argument afterwards is always about what was said — so it is
+                  written down, and shown to the person being asked. */}
+              {club.bountyPct != null ? (
+                <View
+                  style={{
+                    borderRadius: radius.control,
+                    borderWidth: 1,
+                    borderColor: goldAlpha.frame,
+                    backgroundColor: goldAlpha.fill,
+                    padding: 12,
+                    gap: 6,
+                  }}
+                >
+                  <Txt size={13} weight="semibold" color={gold.base}>
+                    {t.bountyOffered(num(club.bountyPct))}
+                  </Txt>
+                  {sharesFor(club.clubId).map((b) => (
+                    <Txt key={b.tournamentId} size={12} lh={1.5} color={onVoid.secondary}>
+                      {b.prizePoolEgp > 0
+                        ? t.bountyWorth(b.tournamentName, money(b.shareEgp), money(b.prizePoolEgp))
+                        : t.bountyNoPotYet(b.tournamentName)}
+                    </Txt>
+                  ))}
+                  <Txt size={11.5} lh={1.5} color={onVoid.dim}>
+                    {t.bountyPromiseNote}
+                  </Txt>
+                </View>
+              ) : null}
+
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <Button label={t.joinClub} flex={1} onPress={() => answer(club.clubId, true)} />
                 <Button
@@ -194,6 +249,41 @@ export default function Clubs() {
               </View>
             </View>
           ))}
+        </View>
+      ) : null}
+
+      {/* And after accepting. A share somebody agreed to is a thing they
+          should be able to look up, not a number they have to remember. */}
+      {bounties.some((b) => b.membershipState === 'active') ? (
+        <View style={{ gap: 10 }}>
+          <Eyebrow>{t.bountyPlayingFor}</Eyebrow>
+          {bounties
+            .filter((b) => b.membershipState === 'active')
+            .map((b) => (
+              <View
+                key={`${b.clubId}-${b.tournamentId}`}
+                style={{
+                  borderRadius: radius.control,
+                  borderWidth: 1,
+                  borderColor: onVoid.edge,
+                  backgroundColor: void_.surface,
+                  padding: 13,
+                  gap: 4,
+                }}
+              >
+                <Txt size={13.5} weight="semibold" color={onVoid.primary}>
+                  {b.tournamentName}
+                </Txt>
+                <Txt size={12} color={onVoid.dim}>
+                  {b.clubName}
+                </Txt>
+                <Txt size={12.5} lh={1.5} color={gold.base}>
+                  {b.prizePoolEgp > 0
+                    ? t.bountyWorth(b.tournamentName, money(b.shareEgp), money(b.prizePoolEgp))
+                    : t.bountyNoPotYet(b.tournamentName)}
+                </Txt>
+              </View>
+            ))}
         </View>
       ) : null}
 

@@ -393,6 +393,26 @@ const AR: Record<string, string> = {
   'Your club has already entered this cup.': 'ناديك مشترك في هذه البطولة بالفعل.',
   'Your hold expired — the slot is back on sale.':
     'انتهى حجزك المؤقت — عادت الساعة للبيع.',
+
+  // Reaching somebody, now that the number replaces the room the app hosted.
+  'That is your own number.': 'ده رقمك إنت.',
+  'You can message players you have shared a club, a team or a pitch with.':
+    'تقدر تكلّم اللاعبين اللي لعبت معاهم في نادي أو فريق أو ملعب.',
+  'They have not given us a number to reach them on.':
+    'مدّونيش رقم نوصلهم عليه.',
+  'This venue has not given us a number to reach them on.':
+    'الملعب ده مدّاش رقم نوصله عليه.',
+  'You are not on that booking.': 'إنت مش في الحجز ده.',
+
+  // A share of a cup prize, promised on a club invitation.
+  'You do not run that tournament.': 'إنت مش منظّم البطولة دي.',
+  'A prize pool cannot be less than nothing.': 'الجايزة ما تنفعش تكون أقل من صفر.',
+  'A share of the prize cannot be more than all of it.':
+    'النصيب من الجايزة ما ينفعش يزيد عن الجايزة كلها.',
+  'You have already promised away the rest of the prize.':
+    'إنت وعدت بباقي الجايزة خلاص.',
+  'Only the captain can set a share of the prize.':
+    'الكابتن بس اللي يقدر يحدد نصيب من الجايزة.',
 };
 
 /**

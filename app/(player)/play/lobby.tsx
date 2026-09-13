@@ -1,22 +1,21 @@
 import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
-import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { Button, Divider, Eyebrow } from '@/components/ui';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { useBooking } from '@/state/booking';
 import { useLobby } from '@/state/lobby';
 import { leaveBooking, removeParticipant } from '@/data/squad';
 import { cancelBooking } from '@/data/discovery';
-import { sendMessage } from '@/data/social';
 import { useI18n } from '@/i18n';
 
 /**
  * P-13 Match lobby — coordinate confirmed participants (§4.3).
- * TEAM-008: roster, open needs, venue, time, check-in state and conversation.
+ * TEAM-008: roster, open needs, venue, time and check-in state.
  *
  * The whole screen hangs off one booking id, which arrives in the URL. Home,
  * the confirmation screen and a notification all deep-link here, so the lobby
@@ -30,8 +29,6 @@ export default function Lobby() {
   const lobby = useLobby(bookingId);
   const { reason, t, num, hour, shortDate, money } = useI18n();
 
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
@@ -187,6 +184,18 @@ export default function Lobby() {
                       {num(member.ovr)}
                     </Txt>
                   ) : null}
+                  {/* Where the lobby chat used to be. One button per person,
+                      beside their name, rather than a room they all have to
+                      remember to open. */}
+                  {member.playerId && !member.isCaptain ? (
+                    <WhatsAppButton
+                      playerId={member.playerId}
+                      label={t.whatsapp}
+                      height={30}
+                      size={11}
+                      onNotice={setNotice}
+                    />
+                  ) : null}
                   {lobby.booking && !member.isCaptain ? (
                     <Pressable
                       accessibilityRole="button"
@@ -223,70 +232,6 @@ export default function Lobby() {
                   variant="ghost"
                   height={42}
                   onPress={() => router.push(`/play/call?booking=${bookingId}`)}
-                />
-              </View>
-            ) : null}
-          </View>
-
-          <Divider />
-
-          {/* MSG-001: the lobby conversation, in the lobby. */}
-          <View style={{ gap: 12 }}>
-            <Eyebrow>{t.lobbyChat}</Eyebrow>
-            {lobby.messages.length === 0 ? (
-              <Txt size={12.5} color={onVoid.dim}>
-                {t.noMessages}
-              </Txt>
-            ) : (
-              <View style={{ gap: 10 }}>
-                {[...lobby.messages].reverse().slice(-8).map((m) => (
-                  <View key={m.messageId} style={{ gap: 3 }}>
-                    <Txt size={11} color={m.mine ? gold.base : onVoid.faint}>
-                      {m.mine ? '' : `${m.senderName} · `}
-                      {hour(m.at)}
-                    </Txt>
-                    <Txt size={13} lh={1.5} color={onVoid.secondary}>
-                      {m.body}
-                    </Txt>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {lobby.conversationId ? (
-              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                <TextInput
-                  value={draft}
-                  onChangeText={setDraft}
-                  placeholder={t.messagePlaceholder}
-                  placeholderTextColor={onVoid.dim}
-                  style={{
-                    flex: 1,
-                    height: 44,
-                    paddingHorizontal: 14,
-                    borderRadius: radius.control,
-                    borderWidth: 1,
-                    borderColor: onVoid.edge,
-                    color: onVoid.primary,
-                    backgroundColor: void_.surface,
-                  }}
-                />
-                <Button
-                  label={t.send}
-                  height={44}
-                  disabled={sending || draft.trim().length === 0}
-                  onPress={async () => {
-                    if (!lobby.conversationId) return;
-                    setSending(true);
-                    const res = await sendMessage(lobby.conversationId, draft);
-                    setSending(false);
-                    if (res.ok) {
-                      setDraft('');
-                      lobby.reloadMessages();
-                    } else {
-                      setNotice(reason(res.reason) ?? null);
-                    }
-                  }}
                 />
               </View>
             ) : null}

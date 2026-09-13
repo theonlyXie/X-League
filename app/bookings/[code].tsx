@@ -5,12 +5,12 @@ import { Screen } from '@/components/Screen';
 import { TextInput } from '@/components/TextField';
 import { Txt } from '@/components/Txt';
 import { Button, Divider } from '@/components/ui';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { ArrowLeft } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { bookingTerms, myBookings, type BookingTerms, type PastBooking } from '@/data/discovery';
 import {
   claimBookingPayment,
-  venueConversation,
   venuePaymentChannels,
   type ChannelKind,
   type VenueChannel,
@@ -396,16 +396,6 @@ function PayBlock({
     }
   };
 
-  const openRoom = async () => {
-    try {
-      const res = await venueConversation(bookingId);
-      if (res.ok && res.conversationId) router.push(`/chat/${res.conversationId}`);
-      else setNotice(reason(res.reason) ?? null);
-    } catch {
-      setNotice(t.offline);
-    }
-  };
-
   if (settled) {
     return (
       <Txt size={12.5} color={gold.base}>
@@ -474,7 +464,14 @@ function PayBlock({
           <Txt size={11.5} lh={1.5} color={onVoid.muted}>
             {t.payClaimedBlurb}
           </Txt>
-          <Button label={t.payTalkToVenue} variant="ghost" height={42} onPress={() => void openRoom()} />
+          {/* The thread a captain and a venue settled a payment in is gone.
+              This is the same conversation, on the venue's own number. */}
+          <WhatsAppButton
+            bookingId={bookingId}
+            label={t.payTalkToVenue}
+            height={42}
+            onNotice={setNotice}
+          />
         </View>
       ) : open ? (
         <View style={{ gap: 10 }}>

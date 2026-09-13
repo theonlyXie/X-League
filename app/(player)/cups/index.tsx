@@ -382,6 +382,11 @@ export default function Cups() {
                     {t.entryFee(money(cup.entryFeeEgp))}
                   </Txt>
                 ) : null}
+                {cup.prizePoolEgp > 0 ? (
+                  <Txt size={11.5} weight="semibold" color={gold.base}>
+                    {t.prizePool} {money(cup.prizePoolEgp)}
+                  </Txt>
+                ) : null}
                 {cup.startsOn ? (
                   <Txt size={11.5} color={onVoid.muted}>
                     {shortDate(`${cup.startsOn}T18:00:00Z`)}

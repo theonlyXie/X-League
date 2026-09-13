@@ -21,6 +21,7 @@ import {
   scheduleFixture,
   paymentChannels,
   savePaymentChannel,
+  setPrizePool,
   setRegion,
   setMatchScorers,
   setRegistrationPaid,
@@ -149,6 +150,8 @@ function Cup() {
       {may ? <Lifecycle cup={cup} awards={awards.length} busy={busy} run={run} /> : null}
 
       <Grounds cup={cup} may={may} busy={busy} run={run} />
+
+      <Prize cup={cup} may={may} busy={busy} run={run} />
 
       <Money
         cup={cup}
@@ -1392,6 +1395,76 @@ const KINDS: { value: PaymentChannelKind; label: string; hint: string }[] = [
  * an empty list here would read as "nobody can pay", when in fact the captain
  * is shown the usual account.
  */
+/**
+ * What the winner of this cup takes.
+ *
+ * The one number a captain needs before they can offer anybody a share of it.
+ * Clubs here are assembled by promising players a cut — that promise now goes
+ * on the club invitation as a percentage, and a percentage of a pot nobody has
+ * named cannot be weighed by the person being asked.
+ *
+ * X League neither holds this money nor pays it out. The figure is recorded so
+ * that "10%" can be shown as a sum; the captain settles with their players the
+ * way they always have.
+ */
+function Prize({
+  cup,
+  may,
+  busy,
+  run,
+}: {
+  cup: TournamentDetail;
+  may: boolean;
+  busy: boolean;
+  run: (fn: () => Promise<{ ok: boolean; reason?: string }>, said: string) => Promise<void>;
+}) {
+  const [pot, setPot] = useState(String(cup.prizePoolEgp || ''));
+
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <h2>Prize</h2>
+        <span className="spacer" />
+        <span className="faint">
+          {cup.prizePoolEgp > 0
+            ? `The winner takes ${cup.prizePoolEgp} EGP`
+            : 'No prize named yet'}
+        </span>
+      </div>
+
+      <div className="empty">
+        Players see this in the app, and a captain inviting somebody to a club can promise them a
+        percentage of it. X League records the promise — it does not hold or pay the money.
+      </div>
+
+      {may ? (
+        <div className="row" style={{ marginTop: 14 }}>
+          <input
+            value={pot}
+            onChange={(e) => setPot(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="Prize in EGP, e.g. 10000"
+            inputMode="numeric"
+            style={{ maxWidth: 280 }}
+          />
+          <button
+            disabled={busy}
+            onClick={() =>
+              void run(
+                () => setPrizePool(cup.tournamentId, Number(pot || 0)),
+                Number(pot || 0) > 0
+                  ? `The winner takes ${Number(pot)} EGP.`
+                  : 'No prize named for this cup.',
+              )
+            }
+          >
+            Set prize
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Money({
   cup,
   channels,

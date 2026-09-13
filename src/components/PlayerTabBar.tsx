@@ -11,18 +11,23 @@ import { unreadNotifications } from '@/data/social';
 import { isLive } from '@/lib/supabase';
 
 /**
- * The five-tab bar from option 1h, model one — labelled tabs with a gold tick
- * on the active one, matching the spec's player IA (§3.1) one-to-one.
+ * Labelled tabs with a gold tick on the active one, matching the spec's player
+ * IA (§3.1).
  *
- * Cups and Chat were drawn but inert while nothing stood behind them. Both are
- * live now, and Chat carries an unread count, because a message nobody is told
- * about is a message that did not arrive.
+ * Four rather than five: Chat is gone, and with it the room this product used
+ * to run its own messaging in. What is left of a conversation is a button that
+ * opens WhatsApp, which belongs beside the person it reaches rather than in a
+ * tab of its own.
+ *
+ * The unread count moved with it, onto Me — where Notifications actually
+ * lives. It was on Chat because that was the tab with a badge, but it has
+ * always counted notifications rather than messages, and now it sits on the
+ * tab that opens them.
  */
 const ITEMS: { label: string; route: string }[] = [
   { label: 'Home', route: 'index' },
   { label: 'Play', route: 'play' },
   { label: 'Cups', route: 'cups' },
-  { label: 'Chat', route: 'chat' },
   { label: 'Me', route: 'me' },
 ];
 
@@ -61,7 +66,7 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
   }, [signedIn, state.index, pathname]);
 
   const label: Record<string, string> = {
-    Home: t.home, Play: t.play, Cups: t.cups, Chat: t.chat, Me: t.me,
+    Home: t.home, Play: t.play, Cups: t.cups, Me: t.me,
   };
   const activeRoute = state.routes[state.index]?.name;
 
@@ -81,7 +86,7 @@ export function PlayerTabBar({ state, navigation }: TabBarProps) {
       {ITEMS.map((item) => {
         const active = item.route === activeRoute;
         const color = active ? gold.base : onVoid.dim;
-        const badge = item.label === 'Chat' ? unread : 0;
+        const badge = item.label === 'Me' ? unread : 0;
 
         return (
           <Pressable

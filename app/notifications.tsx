@@ -79,14 +79,18 @@ export default function Notifications() {
     const {
       screen,
       booking_id: bookingId,
-      conversation_id: conversationId,
+      club_id: clubId,
       tournament_id: cupId,
       match_id: matchId,
     } = n.payload;
     if (screen === 'lobby' && bookingId) router.push(`/play/lobby?booking=${bookingId}`);
     else if (screen === 'result' && matchId) router.push(`/play/agree?match=${matchId}`);
-    else if (screen === 'chat' && conversationId) router.push(`/chat/${conversationId}`);
+    // A club invitation is answered on the clubs list, where the offer and the
+    // two buttons are. It carried a `club_id` from the day invitations existed
+    // and nothing here read it, so tapping one only marked it read.
+    else if (screen === 'club' && clubId) router.push('/clubs');
     else if (screen === 'tournament' && cupId) router.push(`/cups/${cupId}`);
+    else if (screen === 'booking' && bookingId) router.push('/bookings');
     else reload();
   };
 

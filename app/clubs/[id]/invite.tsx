@@ -28,6 +28,13 @@ export default function InviteToClub() {
   const { reason, t } = useI18n();
 
   const [slot, setSlot] = useState<SlotKind>('starter');
+  /**
+   * The share of a cup win being offered, as typed. Held as a string rather
+   * than a number so an empty box is an empty box — offering nothing and
+   * offering zero are different sentences, and `0` in the field would put
+   * "0% of the prize" on somebody's invitation.
+   */
+  const [bounty, setBounty] = useState('');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoundPlayer[]>([]);
   const [searching, setSearching] = useState(false);
@@ -58,11 +65,17 @@ export default function InviteToClub() {
     };
   }, [query]);
 
+  /** What was typed, or null for no offer. Commas and Arabic digits included. */
+  function offeredShare(): number | null {
+    const typed = Number(bounty.replace(/[^\d.]/g, ''));
+    return Number.isFinite(typed) && typed > 0 ? typed : null;
+  }
+
   async function ask(player: FoundPlayer) {
     if (!id) return;
     setNotice(null);
     try {
-      const res = await inviteToClub(id, player.playerId, slot);
+      const res = await inviteToClub(id, player.playerId, slot, offeredShare());
       if (res.ok) {
         setAsked((prev) => ({ ...prev, [player.playerId]: true }));
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -130,6 +143,32 @@ export default function InviteToClub() {
             </PressScale>
           );
         })}
+      </View>
+
+      {/* Only a club can offer this, because only a club enters a cup. The
+          squad invitation for an ordinary Thursday match has no field like it
+          and should not: there is no prize to take a share of. */}
+      <View style={{ gap: 8 }}>
+        <Eyebrow>{t.bountyLabel}</Eyebrow>
+        <TextInput
+          value={bounty}
+          onChangeText={setBounty}
+          placeholder={t.bountyHint}
+          placeholderTextColor={onVoid.disabled}
+          keyboardType="number-pad"
+          style={{
+            height: 46,
+            borderRadius: radius.control,
+            borderWidth: 1,
+            borderColor: onVoid.line,
+            backgroundColor: void_.surface,
+            paddingHorizontal: 14,
+            color: onVoid.primary,
+          }}
+        />
+        <Txt size={11.5} lh={1.5} color={onVoid.dim}>
+          {t.bountyBlurb}
+        </Txt>
       </View>
 
       <View style={{ gap: 10 }}>

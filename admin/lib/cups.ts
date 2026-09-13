@@ -149,6 +149,8 @@ export type TournamentDetail = {
   startsOn: string | null;
   endsOn: string | null;
   entryFeeEgp: number;
+  /** What the winner takes. Zero until somebody names it. */
+  prizePoolEgp: number;
   maxTeams: number;
   description: string | null;
   teams: Entrant[];
@@ -174,6 +176,7 @@ export async function tournamentDetail(id: string): Promise<TournamentDetail | n
     startsOn: (r.starts_on as string) ?? null,
     endsOn: (r.ends_on as string) ?? null,
     entryFeeEgp: r.entry_fee_egp as number,
+    prizePoolEgp: Number(r.prize_pool_egp ?? 0),
     maxTeams: r.max_teams as number,
     description: (r.description as string) ?? null,
     teams: (r.teams as Entrant[]) ?? [],
@@ -621,4 +624,26 @@ export async function tournamentAwards(id: string): Promise<Award[]> {
     value: r.value,
     note: r.note,
   }));
+}
+
+/**
+ * Name what the winner of this cup takes.
+ *
+ * Recorded for one reason: a captain assembling a side promises players a
+ * percentage of it on their club invitation, and a percentage of a number
+ * nobody has named cannot be weighed by the person being asked. X League does
+ * not hold or pay this money — it records what the cup is worth so the promise
+ * can be shown as a figure.
+ */
+export async function setPrizePool(
+  tournamentId: string,
+  prizePoolEgp: number,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('set_tournament_prize_pool', {
+    p_tournament_id: tournamentId,
+    p_prize_pool_egp: prizePoolEgp,
+  });
+  if (error) throw error;
+  const row = (data as Array<Record<string, unknown>>)[0];
+  return { ok: Boolean(row?.ok), reason: (row?.reason as string) ?? undefined };
 }

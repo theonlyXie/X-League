@@ -42,7 +42,7 @@ Every attempt below was made against the live project, as the role named.
 | Attempt | Result |
 |---|---|
 | `select * from player_profile` | permission denied |
-| `my_conversations`, `find_players` | permission denied for function |
+| `whatsapp_for_player`, `find_players` | permission denied for function |
 | Hold a pitch | Sign in to hold a slot. |
 | Claim a staff account | no such function any more — see F2 |
 | Browse venues, cups, the boards | allowed, and meant to be |
