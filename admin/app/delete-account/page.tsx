@@ -61,7 +61,7 @@ export default function DeleteAccount() {
         </li>
         <li>A booking a venue took, for its own accounts.</li>
         <li>
-          Messages in a room other people are still reading. They stay, without a sender.
+          A report somebody else filed about you, while it is still being looked at.
         </li>
       </ul>
 

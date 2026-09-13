@@ -37,8 +37,7 @@ export default function Privacy() {
           <b>Your clubs and teams</b>, and who is in them.
         </li>
         <li>
-          <b>Messages</b> you send in a match lobby, a team room or a club room, and reports you
-          submit.
+          <b>Reports</b> you submit about a player or a venue.
         </li>
         <li>
           <b>If you run a venue:</b> the venue&rsquo;s details, its hours and prices, and the

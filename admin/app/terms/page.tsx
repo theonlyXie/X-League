@@ -31,8 +31,16 @@ export default function Terms() {
         objectionable content, and none for abusive behaviour towards other players.
       </p>
       <ul>
-        <li>Every message can be reported: hold it, and choose Report.</li>
-        <li>Every player can be blocked: hold one of their messages, and choose Block.</li>
+        <li>
+          X League does not carry messages. Players who share a club, a team or a match can open
+          WhatsApp on each other from the app; nobody else is shown a number. What is said there is
+          between them and WhatsApp.
+        </li>
+        <li>Every player and every venue can be reported, from their own page.</li>
+        <li>
+          Every player can be blocked, from their page or from Me &rarr; Blocked players. A block
+          also withdraws the number, in both directions.
+        </li>
         <li>
           We look at reports <b>within 24 hours</b>, and we remove content and eject people who
           break this rule.
