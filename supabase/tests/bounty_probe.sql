@@ -139,7 +139,7 @@ begin
   return query select 'an organiser can name what the winner takes',
                       coalesce(r.reason, 'named'), r.ok;
 
-  perform set_state(v_cup, 'open');
+  perform set_tournament_state(v_cup, 'open');
 
   -- The club has to actually be in the cup before a share of it means anything.
   insert into tournament_registration (tournament_id, club_id, team_name, state, registered_by)

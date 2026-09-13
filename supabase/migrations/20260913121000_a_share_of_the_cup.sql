@@ -429,7 +429,13 @@ $$;
 
 drop function if exists tournament_detail(uuid);
 
-create or replace function tournament_detail(p_tournament_id uuid)
+-- Rebuilt from the version in `who_actually_scored`, which is the one that was
+-- running, plus the pot. Worth naming why: the first attempt at this was copied
+-- from `clubs_enter_cups`, an older definition of the same function, and
+-- silently dropped `venues` and four fixture fields that three later migrations
+-- had added. A function rebuilt from the wrong ancestor loses everything the
+-- ancestors after it added, and nothing about the statement says so.
+create function tournament_detail(p_tournament_id uuid)
 returns table (
   tournament_id  uuid,
   name           text,
@@ -445,12 +451,13 @@ returns table (
   teams          jsonb,
   fixtures       jsonb,
   standings      jsonb,
+  venues         jsonb,
   prize_pool_egp integer
 )
 language sql stable security definer
 set search_path = public, pg_temp as $$
   select
-    t.id, t.name, v.name, v.area, t.format, t.state, t.starts_on, t.ends_on,
+    t.id, t.name, v.name, coalesce(t.region, v.area), t.format, t.state, t.starts_on, t.ends_on,
     t.entry_fee_egp, t.max_teams, t.description,
     coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -470,16 +477,27 @@ set search_path = public, pg_temp as $$
                'home', hr.team_name, 'away', ar.team_name,
                'home_entrant_id', f.home_entrant_id, 'away_entrant_id', f.away_entrant_id,
                'score_home', f.score_home, 'score_away', f.score_away,
-               'state', f.state, 'kicks_off_at', f.kicks_off_at)
+               'state', f.state, 'kicks_off_at', f.kicks_off_at,
+               'venue_name', fv.name, 'pitch_label', fp.label,
+               'booked', f.booking_id is not null,
+               'match_id', f.match_id)
              order by f.round, f.sequence)
         from fixture f
         left join tournament_registration hr on hr.id = f.home_entrant_id
         left join tournament_registration ar on ar.id = f.away_entrant_id
+        left join pitch fp on fp.id = f.pitch_id
+        left join venue fv on fv.id = fp.venue_id
        where f.tournament_id = t.id
     ), '[]'::jsonb),
     coalesce((
       select s.table_json from standing_snapshot s
        where s.tournament_id = t.id order by s.seq desc limit 1
+    ), '[]'::jsonb),
+    coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'venue_id', tvv.venue_id, 'name', tvv.name,
+               'area', tvv.area, 'is_host', tvv.is_host))
+        from tournament_venues(t.id) tvv
     ), '[]'::jsonb),
     t.prize_pool_egp
   from tournament t

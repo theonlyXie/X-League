@@ -19,7 +19,6 @@ declare
   v_slot  timestamptz;
   v_bk    uuid;
   v_chan  uuid;
-  v_conv  uuid;
   v_n     integer;
   v_txt   text;
   h       hold_outcome;
@@ -111,7 +110,6 @@ begin
 
   perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
   select * into r from claim_booking_payment(v_bk, 'instapay', 'Sent EGP 300 from 010012, ref 88213');
-  v_conv := r.conversation_id;
   return query select 'the captain says the money is sent', coalesce(r.reason, 'claimed'), r.ok;
 
   select payment_note into v_txt from booking where id = v_bk;
@@ -125,34 +123,43 @@ begin
                       coalesce(v_txt, '(no row)'), v_txt = 'due';
 
   -- -------------------------------------------------------------------------
-  -- It happens in a room
+  -- It leaves a record, and each side can reach the other
+  --
+  -- This used to be posted into a room the booking had of its own. There is no
+  -- room: the claim is a booking event and a notification, and when a transfer
+  -- needs explaining each side gets the other's number.
   -- -------------------------------------------------------------------------
-  select count(*)::integer into v_n from conversation_messages(v_conv);
-  return query select 'the claim is posted into the room', v_n::text, v_n = 1;
+  select count(*)::integer into v_n
+    from booking_event where booking_id = v_bk and event = 'Payment claimed';
+  return query select 'the claim is on the booking''s own record', v_n::text, v_n = 1;
 
-  select body into v_txt from conversation_messages(v_conv) limit 1;
+  select detail ->> 'note' into v_txt
+    from booking_event where booking_id = v_bk and event = 'Payment claimed';
   return query select 'saying what was sent', coalesce(v_txt, '(silence)'),
-                      v_txt like '%has been sent%88213%';
+                      v_txt like '%88213%';
 
   select count(*)::integer into v_n
     from notification where player_id = SALMA and kind = 'payment_claimed';
   return query select 'and the venue is told', v_n::text, v_n = 1;
 
+  -- Salma is the venue here; Basel is the captain who owes the money.
   perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
-  select count(*)::integer into v_n from my_conversations() where conversation_id = v_conv;
-  return query select 'the room is in the venue''s own list', v_n::text, v_n = 1;
+  select * into r from booking_whatsapp(v_bk);
+  return query select 'the venue can reach the captain who owes them',
+                      coalesce(r.reason, r.who || ' ' || coalesce(r.display_name, '')),
+                      r.ok and r.who = 'captain';
 
-  select title into v_txt from my_conversations() where conversation_id = v_conv;
-  return query select 'named after who owes them', coalesce(v_txt, '(none)'),
-                      v_txt like 'Basel%';
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  select * into r from booking_whatsapp(v_bk);
+  return query select 'and the captain can reach the venue',
+                      coalesce(r.reason, r.who || ' ' || coalesce(r.display_name, '')),
+                      r.ok and r.who = 'venue';
 
   perform set_config('request.jwt.claims', json_build_object('sub', STRANGER)::text, true);
-  begin
-    perform conversation_messages(v_conv);
-    return query select 'and nobody else can read it', '(allowed!)', false;
-  exception when insufficient_privilege then
-    return query select 'and nobody else can read it', 'refused', true;
-  end;
+  select * into r from booking_whatsapp(v_bk);
+  return query select 'and nobody else gets either number',
+                      coalesce(r.reason, '(given out!)'),
+                      r.ok = false and r.reason = 'You are not on that booking.';
 
   -- -------------------------------------------------------------------------
   -- "It arrived"
@@ -191,8 +198,9 @@ begin
   select settled::text into v_txt from venue_payment_claims(v_venue) where booking_id = v_bk;
   return query select 'the list says it is settled now', v_txt, v_txt = 'true';
 
-  select count(*)::integer into v_n from conversation_messages(v_conv);
-  return query select 'the answer is in the room too', v_n::text, v_n = 2;
+  select count(*)::integer into v_n
+    from booking_event where booking_id = v_bk and event = 'Payment confirmed';
+  return query select 'the answer is on the record too', v_n::text, v_n = 1;
 
   select count(*)::integer into v_n
     from notification where player_id = BASEL and kind = 'payment_confirmed';
@@ -203,18 +211,6 @@ begin
                       coalesce(r.reason, '(allowed!)'),
                       r.ok = false and r.reason = 'There is nothing outstanding on that booking.';
 
-  -- -------------------------------------------------------------------------
-  -- The lobby is still the squad's
-  -- -------------------------------------------------------------------------
-  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
-  select * into r from lobby_conversation(v_bk);
-  return query select 'the match lobby is a different room',
-                      case when r.conversation_id = v_conv then 'the same room!' else 'separate' end,
-                      r.ok and r.conversation_id <> v_conv;
-
-  perform set_config('request.jwt.claims', json_build_object('sub', SALMA)::text, true);
-  select count(*)::integer into v_n from my_conversations() where conversation_id = r.conversation_id;
-  return query select 'and the venue cannot read the squad''s', v_n::text, v_n = 0;
 end;
 $$;
 
