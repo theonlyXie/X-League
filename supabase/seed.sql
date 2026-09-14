@@ -10,12 +10,21 @@
 truncate booking_event, booking, availability_rule, price_rule, pitch, venue restart identity cascade;
 
 with v as (
-  insert into venue (name, area, verification, lat, lon, entry_note, phone, amenities, house_rules, map_url) values
+  -- `pay_at_venue` is true for the two venues the suites book against, and it
+  -- is stated here rather than left to the column default because the default
+  -- is now false: a venue takes requests until its owner says otherwise. These
+  -- two have said otherwise. Without that the whole spine — confirm, get a
+  -- code, check in, play, rate — stops at the first step, because a booking at
+  -- a venue that has not agreed to take money at the gate is a request waiting
+  -- on somebody. The request path is exercised by `pay_at_venue_probe`, which
+  -- switches a venue off for its own cases rather than asking every other
+  -- suite to work around it.
+  insert into venue (name, area, verification, lat, lon, entry_note, phone, amenities, house_rules, map_url, pay_at_venue) values
     ('Stadium One', 'Nasr City', 'verified', 30.060100, 31.330200,
      'Gate 2 · ask for Pitch A', '+20 100 000 0010',
      array['Floodlights', 'Changing rooms', 'Parking', 'Showers', 'Café', 'Ball provided'],
      'Studs allowed on turf. No metal blades. Two guests per player. Please clear the pitch on the hour — the next match starts immediately.',
-     'https://maps.google.com/?q=30.0601,31.3302'),
+     'https://maps.google.com/?q=30.0601,31.3302', true),
     -- Verified, because the seed books it and checks people in at it, and a
     -- venue that is not verified now refuses both. 'Nasr Sports Club' below is
     -- the one left waiting, which is what the verification cases work on.
@@ -23,12 +32,12 @@ with v as (
      'Reception, first floor', '+20 100 000 0020',
      array['Indoor', 'Air conditioning', 'Changing rooms', 'Parking'],
      'Indoor shoes only — no studs. Bibs provided at reception.',
-     'https://maps.google.com/?q=30.0529,31.3488'),
+     'https://maps.google.com/?q=30.0529,31.3488', true),
     ('Nasr Sports Club', 'Nasr City', 'pending', 30.041500, 31.361000,
      null, '+20 100 000 0030',
      array['Floodlights', 'Parking', 'Seating'],
      'Members and their guests. Bring ID to the gate.',
-     null)
+     null, false)
   returning id, name
 ),
 p as (

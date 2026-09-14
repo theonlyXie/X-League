@@ -413,6 +413,27 @@ const AR: Record<string, string> = {
     'إنت وعدت بباقي الجايزة خلاص.',
   'Only the captain can set a share of the prize.':
     'الكابتن بس اللي يقدر يحدد نصيب من الجايزة.',
+
+  // Who are you playing: naming an opponent, and their answer.
+  'Only the captain can call a match on.': 'الكابتن بس اللي يقدر يرتّب الماتش.',
+  'That booking is not on any more.': 'الحجز ده مبقاش قايم.',
+  'Name one opponent: a player or a club.': 'حدّد خصم واحد: لاعب أو نادي.',
+  'You cannot play yourself.': 'ما تقدرش تلعب ضد نفسك.',
+  'That player is not on X League.': 'هذا اللاعب ليس على إكس ليج.',
+  'You cannot play your own club.': 'ما تقدرش تلعب ضد ناديك.',
+  'This match already has an opponent.': 'الماتش ده ليه خصم خلاص.',
+  'That challenge no longer exists.': 'التحدي ده مبقاش موجود.',
+  'That challenge has already been answered.': 'التحدي ده اترد عليه خلاص.',
+  'That challenge is not yours to answer.': 'التحدي ده مش من حقك ترد عليه.',
+  'That match is off.': 'الماتش ده اتلغى.',
+  'Only the captain can call a match off.': 'الكابتن بس اللي يقدر يلغي الماتش.',
+  'There is no opponent to call off.': 'مفيش خصم علشان تلغيه.',
+
+  // Nobody pays at the venue unless the venue said they could.
+  'That booking is not at your venue.': 'الحجز ده مش في ملعبك.',
+  'That request has already been answered.': 'الطلب ده اترد عليه خلاص.',
+  'Only the owner can change how this venue takes payment.':
+    'صاحب الملعب بس اللي يقدر يغيّر طريقة الدفع.',
 };
 
 /**
