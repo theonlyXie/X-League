@@ -411,6 +411,12 @@ function VoidCard({
   explained: string;
   level: number;
 }) {
+  // Every number on the card goes through the reader's own numerals. It used
+  // to render them raw, so an Arabic card showed `الموسم ١` at the top, `75`
+  // in the middle and `من أين جاء ٨٥` underneath — three numerals in two
+  // systems on one screen, about the same player.
+  const { num } = useI18n();
+
   return (
     <LinearGradient
       colors={[void_.cardTop, void_.bg]}
@@ -477,26 +483,36 @@ function VoidCard({
         {[38, -38].map((deg) => (
           <StrokeLine key={deg} length={300} angle={deg} top={178} left={-20} color={goldAlpha.stroke} />
         ))}
-        <View
-          style={{
-            position: 'absolute',
-            top: 160,
-            left: '50%',
-            marginLeft: -18,
-            width: 36,
-            height: 36,
-            borderRadius: radius.pill,
-            backgroundColor: void_.disc,
-            borderWidth: 1,
-            borderColor: goldAlpha.discEdge,
-          }}
-        />
+        {/* The void at the centre — and only when there is a void. It is
+            painted at the exact middle of where the photograph goes, so on a
+            card with a face it was a filled disc over the player's face. The
+            rings and strokes still frame the portrait; this one piece is what
+            stands in for a portrait that is not there. */}
+        {photoUrl ? null : (
+          <View
+            style={{
+              position: 'absolute',
+              top: 160,
+              left: '50%',
+              marginLeft: -18,
+              width: 36,
+              height: 36,
+              borderRadius: radius.pill,
+              backgroundColor: void_.disc,
+              borderWidth: 1,
+              borderColor: goldAlpha.discEdge,
+            }}
+          />
+        )}
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <View>
-          <Txt size={52} weight="extrabold" em={-0.04} lh={0.9} color={gold.base}>
-            {ovr}
+          {/* No line-height under 1 here. At 52pt a 0.9 multiplier gives the
+              line less room than the face needs and iOS clips the top of the
+              digits rather than letting them overflow. */}
+          <Txt size={52} weight="extrabold" em={-0.04} lh={1} color={gold.base}>
+            {num(ovr)}
           </Txt>
           <Txt size={12} weight="bold" em={0.16} color="rgba(243,238,229,.7)" style={{ marginTop: 4 }}>
             {positionCode}
@@ -524,7 +540,7 @@ function VoidCard({
           {name.toUpperCase()}
         </Txt>
         <Txt size={9.5} weight="semibold" em={0.2} color="rgba(198,163,75,.85)">
-          VOID CARD · LVL {level}
+          VOID CARD · LVL {num(level)}
         </Txt>
       </View>
 
@@ -538,7 +554,7 @@ function VoidCard({
                   {attr.key}
                 </Txt>
                 <Txt size={13} weight="bold" color={attr.key === explained ? gold.base : onVoid.primary}>
-                  {attr.value}
+                  {num(attr.value)}
                 </Txt>
               </View>
             ))}

@@ -55,6 +55,26 @@ type I18nValue = {
 const I18nContext = createContext<I18nValue | null>(null);
 
 /**
+ * The language, if there is one — for the few things drawn outside the tree.
+ *
+ * `useI18n` throws when it cannot find a provider, which is right for a screen:
+ * a screen with no strings is a bug worth stopping on. It is wrong for a piece
+ * of type. `Txt` is rendered by the error boundary, and the boundary sits
+ * *above* this provider on purpose so that a failure inside the provider is
+ * still caught — so the boundary's own fallback had no language to read and
+ * threw while rendering the message about the first error. React has nothing
+ * above a boundary that throws in its own render, so the app died, and it died
+ * before `componentDidCatch` could write the breadcrumb: every one of those
+ * crashes reached us as "closed with no message recorded".
+ *
+ * Returning null instead lets type render in the default direction when there
+ * is no provider, which is exactly what an English-only error screen wants.
+ */
+export function useI18nOptional(): I18nValue | null {
+  return useContext(I18nContext);
+}
+
+/**
  * Mirroring is allowed, and nothing more is decided here.
  *
  * This used to force RTL at module scope, on the reasoning that Arabic is the
