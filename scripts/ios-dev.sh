@@ -140,13 +140,44 @@ command -v watchman >/dev/null 2>&1 \
   && good 'watchman' \
   || note 'watchman is missing — optional, but the file watcher is flakier without it (brew install watchman)'
 
-# Committed on purpose, and the reason a build made anywhere finds the
-# database. Its absence means somebody removed it, not that it needs creating.
+# Committed on purpose, and the reason a *release* build made anywhere finds
+# the database. Its absence means somebody removed it, not that it needs
+# creating.
 [ -f .env.production ] || die \
   '.env.production is missing.' \
-  'It is committed to this repository on purpose — the app has no database' \
-  'without it. Restore it with:  git checkout .env.production'
+  'It is committed to this repository on purpose — a release build has no' \
+  'database without it. Restore it with:  git checkout .env.production'
 good '.env.production'
+
+# But it is not the file a debug build reads, and saying so here costs one
+# check against an afternoon of a healthy-looking app that cannot sign anybody
+# up. Expo loads env files by NODE_ENV: a debug build runs as `development`
+# and reads .env.development.local, .env.local, .env.development and .env,
+# while .env.production is loaded for `production` alone. With none of them
+# present there are no EXPO_PUBLIC_* vars at all, `isLive` is false in
+# src/lib/supabase.ts, and the build comes up on fixtures with sign-up
+# answering "This build has no database configured." It installs, it runs, and
+# it looks entirely fine — the same failure .env.production exists to prevent,
+# reached from the other direction.
+if [ "$CONFIGURATION" = 'Debug' ]; then
+  DEBUG_ENV=''
+  for candidate in .env.development.local .env.local .env.development .env; do
+    if [ -f "$candidate" ]; then DEBUG_ENV="$candidate"; break; fi
+  done
+
+  if [ -n "$DEBUG_ENV" ]; then
+    good "$DEBUG_ENV — what this debug build reads"
+  else
+    note 'No .env, and a debug build does not read .env.production.'
+    note 'This will install an app in demo mode: fixtures on every screen and'
+    note 'sign-up answering "This build has no database configured."'
+    note ''
+    note 'Point it at the same database as a release build:'
+    note '  grep ^EXPO_PUBLIC_ .env.production > .env'
+    note ''
+    note 'Or build the configuration that does read it:  --release'
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # Dependencies
