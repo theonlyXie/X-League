@@ -199,7 +199,10 @@ begin
     'challenge',
     v_name || ' wants to play you',
     to_char(v_when at time zone 'Africa/Cairo', 'FMDay FMDD Mon · FMHH12:MI AM') || ' at ' || v_venue,
-    jsonb_build_object('screen', 'booking', 'booking_id', p_booking_id, 'challenge_id', v_id)
+    -- Not 'booking': the person reading this is the opponent, who is not on
+    -- the booking and is refused by both the bookings list and the lobby.
+    -- The challenges screen is the one surface they can actually act on.
+    jsonb_build_object('screen', 'challenges', 'booking_id', p_booking_id, 'challenge_id', v_id)
   );
 
   insert into booking_event (booking_id, event, actor, detail)
@@ -292,7 +295,7 @@ begin
     case when p_accept then 'challenge_accepted' else 'challenge_declined' end,
     case when p_accept then v_who || ' is on' else v_who || ' cannot play' end,
     case when p_accept then null else 'Challenge somebody else and the hour is still yours.' end,
-    jsonb_build_object('screen', 'booking', 'booking_id', v_booking)
+    jsonb_build_object('screen', 'lobby', 'booking_id', v_booking)
   );
 
   insert into booking_event (booking_id, event, actor, detail)
@@ -357,7 +360,7 @@ begin
     'challenge_withdrawn',
     v_name || ' called the match off',
     null,
-    jsonb_build_object('screen', 'booking', 'booking_id', p_booking_id)
+    jsonb_build_object('screen', 'challenges', 'booking_id', p_booking_id)
   );
 
   insert into booking_event (booking_id, event, actor, detail)

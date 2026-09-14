@@ -28,7 +28,13 @@ import { useI18n } from '@/i18n';
  * far its own timer happened to get.
  */
 
-export type HoldState = 'idle' | 'holding' | 'expired' | 'confirmed';
+/**
+ * `requested` is a success, not a half-failure. At a venue that has not agreed
+ * to take money at the gate the hour is held and the venue owes an answer, so
+ * the player has done everything they can do and there is nothing yet to
+ * quote at a gate.
+ */
+export type HoldState = 'idle' | 'holding' | 'expired' | 'confirmed' | 'requested';
 
 type BookingContextValue = {
   slot: SlotTime;
@@ -74,7 +80,7 @@ type BookingContextValue = {
   beginHold: () => Promise<boolean>;
   releaseHold: () => void;
   /** True when the booking was actually made. False is not a navigation. */
-  confirmBooking: () => Promise<boolean>;
+  confirmBooking: () => Promise<HoldState>;
 
   checkedIn: boolean;
   toggleCheckIn: () => void;
@@ -272,25 +278,31 @@ export function BookingProvider({ children }: { children: ReactNode }) {
    * exist. They would then turn up at a pitch quoting a code from the design
    * fixture. The caller has to be able to tell, so this says.
    */
-  const confirmBooking = useCallback(async (): Promise<boolean> => {
+  const confirmBooking = useCallback(async (): Promise<HoldState> => {
     if (!isLive || !bookingId) {
       setCode(BOOKING.code);
       setHold('confirmed');
-      return true;
+      return 'confirmed';
     }
     try {
       const result = await api.confirmBooking(bookingId);
       if (!result.ok) {
         setHold('expired');
-        return false;
+        return 'expired';
+      }
+      // A request has no code, and must not be given the confirmation
+      // ceremony: there is nothing yet to turn up and quote.
+      if (result.state === 'requested') {
+        setHold('requested');
+        return 'requested';
       }
       setCode(result.code);
       setHold('confirmed');
-      return true;
+      return 'confirmed';
     } catch {
       setConflict({ reason: t.errVenueCalendarRetry, alternatives: [] });
       setUnreachable(true);
-      return false;
+      return 'expired';
     }
   }, [bookingId]);
 

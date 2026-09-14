@@ -180,6 +180,7 @@ const AR: Record<string, string> = {
   'Sign in to rate your teammates.': 'سجّل الدخول لتقييم زملائك.',
   'Sign in to report something.': 'سجّل الدخول للإبلاغ.',
   'Sign in to search for players.': 'سجّل الدخول للبحث عن لاعبين.',
+  'Sign in to search for clubs.': 'سجّل الدخول للبحث عن أندية.',
   'Sign in to see your card.': 'سجّل الدخول لرؤية بطاقتك.',
   'Sign in to send a message.': 'سجّل الدخول لإرسال رسالة.',
   'Sign in to start a team.': 'سجّل الدخول لتكوين فريق.',

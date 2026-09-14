@@ -25,6 +25,7 @@ const ITEMS = [
   { label: 'ownPricing', hint: 'ownPricingBlurb', route: '/owner/setup/pricing' },
   { label: 'ownClosures', hint: 'ownClosuresBlurb', route: '/owner/setup/closures' },
   { label: 'ownStaff', hint: 'ownStaffBlurb', route: '/owner/setup/staff' },
+  { label: 'ownBooking', hint: 'ownBookingBlurb', route: '/owner/setup/booking' },
   { label: 'ownMoneyIn', hint: 'ownMoneyInBlurb', route: '/owner/setup/money-in' },
   { label: 'ownProfile', hint: 'ownProfileBlurb', route: '/owner/setup/profile' },
 ] as const;

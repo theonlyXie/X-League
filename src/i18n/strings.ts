@@ -75,6 +75,44 @@ export const STRINGS = {
     bookingFee: 'Booking fee',
     cashAtGate: 'Due at the venue',
     confirmBooking: 'Confirm booking',
+
+    // Asking, rather than booking — a venue that has not agreed to take money
+    // at the gate answers each booking itself.
+    requestBooking: 'Request this hour',
+    requestSent: 'Request sent',
+    waitingOnTheVenue: 'Waiting on the venue',
+    requestHeldForYou:
+      'The hour is held for you while the venue answers. Nobody else can take it, and you will be told either way.',
+    done: 'Done',
+
+    // Who you are playing.
+    opponent: 'Opponent',
+    yourClub: 'Yours',
+    noOpponentYet: 'No opponent yet',
+    inviteOpponent: 'Invite an opponent',
+    opponentInvited: 'Invited · waiting for an answer',
+    opponentAccepted: 'Match on',
+    callItOff: 'Call it off',
+    challenges: 'Challenges',
+    noChallenges: 'Nothing waiting for an answer',
+    wantsToPlayYou: (name: string) => `${name} wants to play you`,
+    challengeOnBehalfOf: (club: string) => `Answering for ${club}`,
+    playingAgainst: (name: string) => `Playing ${name}`,
+    opponentDeclinedKeepHour: 'They cannot play. The hour is still yours — ask somebody else.',
+
+    // What a venue is asked, and what it answers.
+    venueRequests: 'Requests',
+    minutesShort: (n: string) => `${n} min`,
+    ownRequestAccepted: (code: string) => `Confirmed. The booking reference is ${code}.`,
+    noVenueRequests: 'Nothing waiting on you',
+    ownBooking: 'Bookings',
+    ownBookingBlurb: 'Whether players book instantly or ask you first',
+    ownOwnerOnly: 'Only the venue owner can change this.',
+    payAtVenueOn: 'Players book instantly',
+    payAtVenueOff: 'Every booking comes to you first',
+    payAtVenueTitle: 'Let players book instantly',
+    payAtVenueExplain:
+      'Players book without asking you and settle at the gate. With this off, every booking comes to you as a request to accept or decline.',
     findAnotherSlot: 'Find another slot',
 
     // Confirmation (P-06)
@@ -1200,6 +1238,43 @@ export const STRINGS = {
     bookingFee: 'رسوم الحجز',
     cashAtGate: 'مستحق في الملعب',
     confirmBooking: 'تأكيد الحجز',
+
+    // Asking, rather than booking.
+    requestBooking: 'اطلب الساعة دي',
+    requestSent: 'الطلب اتبعت',
+    waitingOnTheVenue: 'في انتظار رد الملعب',
+    requestHeldForYou:
+      'الساعة محجوزة لك لحد ما الملعب يرد. محدش يقدر ياخدها، وهنقولك في الحالتين.',
+    done: 'تمام',
+
+    // Who you are playing.
+    opponent: 'الخصم',
+    yourClub: 'ناديك',
+    noOpponentYet: 'لسه مفيش خصم',
+    inviteOpponent: 'ادعُ خصم',
+    opponentInvited: 'اتدعى · في انتظار الرد',
+    opponentAccepted: 'الماتش اتأكد',
+    callItOff: 'إلغاء',
+    challenges: 'التحديات',
+    noChallenges: 'مفيش حاجة مستنية رد',
+    wantsToPlayYou: (name: string) => `${name} عايز يلعب معاك`,
+    challengeOnBehalfOf: (club: string) => `بترد باسم ${club}`,
+    playingAgainst: (name: string) => `ضد ${name}`,
+    opponentDeclinedKeepHour: 'مش هيقدروا يلعبوا. الساعة لسه لك — اطلب حد تاني.',
+
+    // What a venue is asked, and what it answers.
+    venueRequests: 'الطلبات',
+    minutesShort: (n: string) => `${n} دقيقة`,
+    ownRequestAccepted: (code: string) => `اتأكد. رقم الحجز هو ${code}.`,
+    noVenueRequests: 'مفيش حاجة مستنياك',
+    ownBooking: 'الحجوزات',
+    ownBookingBlurb: 'اللاعبين يحجزوا على طول ولا يسألوك الأول',
+    ownOwnerOnly: 'صاحب الملعب بس اللي يقدر يغيّر ده.',
+    payAtVenueOn: 'اللاعبين بيحجزوا على طول',
+    payAtVenueOff: 'كل حجز بييجي لك الأول',
+    payAtVenueTitle: 'خلي اللاعبين يحجزوا على طول',
+    payAtVenueExplain:
+      'اللاعبين يحجزوا من غير ما يسألوك ويدفعوا عند البوابة. لو ده مقفول، كل حجز هييجي لك كطلب تقبله أو ترفضه.',
     findAnotherSlot: 'ابحث عن موعد آخر',
 
     yourePlaying: 'أنت تلعب',

@@ -248,6 +248,35 @@ begin
                       not r.ok and r.reason = 'That match has already been played.';
 
   -- -------------------------------------------------------------------------
+  -- Finding a club to play
+  -- -------------------------------------------------------------------------
+  -- A club that cannot be found cannot be challenged, which is what made the
+  -- club half of this feature reachable by the API and unreachable by a person.
+  perform set_config('request.jwt.claims', json_build_object('sub', BASEL)::text, true);
+  update club set verification = 'verified' where id = v_club;
+
+  select count(*)::integer into v_n from find_clubs('Opponent');
+  return query select 'a club can be found by name', v_n::text, v_n = 1;
+
+  -- A single letter matches half the table and is somebody still typing.
+  select count(*)::integer into v_n from find_clubs('O');
+  return query select 'one letter is not a search', v_n::text, v_n = 0;
+
+  -- A club nobody has admitted is not a fixture. It cannot enter a cup either.
+  update club set verification = 'pending' where id = v_club;
+  select count(*)::integer into v_n from find_clubs('Opponent');
+  return query select 'a club still waiting to be admitted is not offered',
+                      v_n::text, v_n = 0;
+  update club set verification = 'verified' where id = v_club;
+
+  -- Marked, not hidden: a captain searching for their own club and finding
+  -- nothing would conclude the search is broken.
+  perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);
+  select fc.mine into v_bool from find_clubs('Opponent') fc;
+  return query select 'a captain sees their own club, marked as theirs',
+                      coalesce(v_bool::text, '(none)'), v_bool;
+
+  -- -------------------------------------------------------------------------
   -- The helper is not an API
   -- -------------------------------------------------------------------------
   return query select 'the club-authority helper is not reachable by a client',

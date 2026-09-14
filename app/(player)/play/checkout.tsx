@@ -11,6 +11,7 @@ import { mono } from '@/theme/typography';
 import { BOOKING } from '@/data/player';
 import { useBooking } from '@/state/booking';
 import { venueDetail, myStanding, bookingTerms, type Standing } from '@/data/discovery';
+import { venuePayAtVenue } from '@/data/api';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
@@ -46,6 +47,10 @@ export default function Checkout() {
   const [cutoff, setCutoff] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  // Null until the answer arrives. The button says "Confirm booking" in the
+  // meantime rather than flickering from one promise to the other, and the
+  // server decides the outcome either way — this only words the button.
+  const [payAtVenue, setPayAtVenue] = useState<boolean | null>(null);
 
   // A signed-out visitor and the demo build are shown the design's booking.
   // A real player is never quoted a fixture price or sent to a fixture venue.
@@ -84,6 +89,12 @@ export default function Checkout() {
         if (!cancelled && detail) {
           setVenueLine(pitch ? `${detail.name} · ${pitch.label}` : detail.name);
         }
+        // Whether this venue takes money at the gate, which decides whether
+        // the button below promises a booking or asks for one. Read before
+        // sign-in is checked, because the promise is the same either way and
+        // somebody weighing a venue deserves to know which it is.
+        const gate = await venuePayAtVenue(venueId).catch(() => null);
+        if (!cancelled && gate !== null) setPayAtVenue(gate);
         // Both of these need an account. Firing them signed out produced a
         // 401 for nothing — the standing warning and the cutoff are only
         // meaningful to somebody who can actually book.
@@ -287,7 +298,7 @@ export default function Checkout() {
               full confirmation ceremony — VoidMark, "YOU'RE PLAYING", a
               booking code — for a booking that does not exist. */}
           <Button
-            label={busy ? t.confirming : t.confirmBooking}
+            label={busy ? t.confirming : payAtVenue === false ? t.requestBooking : t.confirmBooking}
             height={52}
             round={radius.control}
             size={15}
@@ -297,7 +308,14 @@ export default function Checkout() {
               setFailed(null);
               const made = await confirmBooking();
               setBusy(false);
-              if (made) router.push('/play/confirmation');
+              // Compared against the state, not for truthiness. This used to
+              // return a boolean; it now returns which of three things
+              // happened, and `if (made)` on a string is true for 'expired'
+              // too — which would send a player whose hold had died to the
+              // confirmation ceremony, the exact bug the comment above
+              // describes.
+              if (made === 'confirmed') router.push('/play/confirmation');
+              else if (made === 'requested') router.push('/play/requested');
               else setFailed(t.confirmFailed);
             }}
           />
