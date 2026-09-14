@@ -59,7 +59,20 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # `packages: ''` is load-bearing. This action's default is to run
+      # `sdkmanager tools platform-tools`, and Google has withdrawn the
+      # obsolete `tools` package from the SDK repository — so the default now
+      # ends in "Warning: Failed to find package 'tools'" and a failed step,
+      # thirty seconds into what should be a twenty-minute build. It worked on
+      # 6 September and stopped working since; nothing here changed.
+      #
+      # Nothing needs installing anyway: the runner image ships platform-tools,
+      # the platforms and the build-tools, and the Gradle plugin fetches
+      # anything missing itself. What this action is still needed for is
+      # accepting the licences and setting ANDROID_HOME.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: ''
 
       - run: npm ci
 
