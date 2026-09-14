@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { Pressable, View, type PressableProps, type ViewStyle } from 'react-native';
 import Animated, {
+  cubicBezier,
   Easing,
   useAnimatedStyle,
   useReducedMotion,
@@ -27,8 +28,21 @@ import Animated, {
 /** Strong ease-out. The built-in easings are as weak here as they are in CSS. */
 export const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
-/** The same curve, for the CSS-transition form, which takes it as a string. */
-const EASE_OUT_CSS = 'cubic-bezier(0.23, 1, 0.32, 1)';
+/**
+ * The same curve for the CSS-transition form, which does *not* take it as a
+ * string.
+ *
+ * `transitionTimingFunction` accepts the seven predefined keywords as strings
+ * and nothing else; a custom curve has to be the object `cubicBezier` builds.
+ * Written as the CSS text it throws on the first render of anything wrapped in
+ * `PressScale` — the leaderboard, the cups, the clubs — and the error arrives
+ * from deep inside Reanimated's own `settings.ts`, naming a timing function
+ * rather than the file that asked for it.
+ *
+ * TypeScript does not catch it: this lands in the `style` array of an animated
+ * component, which is typed loosely enough for a stray string to pass.
+ */
+const EASE_OUT_CSS = cubicBezier(0.23, 1, 0.32, 1);
 
 /**
  * The press target has to be the animated component itself. A plain Pressable
