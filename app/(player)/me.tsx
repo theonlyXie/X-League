@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
+import { NotificationBell } from '@/components/NotificationBell';
 import { Button, Eyebrow } from '@/components/ui';
 import { myAvailability, setAvailability, type Availability } from '@/data/ready';
 import { ChevronRight, TrendUp } from '@/components/icons';
@@ -72,9 +73,12 @@ export default function Me() {
         <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
           {t.yourCard}
         </Txt>
-        <Txt size={11.5} color={onVoid.dim}>
-          {t.season(num(1))}
-        </Txt>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Txt size={11.5} color={onVoid.dim}>
+            {t.season(num(1))}
+          </Txt>
+          <NotificationBell />
+        </View>
       </View>
 
       {blank && !loading ? (
@@ -1148,11 +1152,26 @@ function ReadyToPlay() {
   const router = useRouter();
   const { t, num } = useI18n();
   const [state, setState] = useState<Availability | null>(null);
+  // The switch's own position, separate from the server's answer.
+  //
+  // It used to be driven straight off `state.available`, which only changes
+  // once two round trips have finished. On Android that reads as a fault: the
+  // native switch moves its thumb the instant it is touched, React re-renders
+  // with the value still unchanged and pushes the old position back down, so
+  // the thumb snaps back — then flips again half a second later when the
+  // server replies. Flip, snap back, flip. iOS hides it because its switch
+  // reconciles a late value differently, which is why this only showed up on
+  // the Android build.
+  //
+  // So the switch answers the thumb, and the network catches up behind it.
+  const [on, setOn] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setState(await myAvailability());
+      const next = await myAvailability();
+      setState(next);
+      setOn(next.available);
     } catch {
       /* The switch simply does not appear rather than showing a wrong one. */
     }
@@ -1166,13 +1185,20 @@ function ReadyToPlay() {
 
   const toggle = async () => {
     if (busy) return;
+    const next = !on;
     setBusy(true);
+    setOn(next);
+    // On the gesture, not on the reply. A confirmation that arrives after the
+    // network has answered is not feedback for the tap, it is news.
+    void Haptics.selectionAsync();
     try {
-      await setAvailability(!state.available);
+      await setAvailability(next);
+      // For `openCalls`, and so the server has the last word on the state.
       await load();
-      void Haptics.selectionAsync();
     } catch {
-      /* Left as it was; the next read corrects it. */
+      // Put it back. Leaving it where the thumb went would tell somebody they
+      // are available to a database that never heard about it.
+      setOn(!next);
     } finally {
       setBusy(false);
     }
@@ -1185,30 +1211,34 @@ function ReadyToPlay() {
         padding: 14,
         borderRadius: radius.control,
         borderWidth: 1,
-        borderColor: state.available ? goldAlpha.frame : onVoid.edgeFaint,
-        backgroundColor: state.available ? goldAlpha.fill : void_.surface,
+        borderColor: on ? goldAlpha.frame : onVoid.edgeFaint,
+        backgroundColor: on ? goldAlpha.fill : void_.surface,
         gap: 10,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1, gap: 3 }}>
-          <Txt size={14} weight="semibold" color={state.available ? gold.base : onVoid.primary}>
-            {state.available ? t.readyOn : t.readyOff}
+          <Txt size={14} weight="semibold" color={on ? gold.base : onVoid.primary}>
+            {on ? t.readyOn : t.readyOff}
           </Txt>
           <Txt size={11.5} lh={1.5} color={onVoid.faint}>
-            {state.available ? t.readyOnBlurb : t.readyOffBlurb}
+            {on ? t.readyOnBlurb : t.readyOffBlurb}
           </Txt>
         </View>
+        {/* Not `disabled` while the write is in flight. Android greys the whole
+            control out, which on a half-second request is a flicker rather
+            than information — and the guard at the top of `toggle` already
+            refuses the second tap. */}
         <Switch
-          value={state.available}
+          value={on}
           onValueChange={() => void toggle()}
-          disabled={busy}
           trackColor={{ false: void_.inset, true: goldAlpha.frame }}
-          thumbColor={state.available ? gold.base : onVoid.dim}
+          thumbColor={on ? gold.base : onVoid.dim}
+          accessibilityLabel={t.readyOn}
         />
       </View>
 
-      {state.available && state.openCalls > 0 ? (
+      {on && state.openCalls > 0 ? (
         <Button
           label={t.callsWaiting(num(state.openCalls))}
           height={40}

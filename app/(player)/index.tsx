@@ -4,6 +4,7 @@ import { ActivityIndicator, Linking, Pressable, RefreshControl, View } from 'rea
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
+import { NotificationBell } from '@/components/NotificationBell';
 import { AvatarStack, Button, CornerVoid, Divider, Eyebrow, TurfSwatch } from '@/components/ui';
 import { cssAngle } from '@/theme/gradient';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
@@ -72,13 +73,14 @@ export default function Home() {
         ) : undefined
       }
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ gap: 3 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ gap: 3, flexShrink: 1 }}>
           <Eyebrow>{longDate(new Date().toISOString())}</Eyebrow>
           <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
             {firstName ? `${t.greetingEvening}, ${firstName}` : t.greetingEvening}
           </Txt>
         </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Link href="/me" asChild>
           <Pressable
             accessibilityRole="button"
@@ -114,6 +116,8 @@ export default function Home() {
             </Txt>
           </Pressable>
         </Link>
+        <NotificationBell />
+        </View>
       </View>
 
       {home.unreachable ? <Unreachable label={t.offline} onRetry={home.reload} retry={t.retry} /> : null}
