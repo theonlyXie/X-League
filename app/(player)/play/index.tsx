@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
+import { NotificationBell } from '@/components/NotificationBell';
 import { Eyebrow, TurfSwatch, hitSlopTo44 } from '@/components/ui';
 import { Star } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
@@ -105,9 +106,12 @@ export default function PlaySearch() {
         ) : undefined
       }
     >
-      <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-        {t.whenPlay}
-      </Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
+          {t.whenPlay}
+        </Txt>
+        <NotificationBell />
+      </View>
 
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>

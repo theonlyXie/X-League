@@ -21,6 +21,7 @@ import { BookingProvider } from '@/state/booking';
 import { SessionProvider, useSession } from '@/state/session';
 import { CardProvider } from '@/state/card';
 import { RefreshProvider } from '@/state/refresh';
+import { UnreadProvider } from '@/state/unread';
 import { Boundary } from '@/components/Boundary';
 import { installLastResortHandler } from '@/lib/lastResort';
 import { noteScreen, takeCrash } from '@/lib/breadcrumb';
@@ -59,6 +60,7 @@ export default function RootLayout() {
         <CardProvider>
           <BookingProvider>
           <RefreshProvider>
+          <UnreadProvider>
           <StatusBar style="light" />
           <Gate />
           <Trail />
@@ -83,6 +85,7 @@ export default function RootLayout() {
             <Stack.Screen name="blocked" />
             <Stack.Screen name="onboarding" />
           </Stack>
+          </UnreadProvider>
           </RefreshProvider>
           </BookingProvider>
         </CardProvider>

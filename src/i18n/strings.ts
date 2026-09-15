@@ -520,6 +520,7 @@ export const STRINGS = {
 
     // Notifications
     notifications: 'Notifications',
+    notificationsWaiting: (n: string) => `Notifications, ${n} waiting`,
     noNotifications: 'Nothing new',
     markAllRead: 'Mark all read',
 
@@ -1660,6 +1661,7 @@ export const STRINGS = {
     listUnreachableBlurb: 'دي مشكلة اتصال، مش قايمة فاضية. اسحب لتحت وجرّب تاني.',
 
     notifications: 'الإشعارات',
+    notificationsWaiting: (n: string) => `الإشعارات، ${n} في الانتظار`,
     noNotifications: 'لا يوجد جديد',
     markAllRead: 'تعليم الكل كمقروء',
 

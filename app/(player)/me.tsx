@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
+import { NotificationBell } from '@/components/NotificationBell';
 import { Button, Eyebrow } from '@/components/ui';
 import { myAvailability, setAvailability, type Availability } from '@/data/ready';
 import { ChevronRight, TrendUp } from '@/components/icons';
@@ -72,9 +73,12 @@ export default function Me() {
         <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
           {t.yourCard}
         </Txt>
-        <Txt size={11.5} color={onVoid.dim}>
-          {t.season(num(1))}
-        </Txt>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Txt size={11.5} color={onVoid.dim}>
+            {t.season(num(1))}
+          </Txt>
+          <NotificationBell />
+        </View>
       </View>
 
       {blank && !loading ? (

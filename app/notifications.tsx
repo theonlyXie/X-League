@@ -12,6 +12,7 @@ import {
 } from '@/data/social';
 import { useI18n } from '@/i18n';
 import { useRefreshTick } from '@/state/refresh';
+import { useUnread } from '@/state/unread';
 import { isLive } from '@/lib/supabase';
 import { useSession } from '@/state/session';
 
@@ -35,6 +36,7 @@ export default function Notifications() {
 
   // The refresh button in the top bar.
   const tick = useRefreshTick();
+  const { refreshUnread } = useUnread();
   const [rows, setRows] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(isLive);
   /** §4.7: a list we could not read is not an empty list. */
@@ -75,7 +77,9 @@ export default function Notifications() {
   }, [nonce, signedIn, tick]);
 
   const open = (n: Notification) => {
-    void markNotificationsRead(n.notificationId);
+    // The bell is on the screen behind this one. Without this it keeps the old
+    // count until the next poll, up to a minute after the list says otherwise.
+    void markNotificationsRead(n.notificationId).then(refreshUnread);
     const {
       screen,
       booking_id: bookingId,
@@ -136,6 +140,7 @@ export default function Notifications() {
             hitSlop={10}
             onPress={async () => {
               await markNotificationsRead();
+              refreshUnread();
               reload();
             }}
           >

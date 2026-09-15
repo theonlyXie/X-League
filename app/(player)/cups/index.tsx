@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from '
 import * as Haptics from 'expo-haptics';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
+import { NotificationBell } from '@/components/NotificationBell';
 import { Button, Eyebrow } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
 import { CapacityBar, PressScale, Reveal } from '@/components/motion';
@@ -106,9 +107,12 @@ export default function Cups() {
         ) : undefined
       }
     >
-      <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-        {t.cupsTitle}
-      </Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
+          {t.cupsTitle}
+        </Txt>
+        <NotificationBell />
+      </View>
 
       {loading && all.length === 0 ? (
         <View style={{ paddingVertical: 40, alignItems: 'center' }}>

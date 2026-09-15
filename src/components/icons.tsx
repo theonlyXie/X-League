@@ -102,6 +102,28 @@ export function Check({ size = 14, color }: IconProps) {
  * Refresh. Not mirrored: a circular arrow means the same thing in both
  * directions, and flipping it would only make it look wrong.
  */
+/**
+ * Notifications.
+ *
+ * Deliberately not flipped in Arabic: a bell is a bell in both directions, and
+ * mirroring it would only make it look wrong — the same reasoning as the star
+ * and the tick above.
+ */
+export function Bell({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Path
+        d="M5.5 8a4.5 4.5 0 0 1 9 0c0 3 .8 4.3 1.4 5 .3.4 0 1-.5 1H4.6c-.5 0-.8-.6-.5-1 .6-.7 1.4-2 1.4-5Z"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <Path d="M8.2 16.2a2 2 0 0 0 3.6 0" stroke={color} strokeWidth={1.5} strokeLinecap="round" fill="none" />
+    </Svg>
+  );
+}
+
 export function Rotate({ size = 20, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
