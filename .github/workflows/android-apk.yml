@@ -1,9 +1,17 @@
-# Builds an installable APK and attaches it to the run.
+# Builds an installable APK and publishes it where a phone can reach it.
 #
 # This exists because an APK for a React Native app is ~60-100 MB — too large
 # to hand over any other way — and because building one otherwise needs a local
-# Android SDK or an Expo account. Push, or run it by hand, then download the
-# artifact from the run summary.
+# Android SDK or an Expo account.
+#
+# The APK goes to a prerelease, not only to a run artifact, for two reasons
+# learned the hard way. An artifact is served as a *zip*, so the one device
+# that can install the thing is the one device that cannot open it. And the
+# artifact upload failed outright on 2026-09-11 with "Artifact storage quota
+# has been hit" — after a twenty-three minute build — because ninety runs of
+# this workflow each kept an eighty-megabyte APK for thirty days. A release
+# asset is a direct link, it does not touch that quota, and it survives the
+# retention window.
 name: Android APK
 
 on:
@@ -28,6 +36,11 @@ concurrency:
   group: apk-${{ github.ref }}
   cancel-in-progress: true
 
+# Creating the release needs write access to the repository's contents. Nothing
+# else here does, so the rest stays read-only.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -46,7 +59,20 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # `packages: ''` is load-bearing. This action's default is to run
+      # `sdkmanager tools platform-tools`, and Google has withdrawn the
+      # obsolete `tools` package from the SDK repository — so the default now
+      # ends in "Warning: Failed to find package 'tools'" and a failed step,
+      # thirty seconds into what should be a twenty-minute build. It worked on
+      # 6 September and stopped working since; nothing here changed.
+      #
+      # Nothing needs installing anyway: the runner image ships platform-tools,
+      # the platforms and the build-tools, and the Gradle plugin fetches
+      # anything missing itself. What this action is still needed for is
+      # accepting the licences and setting ANDROID_HOME.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: ''
 
       - run: npm ci
 
@@ -117,9 +143,49 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "Signed with the debug keystore — installable, not publishable." >> "$GITHUB_STEP_SUMMARY"
 
+      # The link somebody can open on the phone itself. Tapping a release asset
+      # downloads the APK directly; tapping an artifact downloads a zip, which
+      # Android cannot install.
+      #
+      # The tag carries the commit, so two builds never collide and the name
+      # says which code is inside. `--clobber` lets a re-run of the same commit
+      # replace the file rather than fail.
+      - name: Publish it where a phone can install it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK: ${{ steps.name.outputs.apk }}
+        run: |
+          TAG="apk-${GITHUB_SHA::7}"
+          cp android/app/build/outputs/apk/release/app-release.apk "$APK"
+          # No backticks in here. The heredoc is unquoted so that the two
+          # variables expand, which also means a backtick would be read as a
+          # command substitution rather than as markdown.
+          cat > /tmp/notes.md <<NOTES
+          Test build of ${GITHUB_REF_NAME} at ${GITHUB_SHA::7}.
+
+          Open this page on the Android phone and tap the .apk below. Android
+          asks once for permission to install from the browser.
+
+          Signed with the debug keystore: installable, not publishable.
+          NOTES
+          sed -i 's/^          //' /tmp/notes.md
+          cat /tmp/notes.md
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "APK · ${GITHUB_SHA::7}" \
+            --notes-file /tmp/notes.md
+          gh release upload "$TAG" "$APK" --clobber
+          echo "### Install it" >> "$GITHUB_STEP_SUMMARY"
+          echo "$(gh release view "$TAG" --json url --jq .url)" >> "$GITHUB_STEP_SUMMARY"
+
+      # Kept as well, and allowed to fail: the artifact quota is a shared,
+      # account-wide budget that a build has no way to clear for itself, and a
+      # published release is not worth failing over a second copy.
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: ${{ steps.name.outputs.apk }}
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7

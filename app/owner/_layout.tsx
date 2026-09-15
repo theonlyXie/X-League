@@ -24,6 +24,10 @@ export default function OwnerLayout() {
         {/* Same reasoning: reached from the Money tab and from a notification,
             not a sixth item in a bar that draws its own five. */}
         <Tabs.Screen name="claims" />
+        {/* Same again: hours a player has asked for, reached from Setup and
+            from the notification the request itself sends. Only a venue that
+            has not switched on paying at the gate ever has anything here. */}
+        <Tabs.Screen name="requests" />
         <Tabs.Screen name="thread/[id]" />
       </Tabs>
     </View>

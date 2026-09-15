@@ -22,7 +22,8 @@ total_pass=0; total_fail=0
 for probe in access_probe rbac_probe auth_probe card_probe squad_probe match_probe \
              cancellation_probe reach_probe tournament_probe owner_admin_probe \
              club_probe club_entry_probe honours_probe referee_probe venue_money_probe \
-             ready_probe bounty_probe security_probe; do
+             ready_probe bounty_probe opponent_probe pay_at_venue_probe \
+             security_probe; do
   bold "$probe"
   out="$(psql -h "$PGHOST" -p "$PORT" -U "$USER" -q -f "$HERE/$probe.sql" 2>&1)"
   p=$(printf '%s' "$out" | grep -c '| PASS')

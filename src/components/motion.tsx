@@ -50,15 +50,13 @@ export function PressScale({
   const reduced = useReducedMotion();
 
   // Driven as a shared value rather than through the CSS-transition form.
-  // That form takes its curve as a string, and Reanimated accepts only the
-  // named keywords there — `cubic-bezier(...)` throws on every render that
-  // sets it, which took each press through the error boundary instead of
-  // scaling anything. Named keywords would parse, but the curve above exists
-  // because they are too weak here, so this uses the imperative form the rest
-  // of this file already uses and keeps the bezier.
   //
-  // It also stops a press re-rendering the tree it is giving feedback on: the
-  // scale now lives on the UI thread from press to release.
+  // That form can carry this curve — `transitionTimingFunction` takes the seven
+  // predefined keywords as strings, and any other curve as the object
+  // `cubicBezier` builds, never as the CSS text for one. But it holds the press
+  // in React state, so every touch re-renders the tree the press is giving
+  // feedback on. Imperative is what the rest of this file already does, and it
+  // keeps the scale on the UI thread from press to release.
   const scale = useSharedValue(1);
 
   const press = (to: number) => {

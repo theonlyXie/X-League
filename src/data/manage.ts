@@ -744,3 +744,70 @@ export async function adminAudit(limit = 100): Promise<AuditEntry[]> {
     detail: r.detail ?? {},
   }));
 }
+
+/**
+ * Hours somebody has asked for and the venue has not yet answered.
+ *
+ * Only exists where the venue has *not* switched on paying at the gate: where
+ * it has, a booking is a booking and there is nothing to answer. Oldest first,
+ * because a request that has been waiting longest is the one somebody is still
+ * refreshing for.
+ */
+export type BookingRequest = {
+  bookingId: string;
+  venueId: string;
+  venueName: string;
+  pitchLabel: string;
+  startsAt: string;
+  minutes: number;
+  captainName: string;
+  priceEgp: number;
+  askedAt: string;
+};
+
+export async function venueRequests(venueId?: string | null): Promise<BookingRequest[]> {
+  const { data, error } = await supabase().rpc('venue_requests', {
+    p_venue_id: venueId ?? null,
+  });
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    bookingId: r.booking_id,
+    venueId: r.venue_id,
+    venueName: r.venue_name,
+    pitchLabel: r.pitch_label,
+    startsAt: r.starts_at,
+    minutes: r.minutes,
+    captainName: r.captain_name,
+    priceEgp: r.price_egp ?? 0,
+    askedAt: r.asked_at,
+  }));
+}
+
+export async function respondToBookingRequest(
+  bookingId: string,
+  accept: boolean,
+  note?: string,
+): Promise<{ ok: boolean; code?: string; reason?: string }> {
+  const { data, error } = await supabase().rpc('respond_to_booking_request', {
+    p_booking_id: bookingId,
+    p_accept: accept,
+    p_note: note?.trim() || null,
+  });
+  if (error) throw error;
+  const r = (data as any[])[0];
+  return r?.ok ? { ok: true, code: r.code ?? undefined } : { ok: false, reason: r?.reason };
+}
+
+/** Owner only. A manager runs the day; this is the arrangement itself. */
+export async function setPayAtVenue(
+  venueId: string,
+  allowed: boolean,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase().rpc('set_pay_at_venue', {
+    p_venue_id: venueId,
+    p_allowed: allowed,
+  });
+  if (error) throw error;
+  const r = (data as any[])[0];
+  return r?.ok ? { ok: true } : { ok: false, reason: r?.reason };
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
@@ -11,6 +11,13 @@ import { useBooking } from '@/state/booking';
 import { useLobby } from '@/state/lobby';
 import { leaveBooking, removeParticipant } from '@/data/squad';
 import { cancelBooking } from '@/data/discovery';
+import {
+  bookingOpponent,
+  respondToChallenge,
+  withdrawChallenge,
+  type Opponent,
+} from '@/data/opponent';
+import { isLive } from '@/lib/supabase';
 import { useI18n } from '@/i18n';
 
 /**
@@ -114,6 +121,17 @@ export default function Lobby() {
                 </Txt>
               ) : null}
             </View>
+          ) : null}
+
+          {/* Who they are playing. Above the squad on purpose: a captain
+              filling a team wants to know there is somebody to play before
+              they call five people to a match that may not have an opponent. */}
+          {bookingId ? (
+            <OpponentSection
+              bookingId={bookingId}
+              amCaptain={Boolean(lobby.booking)}
+              onNotice={setNotice}
+            />
           ) : null}
 
           {/* The counts come from the server, not from counting this list. */}
@@ -328,6 +346,159 @@ export default function Lobby() {
 }
 
 /** The booking's life so far, as the lobby header shows it (§7.2). */
+/**
+ * The opponent, from whichever side is reading.
+ *
+ * Three states and they are genuinely different: nobody invited, invited and
+ * waiting, and on. The middle one is the reason this is not a single line of
+ * text — "waiting for an answer" is a thing the captain has to be able to see
+ * and to take back, and a screen that only shows an accepted opponent leaves
+ * them unable to tell a slow reply from a failed tap.
+ *
+ * The opponent themselves lands here too, through the same booking, which is
+ * why Accept and Decline are drawn from `mineToAnswer` rather than from
+ * whether this reader happens to be the captain.
+ */
+function OpponentSection({
+  bookingId,
+  amCaptain,
+  onNotice,
+}: {
+  bookingId: string;
+  amCaptain: boolean;
+  onNotice: (s: string | null) => void;
+}) {
+  const router = useRouter();
+  const { reason, t } = useI18n();
+  const [opponent, setOpponent] = useState<Opponent | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    if (!isLive) return;
+    bookingOpponent(bookingId)
+      .then(setOpponent)
+      .catch(() => {});
+  }, [bookingId]);
+
+  useEffect(load, [load]);
+
+  async function answer(accept: boolean) {
+    if (!opponent || busy) return;
+    setBusy(true);
+    const res = await respondToChallenge(opponent.challengeId, accept).catch(() => ({
+      ok: false,
+      reason: undefined,
+    }));
+    setBusy(false);
+    if (!res.ok) onNotice(reason(res.reason) ?? t.errVenueCalendarRetry);
+    else onNotice(accept ? null : t.opponentDeclinedKeepHour);
+    load();
+  }
+
+  async function callOff() {
+    if (busy) return;
+    setBusy(true);
+    const res = await withdrawChallenge(bookingId).catch(() => ({ ok: false, reason: undefined }));
+    setBusy(false);
+    if (!res.ok) onNotice(reason(res.reason) ?? t.errVenueCalendarRetry);
+    load();
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      <Eyebrow>{t.opponent}</Eyebrow>
+
+      {!opponent ? (
+        <View style={{ gap: 10 }}>
+          <Txt size={12.5} color={onVoid.dim}>
+            {t.noOpponentYet}
+          </Txt>
+          {amCaptain ? (
+            <Button
+              label={t.inviteOpponent}
+              variant="ghost"
+              height={46}
+              round={radius.control}
+              size={14}
+              style={{ borderColor: onVoid.line }}
+              onPress={() => router.push(`/play/opponent?booking=${bookingId}`)}
+            />
+          ) : null}
+        </View>
+      ) : (
+        <View
+          style={{
+            gap: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderRadius: radius.control,
+            backgroundColor: void_.surface,
+            borderWidth: 1,
+            borderColor:
+              opponent.state === 'accepted' ? goldAlpha.edgeSoft : onVoid.edgeFaint,
+          }}
+        >
+          <View style={{ gap: 3 }}>
+            <Txt size={14} weight="semibold" color={onVoid.primary}>
+              {opponent.displayName}
+            </Txt>
+            <Txt
+              size={11.5}
+              color={opponent.state === 'accepted' ? gold.base : onVoid.faint}
+            >
+              {opponent.state === 'accepted' ? t.opponentAccepted : t.opponentInvited}
+            </Txt>
+            {opponent.note ? (
+              <Txt size={11.5} color={onVoid.muted}>
+                {opponent.note}
+              </Txt>
+            ) : null}
+          </View>
+
+          {/* Drawn from whose answer is owed, not from who is captain — the
+              opponent reaches this same lobby. */}
+          {opponent.mineToAnswer && opponent.state === 'invited' ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button
+                label={t.accept}
+                height={42}
+                round={radius.control}
+                size={13.5}
+                disabled={busy}
+                style={{ flex: 1 }}
+                onPress={() => answer(true)}
+              />
+              <Button
+                label={t.decline}
+                variant="ghost"
+                height={42}
+                round={radius.control}
+                size={13.5}
+                disabled={busy}
+                style={{ flex: 1, borderColor: onVoid.line }}
+                onPress={() => answer(false)}
+              />
+            </View>
+          ) : null}
+
+          {amCaptain && opponent.state === 'invited' ? (
+            <Button
+              label={t.callItOff}
+              variant="ghost"
+              height={42}
+              round={radius.control}
+              size={13.5}
+              disabled={busy}
+              style={{ borderColor: onVoid.line }}
+              onPress={callOff}
+            />
+          ) : null}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function StageRail({ stages }: { stages: { label: string; done: boolean }[] }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

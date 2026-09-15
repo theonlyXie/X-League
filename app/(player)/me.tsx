@@ -218,6 +218,11 @@ export default function Me() {
       {signedIn || !isLive ? (
         <View style={{ width: '100%', gap: 8 }}>
           <RowLink label={t.bookingsTitle} onPress={() => router.push('/bookings')} />
+          {/* A permanent row rather than one that appears only when something
+              is waiting. A challenge that has already been answered still has
+              to be findable, and a row that comes and goes teaches nobody
+              where to look. */}
+          <RowLink label={t.challenges} onPress={() => router.push('/play/challenges')} />
           <RowLink label={t.clubs} onPress={() => router.push('/clubs')} />
           <RowLink label={t.teamsTitle} onPress={() => router.push('/teams')} />
           <RowLink label={t.leaderboards} onPress={() => router.push('/leaderboard')} />

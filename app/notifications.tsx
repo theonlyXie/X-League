@@ -90,6 +90,9 @@ export default function Notifications() {
     // and nothing here read it, so tapping one only marked it read.
     else if (screen === 'club' && clubId) router.push('/clubs');
     else if (screen === 'tournament' && cupId) router.push(`/cups/${cupId}`);
+    // The opponent is not on the captain's booking, so neither the bookings
+    // list nor the lobby will show it to them. Their own screen answers it.
+    else if (screen === 'challenges') router.push('/play/challenges');
     else if (screen === 'booking' && bookingId) router.push('/bookings');
     else reload();
   };
