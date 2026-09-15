@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Pressable, View, type PressableProps, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
@@ -27,9 +27,6 @@ import Animated, {
 /** Strong ease-out. The built-in easings are as weak here as they are in CSS. */
 export const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
-/** The same curve, for the CSS-transition form, which takes it as a string. */
-const EASE_OUT_CSS = 'cubic-bezier(0.23, 1, 0.32, 1)';
-
 /**
  * The press target has to be the animated component itself. A plain Pressable
  * is not one, so a transition declared on it is silently inert — which is the
@@ -51,32 +48,41 @@ export function PressScale({
   ...rest
 }: PressableProps & { children: ReactNode; style?: ViewStyle }) {
   const reduced = useReducedMotion();
-  const [held, setHeld] = useState(false);
-  const on = held && !disabled && !reduced;
+
+  // Driven as a shared value rather than through the CSS-transition form.
+  // That form takes its curve as a string, and Reanimated accepts only the
+  // named keywords there — `cubic-bezier(...)` throws on every render that
+  // sets it, which took each press through the error boundary instead of
+  // scaling anything. Named keywords would parse, but the curve above exists
+  // because they are too weak here, so this uses the imperative form the rest
+  // of this file already uses and keeps the bezier.
+  //
+  // It also stops a press re-rendering the tree it is giving feedback on: the
+  // scale now lives on the UI thread from press to release.
+  const scale = useSharedValue(1);
+
+  const press = (to: number) => {
+    if (disabled || reduced) return;
+    scale.set(withTiming(to, { duration: 120, easing: EASE_OUT }));
+  };
+
+  const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
 
   return (
     <AnimatedPressable
       {...rest}
       disabled={disabled}
       onPressIn={(e) => {
-        setHeld(true);
+        press(0.97);
         rest.onPressIn?.(e);
       }}
       onPressOut={(e) => {
-        setHeld(false);
+        press(1);
         rest.onPressOut?.(e);
       }}
       // A finger drifting a few pixels should not cancel a press somebody meant.
       pressRetentionOffset={{ top: 12, bottom: 12, left: 12, right: 12 }}
-      style={[
-        style,
-        {
-          transform: [{ scale: on ? 0.97 : 1 }],
-          transitionProperty: 'transform',
-          transitionDuration: 120,
-          transitionTimingFunction: EASE_OUT_CSS,
-        },
-      ]}
+      style={[style, animated]}
     >
       {children}
     </AnimatedPressable>

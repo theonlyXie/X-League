@@ -18,15 +18,29 @@ import { useI18n } from '@/i18n';
 
 type IconProps = { size?: number; color: string };
 
-/** `scaleX: -1` in Arabic, applied to the SVG so the stroke geometry mirrors. */
-function useFlip() {
+/**
+ * `scaleX: -1` in Arabic, applied to the SVG so the stroke geometry mirrors.
+ *
+ * The whole style object, or nothing. It used to return the transform array and
+ * the callers spread it into a style literal, which in Latin left a
+ * `transform: undefined` key on every one of these icons. react-native-svg does
+ * not treat that as absent: it runs the value through a stringify-and-reparse
+ * round trip whose parser rejects an empty transform outright, and the throw
+ * lands mid-render on the `<Svg>` element rather than anywhere near here. An
+ * omitted key is the only shape it reads as "no transform".
+ *
+ * The array is plain rather than `as const` for the same reason — the library
+ * maps over it, and a readonly tuple is a type the FIXME-annotated paths in
+ * `extractTransform` are not written for.
+ */
+function useFlipStyle() {
   const { rtl } = useI18n();
-  return rtl ? ([{ scaleX: -1 }] as const) : undefined;
+  return rtl ? { transform: [{ scaleX: -1 }] } : undefined;
 }
 
 export function ArrowLeft({ size = 20, color }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={{ transform: useFlip() }}>
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={useFlipStyle()}>
       <Path d="M16 10H4" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
       <Polyline points="9,5 4,10 9,15" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </Svg>
@@ -35,7 +49,7 @@ export function ArrowLeft({ size = 20, color }: IconProps) {
 
 export function ChevronRight({ size = 20, color }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={{ transform: useFlip() }}>
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={useFlipStyle()}>
       <Polyline points="8,4 14,10 8,16" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </Svg>
   );
@@ -43,7 +57,7 @@ export function ChevronRight({ size = 20, color }: IconProps) {
 
 export function ChevronLeft({ size = 20, color }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={{ transform: useFlip() }}>
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={useFlipStyle()}>
       <Polyline points="12,4 6,10 12,16" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </Svg>
   );
