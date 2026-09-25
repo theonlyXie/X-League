@@ -77,7 +77,7 @@ export async function lookAround(page) {
   //
   // A first launch meets the welcome cards before the door, so skip them if
   // they are there. Skipping is the first-launch path to the same link.
-  for (const label of ['Skip', 'تخطَّ']) {
+  for (const label of ['Skip', 'تخطّي']) {
     const skip = page.getByLabel(label, { exact: true }).first();
     try {
       await skip.waitFor({ state: 'visible', timeout: 4000 });
