@@ -3,9 +3,17 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Divider, Eyebrow } from '@/components/ui';
+import {
+  ActionButton,
+  Card,
+  MenuGroup,
+  MenuRow,
+  SectionTitle,
+  Unreachable,
+  VenuePhoto,
+} from '@/components/kit';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
-import { ArrowLeft } from '@/components/icons';
+import { ChevronLeft, Megaphone, Plus, Swords, Trash } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { useBooking } from '@/state/booking';
 import { useLobby } from '@/state/lobby';
@@ -48,38 +56,31 @@ export default function Lobby() {
   ];
 
   return (
-    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
         <View style={{ gap: 2, flex: 1 }}>
-          <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
+          <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
             {t.matchLobbyTitle}
           </Txt>
-          <Txt size={11.5} color={onVoid.faint}>
-            {/* A squad member is not the captain, so `my_bookings` returns
-                them nothing and `header` is null — at which point this used to
-                fall back to the spine's code, which for them is whatever the
-                fixture or their own last booking left there. */}
-            {[header?.code, header?.venueName, header?.pitchLabel]
-              .filter(Boolean)
-              .join(' · ')}
-          </Txt>
+          {/* A squad member is not the captain, so `my_bookings` returns
+              them nothing and `header` is null — at which point this used to
+              fall back to the spine's code, which for them is whatever the
+              fixture or their own last booking left there. The venue and the
+              pitch moved into the card below, so only the code is left here. */}
+          {header?.code ? (
+            <Txt size={11.5} weight="semibold" color={gold.base}>
+              {header.code}
+            </Txt>
+          ) : null}
         </View>
       </View>
 
@@ -89,39 +90,39 @@ export default function Lobby() {
         </View>
       ) : null}
 
-      {lobby.denied ? (
-        <View
-          style={{
-            paddingVertical: 14,
-            paddingHorizontal: 16,
-            borderRadius: radius.chip,
-            borderWidth: 1,
-            borderColor: 'rgba(101,21,37,.5)',
-            backgroundColor: 'rgba(101,21,37,.09)',
-          }}
-        >
-          <Txt size={13} weight="semibold" color={burgundy.action}>
-            {lobby.denied}
-          </Txt>
-        </View>
-      ) : null}
+      {lobby.denied ? <Unreachable label={lobby.denied} /> : null}
 
       {!lobby.loading && !lobby.denied ? (
         <>
-          <StageRail stages={stages} />
-
-          {header ? (
-            <View style={{ gap: 4 }}>
-              <Txt size={15} weight="semibold" color={onVoid.primary}>
-                {shortDate(header.startsAt)} · {hour(header.startsAt)}
-              </Txt>
-              {header.area ? (
-                <Txt size={12} color={onVoid.muted}>
-                  {header.area}
-                </Txt>
-              ) : null}
-            </View>
-          ) : null}
+          {/* What is being played, the checkout's summary card again, with
+              the booking's life so far under it. */}
+          <Card pad={12}>
+            {header ? (
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <VenuePhoto uri={header.coverUrl} height={96} round={radius.chip} style={{ width: 92 }} />
+                <View style={{ flex: 1, gap: 4, paddingVertical: 2 }}>
+                  <Txt size={15} weight="bold" color={onVoid.primary} numberOfLines={2}>
+                    {header.venueName}
+                  </Txt>
+                  {header.pitchLabel ? (
+                    <Txt size={12} color={onVoid.muted} numberOfLines={1}>
+                      {header.pitchLabel}
+                    </Txt>
+                  ) : null}
+                  <Txt size={12.5} weight="semibold" color={onVoid.primary}>
+                    {shortDate(header.startsAt)} · {hour(header.startsAt)}
+                  </Txt>
+                  {header.area ? (
+                    <Txt size={12} color={onVoid.muted} numberOfLines={1}>
+                      {header.area}
+                    </Txt>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+            {header ? <View style={{ height: 1, backgroundColor: onVoid.edgeFaint }} /> : null}
+            <StageRail stages={stages} />
+          </Card>
 
           {/* Who they are playing. Above the squad on purpose: a captain
               filling a team wants to know there is somebody to play before
@@ -135,24 +136,24 @@ export default function Lobby() {
           ) : null}
 
           {/* The counts come from the server, not from counting this list. */}
-          <View style={{ gap: 12 }}>
-            <View
-              style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}
-            >
-              <Eyebrow>{t.squadTitle}</Eyebrow>
-              {lobby.counts ? (
-                <Txt size={11.5} color={onVoid.faint}>
-                  {t.startersOf(
-                    num(lobby.counts.acceptedStarters),
-                    num(lobby.counts.starterCapacity),
-                  )}
-                  {lobby.counts.pending > 0 ? ` · ${t.awaitingReply(num(lobby.counts.pending))}` : ''}
-                </Txt>
-              ) : null}
-            </View>
+          <Card>
+            <SectionTitle
+              title={t.squadTitle}
+              right={
+                lobby.counts ? (
+                  <Txt size={11.5} color={onVoid.faint} style={{ flexShrink: 1, textAlign: 'right' }}>
+                    {t.startersOf(
+                      num(lobby.counts.acceptedStarters),
+                      num(lobby.counts.starterCapacity),
+                    )}
+                    {lobby.counts.pending > 0 ? ` · ${t.awaitingReply(num(lobby.counts.pending))}` : ''}
+                  </Txt>
+                ) : null
+              }
+            />
 
-            <View style={{ gap: 8 }}>
-              {lobby.squad.map((member) => (
+            <View>
+              {lobby.squad.map((member, i) => (
                 <View
                   key={member.participantId}
                   style={{
@@ -160,33 +161,33 @@ export default function Lobby() {
                     alignItems: 'center',
                     gap: 12,
                     paddingVertical: 11,
-                    paddingHorizontal: 14,
-                    borderRadius: radius.control,
-                    backgroundColor: void_.surface,
-                    borderWidth: 1,
-                    borderColor:
-                      member.state === 'invited' ? goldAlpha.edgeSoft : onVoid.edgeFaint,
+                    borderTopWidth: i > 0 ? 1 : 0,
+                    borderTopColor: onVoid.edgeFaint,
                   }}
                 >
+                  {/* An invitation still out is ringed in gold, where the
+                      whole row used to be. */}
                   <View
                     style={{
-                      width: 34,
-                      height: 34,
+                      width: 40,
+                      height: 40,
                       borderRadius: radius.pill,
                       backgroundColor: void_.inset,
+                      borderWidth: 1,
+                      borderColor: member.state === 'invited' ? goldAlpha.accent : onVoid.edgeFaint,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <Txt size={11} weight="bold" color={gold.base}>
+                    <Txt size={12} weight="bold" color={gold.base}>
                       {member.displayName.slice(0, 2).toUpperCase()}
                     </Txt>
                   </View>
                   <View style={{ flex: 1, gap: 2 }}>
-                    <Txt size={13.5} weight="semibold" color={onVoid.primary}>
+                    <Txt size={14} weight="semibold" color={onVoid.primary} numberOfLines={1}>
                       {member.displayName}
                     </Txt>
-                    <Txt size={11} color={onVoid.faint}>
+                    <Txt size={11.5} color={member.state === 'invited' ? gold.base : onVoid.faint}>
                       {[
                         member.isCaptain ? t.captain : null,
                         member.slotKind === 'sub' ? t.sub : t.starter,
@@ -198,7 +199,7 @@ export default function Lobby() {
                     </Txt>
                   </View>
                   {member.ovr != null ? (
-                    <Txt size={14} weight="bold" color={gold.base}>
+                    <Txt size={15} weight="bold" color={gold.base}>
                       {num(member.ovr)}
                     </Txt>
                   ) : null}
@@ -218,42 +219,47 @@ export default function Lobby() {
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`${t.removePlayer} ${member.displayName}`}
-                      hitSlop={10}
+                      hitSlop={6}
                       onPress={async () => {
                         const res = await removeParticipant(member.participantId);
                         if (!res.ok) setNotice(reason(res.reason) ?? null);
                         lobby.reload();
                       }}
+                      style={({ pressed }) => ({
+                        width: 32,
+                        height: 32,
+                        borderRadius: radius.pill,
+                        borderWidth: 1,
+                        borderColor: pressed ? 'rgba(196,120,138,.45)' : onVoid.edge,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      })}
                     >
-                      <Txt size={11} color={burgundy.action}>
-                        {t.removePlayer}
-                      </Txt>
+                      <Trash size={15} color={burgundy.action} />
                     </Pressable>
                   ) : null}
                 </View>
               ))}
             </View>
+          </Card>
 
-            {lobby.booking ? (
-              <View style={{ gap: 8 }}>
-                <Button
-                  label={t.invitePlayers}
-                  variant="ghost"
-                  height={42}
-                  onPress={() => router.push(`/play/invite?booking=${bookingId}`)}
-                />
-                {/* Inviting is for the people you know. This is for the ones
-                    you do not, and a captain who is two short at ten o'clock
-                    the night before has run out of the first kind. */}
-                <Button
-                  label={t.callForPlayers}
-                  variant="ghost"
-                  height={42}
-                  onPress={() => router.push(`/play/call?booking=${bookingId}`)}
-                />
-              </View>
-            ) : null}
-          </View>
+          {lobby.booking ? (
+            <MenuGroup>
+              <MenuRow
+                icon={<Plus size={18} color={gold.base} />}
+                title={t.invitePlayers}
+                onPress={() => router.push(`/play/invite?booking=${bookingId}`)}
+              />
+              {/* Inviting is for the people you know. This is for the ones
+                  you do not, and a captain who is two short at ten o'clock
+                  the night before has run out of the first kind. */}
+              <MenuRow
+                icon={<Megaphone size={18} color={gold.base} />}
+                title={t.callForPlayers}
+                onPress={() => router.push(`/play/call?booking=${bookingId}`)}
+              />
+            </MenuGroup>
+          ) : null}
 
           {notice ? (
             <Txt size={12} color={burgundy.action}>
@@ -261,13 +267,12 @@ export default function Lobby() {
             </Txt>
           ) : null}
 
-          <Divider />
-
           {/* BKG-008: the cancellation the checkout screen promised. */}
           {lobby.booking ? (
-            <View style={{ gap: 10 }}>
+            <Card>
+              <SectionTitle title={t.cancellationPolicy} />
               {lobby.terms ? (
-                <Txt size={11.5} color={onVoid.faint}>
+                <Txt size={12.5} lh={1.55} color={onVoid.muted}>
                   {lobby.terms.freeNow
                     ? t.freeUntil(hour(lobby.terms.cutoffAt))
                     : t.cutoffPassed}
@@ -276,18 +281,17 @@ export default function Lobby() {
 
               {confirmCancel ? (
                 <View style={{ gap: 10 }}>
-                  <Txt size={13} weight="semibold" color={onVoid.primary}>
+                  <Txt size={14} weight="semibold" color={onVoid.primary}>
                     {t.cancelConfirm}
                   </Txt>
-                  <Txt size={12} color={onVoid.muted}>
+                  <Txt size={12.5} lh={1.55} color={onVoid.muted}>
                     {lobby.terms?.freeNow ? t.cancelFreeNote : t.cancelLateNote}
                   </Txt>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Button
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <ActionButton
                       label={t.cancelNow}
-                      variant="decline"
-                      flex={1}
-                      height={42}
+                      variant="danger"
+                      flex
                       onPress={async () => {
                         if (!bookingId) return;
                         const res = await cancelBooking(bookingId).catch(() => ({
@@ -308,29 +312,26 @@ export default function Lobby() {
                         else setNotice(t.cancelLateNote);
                       }}
                     />
-                    <Button
+                    <ActionButton
                       label={t.keepBooking}
                       variant="ghost"
-                      flex={1}
-                      height={42}
+                      flex
                       onPress={() => setConfirmCancel(false)}
                     />
                   </View>
                 </View>
               ) : (
-                <Button
+                <ActionButton
                   label={t.cancelBooking}
-                  variant="decline"
-                  height={42}
+                  variant="danger"
                   onPress={() => setConfirmCancel(true)}
                 />
               )}
-            </View>
+            </Card>
           ) : (
-            <Button
+            <ActionButton
               label={t.leaveMatch}
-              variant="decline"
-              height={42}
+              variant="danger"
               onPress={async () => {
                 if (!bookingId) return;
                 const res = await leaveBooking(bookingId);
@@ -345,7 +346,6 @@ export default function Lobby() {
   );
 }
 
-/** The booking's life so far, as the lobby header shows it (§7.2). */
 /**
  * The opponent, from whichever side is reading.
  *
@@ -405,100 +405,84 @@ function OpponentSection({
   }
 
   return (
-    <View style={{ gap: 10 }}>
-      <Eyebrow>{t.opponent}</Eyebrow>
+    <Card>
+      <SectionTitle title={t.opponent} />
 
       {!opponent ? (
-        <View style={{ gap: 10 }}>
-          <Txt size={12.5} color={onVoid.dim}>
+        <>
+          <Txt size={12.5} lh={1.55} color={onVoid.muted}>
             {t.noOpponentYet}
           </Txt>
           {amCaptain ? (
-            <Button
+            <ActionButton
               label={t.inviteOpponent}
               variant="ghost"
-              height={46}
-              round={radius.control}
-              size={14}
-              style={{ borderColor: onVoid.line }}
+              icon={<Swords size={18} color={gold.base} />}
               onPress={() => router.push(`/play/opponent?booking=${bookingId}`)}
             />
           ) : null}
-        </View>
+        </>
       ) : (
-        <View
-          style={{
-            gap: 12,
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-            borderRadius: radius.control,
-            backgroundColor: void_.surface,
-            borderWidth: 1,
-            borderColor:
-              opponent.state === 'accepted' ? goldAlpha.edgeSoft : onVoid.edgeFaint,
-          }}
-        >
-          <View style={{ gap: 3 }}>
-            <Txt size={14} weight="semibold" color={onVoid.primary}>
-              {opponent.displayName}
-            </Txt>
-            <Txt
-              size={11.5}
-              color={opponent.state === 'accepted' ? gold.base : onVoid.faint}
+        <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: radius.icon,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: goldAlpha.fill,
+                borderWidth: 1,
+                borderColor: opponent.state === 'accepted' ? goldAlpha.accent : 'transparent',
+              }}
             >
-              {opponent.state === 'accepted' ? t.opponentAccepted : t.opponentInvited}
-            </Txt>
-            {opponent.note ? (
-              <Txt size={11.5} color={onVoid.muted}>
-                {opponent.note}
+              <Swords size={18} color={gold.base} />
+            </View>
+            <View style={{ flex: 1, gap: 3 }}>
+              <Txt size={14.5} weight="semibold" color={onVoid.primary}>
+                {opponent.displayName}
               </Txt>
-            ) : null}
+              <Txt
+                size={11.5}
+                weight={opponent.state === 'accepted' ? 'semibold' : 'regular'}
+                color={opponent.state === 'accepted' ? gold.base : onVoid.faint}
+              >
+                {opponent.state === 'accepted' ? t.opponentAccepted : t.opponentInvited}
+              </Txt>
+            </View>
           </View>
+          {opponent.note ? (
+            <Txt size={12} lh={1.5} color={onVoid.muted}>
+              {opponent.note}
+            </Txt>
+          ) : null}
 
           {/* Drawn from whose answer is owed, not from who is captain — the
               opponent reaches this same lobby. */}
           {opponent.mineToAnswer && opponent.state === 'invited' ? (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button
-                label={t.accept}
-                height={42}
-                round={radius.control}
-                size={13.5}
-                disabled={busy}
-                style={{ flex: 1 }}
-                onPress={() => answer(true)}
-              />
-              <Button
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ActionButton label={t.accept} flex disabled={busy} onPress={() => answer(true)} />
+              <ActionButton
                 label={t.decline}
                 variant="ghost"
-                height={42}
-                round={radius.control}
-                size={13.5}
+                flex
                 disabled={busy}
-                style={{ flex: 1, borderColor: onVoid.line }}
                 onPress={() => answer(false)}
               />
             </View>
           ) : null}
 
           {amCaptain && opponent.state === 'invited' ? (
-            <Button
-              label={t.callItOff}
-              variant="ghost"
-              height={42}
-              round={radius.control}
-              size={13.5}
-              disabled={busy}
-              style={{ borderColor: onVoid.line }}
-              onPress={callOff}
-            />
+            <ActionButton label={t.callItOff} variant="ghost" disabled={busy} onPress={callOff} />
           ) : null}
-        </View>
+        </>
       )}
-    </View>
+    </Card>
   );
 }
 
+/** The booking's life so far, as the lobby header shows it (§7.2). */
 function StageRail({ stages }: { stages: { label: string; done: boolean }[] }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

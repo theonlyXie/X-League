@@ -443,3 +443,68 @@ export function Ball({ size = 20, color }: IconProps) {
     </Svg>
   );
 }
+
+/** Where money arrives — a venue's wallet or account. */
+export function Wallet({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Path d="M15.5 6.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v10A1.5 1.5 0 0 0 5 16.5h10a1.5 1.5 0 0 0 1.5-1.5V8A1.5 1.5 0 0 0 15 6.5H4" {...stroke(color)} />
+      <Circle cx={13.2} cy={11.5} r={1} fill={color} />
+    </Svg>
+  );
+}
+
+/** What an hour sells for. */
+export function PriceTag({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Path d="M3.5 4.5v5.1l6.9 6.9a1.4 1.4 0 0 0 2 0l4.1-4.1a1.4 1.4 0 0 0 0-2L9.6 3.5H4.5a1 1 0 0 0-1 1Z" {...stroke(color)} />
+      <Circle cx={7} cy={7} r={1.2} {...stroke(color)} />
+    </Svg>
+  );
+}
+
+/** Things waiting on an answer — booking requests. */
+export function Inbox({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Path d="M3.5 11 5.6 4.8a1 1 0 0 1 .9-.8h7a1 1 0 0 1 .9.8l2.1 6.2V15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-4Z" {...stroke(color)} />
+      <Path d="M3.5 11h3.8l1 2h3.4l1-2h3.8" {...stroke(color)} />
+    </Svg>
+  );
+}
+
+/** A conversation — messaging somebody. */
+export function ChatBubble({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Path d="M4 4.5h12a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H9l-3.5 2.8V14H4a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1Z" {...stroke(color)} />
+    </Svg>
+  );
+}
+
+/** Settings — a venue's setup. */
+export function Gear({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Circle cx={10} cy={10} r={2.4} {...stroke(color)} />
+      <Path
+        d="M10 2.8v1.9M10 15.3v1.9M17.2 10h-1.9M4.7 10H2.8M15.1 4.9l-1.35 1.35M6.25 13.75 4.9 15.1M15.1 15.1l-1.35-1.35M6.25 6.25 4.9 4.9"
+        {...stroke(color)}
+      />
+      <Circle cx={10} cy={10} r={5.2} {...stroke(color)} />
+    </Svg>
+  );
+}
+
+/** A star in outline, for a tab bar drawn in strokes. `Star` is the filled one. */
+export function StarLine({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <Path
+        d="M10 2.8l2.2 4.46 4.93.72-3.57 3.47.84 4.9L10 14.04l-4.4 2.31.84-4.9L2.87 7.98l4.93-.72L10 2.8Z"
+        {...stroke(color)}
+      />
+    </Svg>
+  );
+}

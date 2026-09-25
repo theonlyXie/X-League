@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { OpButton, OpHeader, OpNotice, OpScreen, OpSection } from '@/components/operative';
-import { ink, onOperative, radius } from '@/theme/tokens';
+import { OpNotice } from '@/components/operative';
+import { OpActionButton, OpCard, OpEmpty, OpGroup, OpPage } from '@/components/kitOperative';
+import { gold, ink, onOperative } from '@/theme/tokens';
 import { respondToBookingRequest, venueRequests, type BookingRequest } from '@/data/manage';
 import { useSession } from '@/state/session';
 import { isLive } from '@/lib/supabase';
@@ -23,7 +23,6 @@ import { useI18n } from '@/i18n';
  */
 export default function Requests() {
   const { reason, t, num, money, moment } = useI18n();
-  const router = useRouter();
   const { activeVenue } = useSession();
   const venueId = activeVenue?.venueId ?? null;
 
@@ -70,75 +69,53 @@ export default function Requests() {
   };
 
   return (
-    <OpScreen>
-      <OpHeader title={t.venueRequests} onBack={() => router.back()} />
+    <OpPage title={t.venueRequests} subtitle={activeVenue?.name}>
       <OpNotice text={notice} />
 
-      <OpSection
-        title={t.venueRequests}
-        hint={rows.length > 0 ? t.ownWaitingOnYou(num(rows.length)) : t.payAtVenueExplain}
-      >
+      <OpGroup hint={rows.length > 0 ? t.ownWaitingOnYou(num(rows.length)) : t.payAtVenueExplain}>
         {loading ? <ActivityIndicator color={ink} /> : null}
 
-        {!loading && unreachable ? (
-          <Txt size={12.5} color="rgba(20,18,16,.55)">
-            {t.listUnreachable}
-          </Txt>
-        ) : null}
+        {!loading && unreachable ? <OpNotice text={t.listUnreachable} /> : null}
 
-        {!loading && !unreachable && rows.length === 0 ? (
-          <Txt size={12.5} color="rgba(20,18,16,.55)">
-            {t.noVenueRequests}
-          </Txt>
-        ) : null}
+        {!loading && !unreachable && rows.length === 0 ? <OpEmpty title={t.noVenueRequests} /> : null}
 
-        <View style={{ gap: 10 }}>
-          {rows.map((r) => (
-            <View
-              key={r.bookingId}
-              style={{
-                padding: 13,
-                borderRadius: radius.control,
-                borderWidth: 1,
-                borderColor: ink,
-                gap: 8,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Txt size={13.5} weight="semibold" color={ink} style={{ flex: 1 }}>
+        {rows.map((r) => (
+          // Ink-edged: each of these is a player waiting, and the hour is held
+          // from everybody else until somebody here answers.
+          <OpCard key={r.bookingId} pad={14} style={{ borderColor: onOperative.line }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Txt size={15} weight="bold" color={ink} numberOfLines={1}>
                   {r.captainName}
                 </Txt>
-                <Txt size={13.5} weight="bold" color={ink}>
-                  {money(r.priceEgp)}
+                <Txt size={12} color={onOperative.faint}>
+                  {r.pitchLabel} · {moment(r.startsAt)} · {t.minutesShort(num(r.minutes))}
                 </Txt>
               </View>
-
-              <Txt size={11.5} color="rgba(20,18,16,.55)">
-                {r.pitchLabel} · {moment(r.startsAt)} · {t.minutesShort(num(r.minutes))}
+              <Txt size={15} weight="bold" color={gold.ink}>
+                {money(r.priceEgp)}
               </Txt>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <OpButton
-                  label={t.accept}
-                  disabled={busy === r.bookingId}
-                  onPress={() => void answer(r, true)}
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t.decline} ${r.captainName}`}
-                  disabled={busy === r.bookingId}
-                  onPress={() => void answer(r, false)}
-                  hitSlop={8}
-                >
-                  <Txt size={11.5} weight="semibold" color={ink}>
-                    {t.decline}
-                  </Txt>
-                </Pressable>
-              </View>
             </View>
-          ))}
-        </View>
-      </OpSection>
-    </OpScreen>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <OpActionButton
+                label={t.decline}
+                accessibilityLabel={`${t.decline} ${r.captainName}`}
+                variant="ghost"
+                disabled={busy === r.bookingId}
+                onPress={() => void answer(r, false)}
+                flex
+              />
+              <OpActionButton
+                label={t.accept}
+                disabled={busy === r.bookingId}
+                onPress={() => void answer(r, true)}
+                flex
+              />
+            </View>
+          </OpCard>
+        ))}
+      </OpGroup>
+    </OpPage>
   );
 }

@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Switch, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { OpHeader, OpNotice, OpRow, OpScreen, OpSection } from '@/components/operative';
-import { ChevronRight } from '@/components/icons';
+import { OpNotice } from '@/components/operative';
+import { OpCard, OpGroup, OpMenuGroup, OpMenuRow, OpPage } from '@/components/kitOperative';
+import { Inbox } from '@/components/icons';
 import { ink, onOperative } from '@/theme/tokens';
 import { setPayAtVenue, venueRequests } from '@/data/manage';
 import { venuePayAtVenue } from '@/data/api';
@@ -83,59 +84,50 @@ export default function BookingSetup() {
   };
 
   return (
-    <OpScreen>
-      <OpHeader title={t.ownBooking} onBack={() => router.back()} />
+    <OpPage title={t.ownBooking}>
       <OpNotice text={notice} />
 
-      <OpSection title={t.payAtVenueTitle} hint={t.payAtVenueExplain}>
+      <OpGroup title={t.payAtVenueTitle} hint={t.payAtVenueExplain}>
         {loading ? <ActivityIndicator color={ink} /> : null}
 
         {!loading ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              paddingVertical: 6,
-            }}
-          >
-            <Txt size={13.5} weight="semibold" color={ink} style={{ flex: 1 }}>
-              {allowed ? t.payAtVenueOn : t.payAtVenueOff}
-            </Txt>
-            <Switch
-              value={Boolean(allowed)}
-              disabled={!isOwner || busy}
-              onValueChange={(v) => void toggle(v)}
-              accessibilityLabel={t.payAtVenueTitle}
-            />
-          </View>
-        ) : null}
+          <OpCard pad={14}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Txt size={14} weight="semibold" color={ink} style={{ flex: 1 }}>
+                {allowed ? t.payAtVenueOn : t.payAtVenueOff}
+              </Txt>
+              <Switch
+                value={Boolean(allowed)}
+                disabled={!isOwner || busy}
+                onValueChange={(v) => void toggle(v)}
+                accessibilityLabel={t.payAtVenueTitle}
+              />
+            </View>
 
-        {!loading && !isOwner ? (
-          <Txt size={12} color="rgba(20,18,16,.55)">
-            {t.ownOwnerOnly}
-          </Txt>
+            {!isOwner ? (
+              <Txt size={12} color={onOperative.faint}>
+                {t.ownOwnerOnly}
+              </Txt>
+            ) : null}
+          </OpCard>
         ) : null}
-      </OpSection>
+      </OpGroup>
 
       {/* Only worth offering where there is something to answer. A venue that
           takes money at the gate never has a request, and a row leading to a
           permanently empty list reads as a broken screen. */}
       {!loading && allowed === false ? (
-        <OpSection title={t.venueRequests}>
-          <OpRow onPress={() => router.push('/owner/requests')}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={14} weight="semibold" color={ink}>
-                {t.venueRequests}
-              </Txt>
-              <Txt size={11.5} color="rgba(20,18,16,.55)">
-                {waiting > 0 ? t.ownWaitingOnYou(num(waiting)) : t.noVenueRequests}
-              </Txt>
-            </View>
-            <ChevronRight size={16} color={onOperative.dim} />
-          </OpRow>
-        </OpSection>
+        <OpGroup title={t.venueRequests}>
+          <OpMenuGroup>
+            <OpMenuRow
+              icon={<Inbox size={19} color={ink} />}
+              title={t.venueRequests}
+              detail={waiting > 0 ? t.ownWaitingOnYou(num(waiting)) : t.noVenueRequests}
+              onPress={() => router.push('/owner/requests')}
+            />
+          </OpMenuGroup>
+        </OpGroup>
       ) : null}
-    </OpScreen>
+    </OpPage>
   );
 }

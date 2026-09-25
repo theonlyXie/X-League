@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Divider } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
-import { burgundy, gold, onVoid, radius } from '@/theme/tokens';
+import { Card, MenuGroup, SectionTitle } from '@/components/kit';
+import { Ball, Ban, CheckCircle, ChevronLeft, Pencil, Star, Trophy, TrendUp } from '@/components/icons';
+import { burgundy, gold, goldAlpha, onVoid, radius } from '@/theme/tokens';
 import { myPoints, type PointEntry } from '@/data/progress';
 import { useI18n } from '@/i18n';
 import { useRefreshTick } from '@/state/refresh';
@@ -71,28 +71,29 @@ export default function Points() {
       adjustment: t.ptsAdjustment,
     })[kind];
 
+  // Summed from the lines on screen, and labelled as exactly that. The list is
+  // the latest hundred entries, so for a long-serving player this is not the
+  // lifetime total Home shows — and calling it one would be the unexplained
+  // number this screen exists to get rid of.
+  const earned = rows.reduce((a, r) => (r.points > 0 ? a + r.points : a), 0);
+  const lost = rows.reduce((a, r) => (r.points < 0 ? a - r.points : a), 0);
+  const net = earned - lost;
+  const signed = (n: number) => (n < 0 ? `−${num(Math.abs(n))}` : `+${num(n)}`);
+
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: onVoid.line,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
         <View style={{ gap: 2, flex: 1 }}>
-          <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
+          <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
             {t.pointsTitle}
           </Txt>
           <Txt size={11.5} color={onVoid.faint}>
@@ -118,33 +119,105 @@ export default function Points() {
         </View>
       ) : null}
 
-      <View style={{ gap: 0 }}>
-        {rows.map((r, i) => (
-          <View key={`${r.at}-${i}`}>
-            {i > 0 ? <Divider /> : null}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 }}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={13.5} weight="semibold" color={onVoid.primary}>
-                  {label(r.kind)}
-                </Txt>
-                <Txt size={11.5} color={onVoid.faint}>
-                  {[shortDate(r.at), r.venueName].filter(Boolean).join(' · ')}
-                </Txt>
-              </View>
-              {/* A negative line is the no-show penalty, and it is shown as
-                  plainly as the rest — a ledger that hides its debits is not
-                  one. */}
-              <Txt
-                size={14}
-                weight="bold"
-                color={r.points < 0 ? burgundy.action : gold.base}
-              >
-                {r.points < 0 ? `−${num(Math.abs(r.points))}` : `+${num(r.points)}`}
+      {!loading && rows.length > 0 ? (
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: radius.row,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: goldAlpha.fill,
+              }}
+            >
+              <TrendUp size={22} color={gold.base} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt size={11.5} color={onVoid.faint}>
+                {t.callsPtsNetInList}
+              </Txt>
+              <Txt size={26} weight="bold" em={-0.02} color={net < 0 ? burgundy.action : gold.base}>
+                {signed(net)}
               </Txt>
             </View>
           </View>
-        ))}
-      </View>
+          <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: onVoid.edgeFaint, paddingTop: 12 }}>
+            <Stat label={t.callsPtsEarned} value={`+${num(earned)}`} />
+            <Stat label={t.callsPtsLost} value={lost ? `−${num(lost)}` : num(0)} tone={lost ? 'debit' : 'plain'} />
+            <Stat label={t.callsPtsEntries} value={num(rows.length)} />
+          </View>
+        </Card>
+      ) : null}
+
+      {rows.length > 0 ? (
+        <View style={{ gap: 12 }}>
+          <SectionTitle title={t.callsPtsHistory} />
+          <MenuGroup>
+            {rows.map((r, i) => (
+              <View key={`${r.at}-${i}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 14 }}>
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: radius.icon,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: r.points < 0 ? 'rgba(101,21,37,.18)' : goldAlpha.fill,
+                  }}
+                >
+                  <KindIcon kind={r.kind} color={r.points < 0 ? burgundy.action : gold.base} />
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Txt size={14} weight="semibold" color={onVoid.primary}>
+                    {label(r.kind)}
+                  </Txt>
+                  <Txt size={11.5} color={onVoid.faint} numberOfLines={1}>
+                    {[shortDate(r.at), r.venueName].filter(Boolean).join(' · ')}
+                  </Txt>
+                </View>
+                {/* A negative line is the no-show penalty, and it is shown as
+                    plainly as the rest — a ledger that hides its debits is not
+                    one. */}
+                <Txt size={14.5} weight="bold" color={r.points < 0 ? burgundy.action : gold.base}>
+                  {signed(r.points)}
+                </Txt>
+              </View>
+            ))}
+          </MenuGroup>
+        </View>
+      ) : null}
     </Screen>
   );
+}
+
+function Stat({ label, value, tone = 'plain' }: { label: string; value: string; tone?: 'plain' | 'debit' }) {
+  return (
+    <View style={{ flex: 1, gap: 3, alignItems: 'center' }}>
+      <Txt size={15} weight="bold" color={tone === 'debit' ? burgundy.action : onVoid.primary}>
+        {value}
+      </Txt>
+      <Txt size={11} color={onVoid.faint}>
+        {label}
+      </Txt>
+    </View>
+  );
+}
+
+/** What earned the line, drawn: the ball for playing, the cup for winning. */
+function KindIcon({ kind, color }: { kind: PointEntry['kind']; color: string }) {
+  const Icon =
+    kind === 'match_won'
+      ? Trophy
+      : kind === 'match_played' || kind === 'match_drawn'
+        ? Ball
+        : kind === 'rating_given'
+          ? Star
+          : kind === 'match_verified'
+            ? CheckCircle
+            : kind === 'no_show'
+              ? Ban
+              : Pencil;
+  return <Icon size={18} color={color} />;
 }

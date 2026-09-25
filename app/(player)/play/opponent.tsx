@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
-import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Divider, Eyebrow } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
-import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
+import { MenuGroup, SearchField, SectionTitle } from '@/components/kit';
+import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { burgundy, gold, goldAlpha, onVoid, radius } from '@/theme/tokens';
 import { findPlayers, type FoundPlayer } from '@/data/squad';
 import { challengeOpponent, findClubs, type FoundClub } from '@/data/opponent';
 import { useI18n } from '@/i18n';
@@ -85,45 +84,22 @@ export default function OpponentPicker() {
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/play'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.muted} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={19} weight="bold" em={-0.01} color={onVoid.primary}>
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
           {t.inviteOpponent}
         </Txt>
       </View>
 
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder={t.searchPlayersHint}
-        placeholderTextColor={onVoid.dim}
-        autoCapitalize="none"
-        style={{
-          height: 46,
-          paddingHorizontal: 14,
-          borderRadius: radius.control,
-          borderWidth: 1,
-          borderColor: onVoid.edge,
-          color: onVoid.primary,
-          backgroundColor: void_.surface,
-        }}
-      />
+      <SearchField value={query} onChangeText={setQuery} placeholder={t.searchPlayersHint} />
 
       {failed ? (
         <Txt size={12.5} color={burgundy.action}>
@@ -140,13 +116,14 @@ export default function OpponentPicker() {
       ) : null}
 
       {clubs.length > 0 ? (
-        <View style={{ gap: 10 }}>
-          <Eyebrow>{t.clubs}</Eyebrow>
-          <View style={{ gap: 8 }}>
+        <View style={{ gap: 12 }}>
+          <SectionTitle title={t.clubs} />
+          <MenuGroup>
             {clubs.map((c) => (
               <Row
                 key={c.clubId}
                 initials={c.name.slice(0, 2).toUpperCase()}
+                club
                 title={c.name}
                 subtitle={c.homeArea}
                 // Their own club: shown, and refused here rather than by the
@@ -156,16 +133,14 @@ export default function OpponentPicker() {
                 onPress={() => invite({ clubId: c.clubId })}
               />
             ))}
-          </View>
+          </MenuGroup>
         </View>
       ) : null}
 
-      {clubs.length > 0 && players.length > 0 ? <Divider /> : null}
-
       {players.length > 0 ? (
-        <View style={{ gap: 10 }}>
-          <Eyebrow>{t.searchPlayers}</Eyebrow>
-          <View style={{ gap: 8 }}>
+        <View style={{ gap: 12 }}>
+          <SectionTitle title={t.searchPlayers} />
+          <MenuGroup>
             {players.map((p) => (
               <Row
                 key={p.playerId}
@@ -177,18 +152,20 @@ export default function OpponentPicker() {
                 onPress={() => invite({ playerId: p.playerId })}
               />
             ))}
-          </View>
+          </MenuGroup>
         </View>
       ) : null}
     </Screen>
   );
 }
 
+/** One result: an avatar — round for a player, a crest's square for a club — and who it is. */
 function Row({
   initials,
   title,
   subtitle,
   hint,
+  club,
   disabled,
   onPress,
 }: {
@@ -196,6 +173,7 @@ function Row({
   title: string;
   subtitle: string | null;
   hint: string | null;
+  club?: boolean;
   disabled: boolean;
   onPress: () => void;
 }) {
@@ -203,50 +181,52 @@ function Row({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={{
+      style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        paddingVertical: 11,
+        gap: 13,
+        paddingVertical: 12,
         paddingHorizontal: 14,
-        borderRadius: radius.control,
-        backgroundColor: void_.surface,
-        borderWidth: 1,
-        borderColor: onVoid.edgeFaint,
+        backgroundColor: pressed ? goldAlpha.fillSoft : 'transparent',
         opacity: disabled ? 0.45 : 1,
-      }}
+      })}
     >
       <View
         style={{
-          width: 34,
-          height: 34,
-          borderRadius: radius.pill,
-          backgroundColor: void_.inset,
+          width: 44,
+          height: 44,
+          borderRadius: club ? radius.icon : radius.pill,
+          backgroundColor: goldAlpha.fill,
+          borderWidth: 1,
+          borderColor: goldAlpha.edgeSoft,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Txt size={11} weight="bold" color={gold.base}>
+        <Txt size={13} weight="bold" color={gold.base}>
           {initials}
         </Txt>
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Txt size={13.5} weight="semibold" color={onVoid.primary}>
+        <Txt size={14.5} weight="semibold" color={onVoid.primary} numberOfLines={1}>
           {title}
         </Txt>
         {subtitle ? (
-          <Txt size={11} color={onVoid.faint}>
+          <Txt size={11.5} color={onVoid.faint} numberOfLines={1}>
             {subtitle}
           </Txt>
         ) : null}
       </View>
       {hint ? (
-        <Txt size={11} color={onVoid.dim}>
+        <Txt size={11.5} weight="semibold" color={onVoid.dim}>
           {hint}
         </Txt>
-      ) : null}
+      ) : disabled ? null : (
+        <ChevronRight size={16} color={onVoid.dim} />
+      )}
     </Pressable>
   );
 }

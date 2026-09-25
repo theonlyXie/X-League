@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { TextInput } from '@/components/TextField';
+import { ReactNode, useState } from 'react';
+import { Modal, Pressable, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from '@/components/Txt';
-import { hitSlopTo44 } from '@/components/ui';
-import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { OpField } from '@/components/operative';
+import { OpActionButton, OpCard, OpEmpty, OpPage, OpPill, OpPills } from '@/components/kitOperative';
+import { Ban, ChevronLeft, ChevronRight, Clock, Close } from '@/components/icons';
 import { burgundy, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { BookingSource, CALENDAR_LEGEND, Cell } from '@/data/owner';
 import { useOwnerDay } from '@/state/ownerDay';
@@ -43,10 +44,8 @@ export default function OwnerCalendar() {
   const isToday = date === today();
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: operative.bg }}
-      contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 18, paddingBottom: 24, gap: 14 }}
-      showsVerticalScrollIndicator={false}
+    <OpPage
+      gap={16}
       // E-3: the screen whose job is showing live occupancy had no way to
       // re-read it short of leaving and coming back.
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={ink} />}
@@ -56,39 +55,39 @@ export default function OwnerCalendar() {
           is no week query behind it; a control that promises one and does
           nothing is worse than its absence. The day it does show is now the
           day you are looking at, and can be changed. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t.ownPrevDay}
-          onPress={() => setDate((d) => addDays(d, -1))}
-          hitSlop={12}
-        >
-          <ChevronLeft size={16} color={onOperative.muted} />
-        </Pressable>
-        <Txt size={12} weight="semibold" color={ink}>
-          {isToday ? t.ownToday : longDate(`${date}T12:00:00Z`)}
-        </Txt>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t.ownNextDay}
-          onPress={() => setDate((d) => addDays(d, 1))}
-          hitSlop={12}
-        >
-          <ChevronRight size={16} color={onOperative.muted} />
-        </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <DayStep label={t.ownPrevDay} onPress={() => setDate((d) => addDays(d, -1))}>
+          <ChevronLeft size={18} color={ink} />
+        </DayStep>
+        <View style={{ flex: 1, alignItems: 'center', gap: 1 }}>
+          <Txt size={17} weight="bold" em={-0.01} color={ink} numberOfLines={1}>
+            {isToday ? t.ownToday : longDate(`${date}T12:00:00Z`)}
+          </Txt>
+          {isToday ? (
+            <Txt size={11.5} color={onOperative.muted} numberOfLines={1}>
+              {longDate(`${date}T12:00:00Z`)}
+            </Txt>
+          ) : null}
+        </View>
+        <DayStep label={t.ownNextDay} onPress={() => setDate((d) => addDays(d, 1))}>
+          <ChevronRight size={18} color={ink} />
+        </DayStep>
       </View>
 
       {pitches.length === 0 ? (
-        <Panel
+        <OpEmpty
           title={live ? t.ownNoPitches : t.ownNoVenue}
           blurb={live ? t.ownNoPitchesBlurb : t.ownNoVenueBlurb}
         />
       ) : rows.length === 0 ? (
-        <Panel title={t.ownCalendarEmpty} blurb={t.ownCalendarEmptyBlurb} />
+        <OpEmpty title={t.ownCalendarEmpty} blurb={t.ownCalendarEmptyBlurb} />
       ) : (
+        // The grid keeps its density: an hour is 56 tall and a pitch is a
+        // column, so a whole evening across every pitch fits one screen. Only
+        // the frame around it took the redesign's corners.
         <View
           style={{
-            borderRadius: radius.panel,
+            borderRadius: radius.cardInner,
             backgroundColor: operative.surface,
             borderWidth: 1,
             borderColor: onOperative.hairline,
@@ -112,13 +111,13 @@ export default function OwnerCalendar() {
                 key={p}
                 style={{
                   flex: 1,
-                  paddingVertical: 8,
+                  paddingVertical: 10,
                   paddingHorizontal: 6,
                   alignItems: 'center',
                   ...(i > 0 ? { borderLeftWidth: 1, borderLeftColor: 'rgba(20,18,16,.08)' } : null),
                 }}
               >
-                <Txt size={10.5} weight="bold" em={0.08} color={ink} numberOfLines={1}>
+                <Txt size={11} weight="bold" em={0.08} color={ink} numberOfLines={1}>
                   {p.toUpperCase()}
                 </Txt>
               </View>
@@ -159,7 +158,7 @@ export default function OwnerCalendar() {
 
       {/* Say where the grid came from, rather than letting fixtures pass as
           this evening's real occupancy (§4.7). */}
-      <Txt size={11} color={error ? burgundy.ink : onOperative.faint}>
+      <Txt size={11.5} color={error ? burgundy.ink : onOperative.faint}>
         {loading
           ? t.ownReadingCalendar
           : error
@@ -171,39 +170,44 @@ export default function OwnerCalendar() {
                 : ''}
       </Txt>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        {CALENDAR_LEGEND.map((entry) => {
-          const spec = SOURCE[entry.source];
-          return (
-            <View key={entry.source} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 3,
-                  backgroundColor: spec.bg,
-                  ...(spec.dashed
-                    ? { borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(20,18,16,.3)' }
-                    : null),
-                }}
-              />
-              <Txt size={11} color={onOperative.muted}>
-                {t[entry.label]}
-              </Txt>
-            </View>
-          );
-        })}
-      </View>
+      <OpCard pad={14}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 8 }}>
+          {CALENDAR_LEGEND.map((entry) => {
+            const spec = SOURCE[entry.source];
+            return (
+              <View key={entry.source} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: 4,
+                    backgroundColor: spec.bg,
+                    ...(spec.dashed
+                      ? { borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(20,18,16,.3)' }
+                      : null),
+                  }}
+                />
+                <Txt size={12} color={onOperative.secondary}>
+                  {t[entry.label]}
+                </Txt>
+              </View>
+            );
+          })}
+        </View>
+        <View style={{ height: 1, backgroundColor: onOperative.edgeFaint }} />
+        <Txt size={12} lh={1.45} color={onOperative.faint}>
+          {t.ownPickAnOpenHour}
+        </Txt>
+      </OpCard>
 
-      <Txt size={11} color={onOperative.faint}>
-        {t.ownPickAnOpenHour}
-      </Txt>
-
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {/* OWN-005: closures already have a screen; this is the door to it
-            rather than a second, dead copy of the same control. */}
-        <OwnerAction label={t.ownBlockSlot} onPress={() => router.push('/owner/setup/closures')} />
-      </View>
+      {/* OWN-005: closures already have a screen; this is the door to it
+          rather than a second, dead copy of the same control. */}
+      <OpActionButton
+        label={t.ownBlockSlot}
+        variant="ghost"
+        icon={<Ban size={18} color={ink} />}
+        onPress={() => router.push('/owner/setup/closures')}
+      />
 
       <RecordBookingSheet
         cell={booking}
@@ -214,29 +218,31 @@ export default function OwnerCalendar() {
           void reload();
         }}
       />
-    </ScrollView>
+    </OpPage>
   );
 }
 
-function Panel({ title, blurb }: { title: string; blurb: string }) {
+/** One step through the days, in a round button either side of the date. */
+function DayStep({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
   return (
-    <View
-      style={{
-        padding: 18,
-        borderRadius: radius.panel,
-        backgroundColor: operative.surface,
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        borderRadius: radius.pill,
         borderWidth: 1,
-        borderColor: onOperative.hairline,
-        gap: 5,
-      }}
+        borderColor: onOperative.line,
+        backgroundColor: pressed ? operative.band : operative.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+      })}
     >
-      <Txt size={14} weight="semibold" color={ink}>
-        {title}
-      </Txt>
-      <Txt size={12} color={onOperative.muted}>
-        {blurb}
-      </Txt>
-    </View>
+      {children}
+    </Pressable>
   );
 }
 
@@ -257,6 +263,7 @@ function RecordBookingSheet({
   onRecorded: () => void;
 }) {
   const { reason, t, hour } = useI18n();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [channel, setChannel] = useState<'phone' | 'walk_in'>('phone');
   const [busy, setBusy] = useState(false);
@@ -280,86 +287,76 @@ function RecordBookingSheet({
 
   return (
     <Modal visible={cell !== null} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(8,8,8,.45)' }} onPress={onClose} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t.close}
+        style={{ flex: 1, backgroundColor: 'rgba(8,8,8,.45)' }}
+        onPress={onClose}
+      />
       <View
         style={{
           backgroundColor: operative.surface,
           borderTopLeftRadius: radius.card,
           borderTopRightRadius: radius.card,
-          padding: 20,
-          paddingBottom: 34,
-          gap: 14,
+          paddingTop: 10,
+          paddingHorizontal: 20,
+          paddingBottom: 20 + insets.bottom,
+          gap: 16,
         }}
       >
-        <View style={{ gap: 4 }}>
-          <Txt size={17} weight="bold" color={ink}>
-            {t.ownRecordBooking}
-          </Txt>
-          <Txt size={12} color={onOperative.muted}>
-            {t.ownRecordBlurb}
-          </Txt>
+        {/* The grabber, so the sheet reads as something that slides away. */}
+        <View style={{ alignSelf: 'center', width: 38, height: 4, borderRadius: 2, backgroundColor: onOperative.line }} />
+
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Txt size={18} weight="bold" color={ink}>
+              {t.ownRecordBooking}
+            </Txt>
+            <Txt size={12} lh={1.45} color={onOperative.muted}>
+              {t.ownRecordBlurb}
+            </Txt>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel={t.close} hitSlop={10} onPress={onClose}>
+            <Close size={20} color={onOperative.muted} />
+          </Pressable>
         </View>
 
         {cell?.startsAt ? (
-          <Txt size={13} weight="semibold" color={ink}>
-            {t.ownHourAt(hour(cell.startsAt), cell.pitchLabel ?? '')}
-          </Txt>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              borderRadius: radius.row,
+              backgroundColor: operative.bg,
+            }}
+          >
+            <Clock size={18} color={ink} />
+            <Txt size={14} weight="semibold" color={ink} style={{ flex: 1 }}>
+              {t.ownHourAt(hour(cell.startsAt), cell.pitchLabel ?? '')}
+            </Txt>
+          </View>
         ) : null}
 
-        <View style={{ gap: 6 }}>
-          <Txt size={10} weight="semibold" em={0.14} upper color={onOperative.faint}>
+        <View style={{ gap: 8 }}>
+          <Txt size={12.5} weight="semibold" color={onOperative.secondary}>
             {t.ownChannel}
           </Txt>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {(['phone', 'walk_in'] as const).map((c) => {
-              const on = c === channel;
-              return (
-                <Pressable
-                  key={c}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={c === 'phone' ? t.ownChannelPhone : t.ownChannelWalkIn}
-                  onPress={() => setChannel(c)}
-                  hitSlop={hitSlopTo44(34)}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 14,
-                    borderRadius: radius.denseChip,
-                    ...(on
-                      ? { backgroundColor: void_.bg }
-                      : { borderWidth: 1, borderColor: onOperative.line }),
-                  }}
-                >
-                  <Txt size={12.5} weight="semibold" color={on ? operative.bg : ink}>
-                    {c === 'phone' ? t.ownChannelPhone : t.ownChannelWalkIn}
-                  </Txt>
-                </Pressable>
-              );
-            })}
-          </View>
+          <OpPills>
+            {(['phone', 'walk_in'] as const).map((c) => (
+              <OpPill
+                key={c}
+                label={c === 'phone' ? t.ownChannelPhone : t.ownChannelWalkIn}
+                on={c === channel}
+                onPress={() => setChannel(c)}
+              />
+            ))}
+          </OpPills>
         </View>
 
-        <View style={{ gap: 6 }}>
-          <Txt size={10} weight="semibold" em={0.14} upper color={onOperative.faint}>
-            {t.ownWhoFor}
-          </Txt>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder={t.ownWhoForHint}
-            placeholderTextColor={onOperative.disabled}
-            accessibilityLabel={t.ownWhoFor}
-            style={{
-              height: 44,
-              borderRadius: radius.dense,
-              borderWidth: 1,
-              borderColor: onOperative.line,
-              paddingHorizontal: 12,
-              color: ink,
-              fontSize: 14,
-            }}
-          />
-        </View>
+        <OpField label={t.ownWhoFor} value={name} onChangeText={setName} placeholder={t.ownWhoForHint} />
 
         {failed ? (
           <Txt size={12} weight="semibold" color={burgundy.ink}>
@@ -367,8 +364,7 @@ function RecordBookingSheet({
           </Txt>
         ) : null}
 
-        <OwnerAction
-          filled
+        <OpActionButton
           label={busy ? t.ownRecording : t.ownRecordIt}
           onPress={name.trim().length > 0 && !busy ? submit : undefined}
         />
@@ -429,33 +425,5 @@ function CalendarCell({
         </Txt>
       </Pressable>
     </View>
-  );
-}
-
-function OwnerAction({ label, filled, onPress }: { label: string; filled?: boolean; onPress?: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !onPress }}
-      onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        height: 42,
-        paddingHorizontal: 16,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...(filled
-          ? { backgroundColor: void_.bg }
-          : { borderWidth: 1, borderColor: onOperative.line }),
-        opacity: !onPress ? 0.45 : pressed ? 0.85 : 1,
-      })}
-    >
-      <Txt size={13} weight="semibold" color={filled ? operative.bg : ink}>
-        {label}
-      </Txt>
-    </Pressable>
   );
 }

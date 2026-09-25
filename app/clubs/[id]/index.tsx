@@ -4,11 +4,12 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Divider, Eyebrow } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { PressScale, Reveal } from '@/components/motion';
-import { ArrowLeft } from '@/components/icons';
+import { ActionButton, Card, MenuGroup, MenuRow, SectionTitle, Unreachable } from '@/components/kit';
+import { ChevronDown, ChevronLeft, LogOut, Pencil, Trophy, Users } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import {
   clubDetail,
@@ -38,6 +39,10 @@ import { useSession } from '@/state/session';
  * short of rather than only that it is short. `club_eligibility` produces that
  * sentence; nothing is recomputed here from the list of members, which would be
  * a second answer able to disagree with the one the server refuses entries on.
+ *
+ * In the redesign's layout: a header card with the crest and the facts, the
+ * captain's tools as menu rows, then one card per part of the squad and one
+ * for what the club has won.
  */
 export default function ClubPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -155,47 +160,39 @@ export default function ClubPage() {
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/clubs'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: onVoid.line,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={20} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }} numberOfLines={1}>
           {club?.name ?? t.clubs}
         </Txt>
       </View>
 
-      {loading ? <ActivityIndicator color={gold.base} /> : null}
-      {unreachable ? (
-        <Txt size={13} color={onVoid.muted}>
-          {t.offline}
-        </Txt>
+      {loading ? (
+        <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+          <ActivityIndicator color={gold.base} />
+        </View>
       ) : null}
+      {unreachable ? <Unreachable label={t.offline} onRetry={reload} /> : null}
 
       {/* Three ways this screen has nothing to draw, and they are different
           things to be told: no account, no such club, and a club that could
           not be read. Rendering the header alone for the first two is how a
           screen ends up saying nothing at all. */}
       {!signedIn ? (
-        <View style={{ gap: 12 }}>
+        <Card>
           <Txt size={13} lh={1.5} color={onVoid.muted}>
             {t.signInToSee}
           </Txt>
-          <Button label={t.signIn} onPress={() => router.push('/sign-in?next=/clubs')} />
-        </View>
+          <ActionButton label={t.signIn} onPress={() => router.push('/sign-in?next=/clubs')} />
+        </Card>
       ) : null}
 
       {signedIn && !loading && !unreachable && !club ? (
@@ -206,28 +203,31 @@ export default function ClubPage() {
 
       {club ? (
         <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <Avatar
               name={club.name}
               url={club.crestUrl}
-              size={64}
+              size={68}
               radius={radius.card}
               background={void_.raised}
               border={goldAlpha.edge}
               color={gold.base}
             />
             <View style={{ flex: 1, gap: 4 }}>
+              <Txt size={17} weight="bold" color={gold.base} numberOfLines={2}>
+                {club.name}
+              </Txt>
               {club.homeArea ? (
-                <Txt size={12} color={onVoid.dim}>
+                <Txt size={12} color={onVoid.faint}>
                   {club.homeArea}
                 </Txt>
               ) : null}
-              <Txt size={13} color={onVoid.secondary}>
+              <Txt size={12.5} weight="semibold" color={onVoid.secondary}>
                 {t.squadOf(num(club.starters), num(club.subs))}
               </Txt>
               <Txt
                 size={12}
-                weight="medium"
+                weight="semibold"
                 color={club.eligible ? gold.base : burgundy.action}
               >
                 {/* When the club is waiting on admission the banner below says
@@ -240,7 +240,7 @@ export default function ClubPage() {
                     : (reason(club.reason) ?? t.notReadyToEnter)}
               </Txt>
             </View>
-          </View>
+          </Card>
 
           {/* Admission comes before the squad count. A captain looking at a
               club that cannot enter needs to know which of the two reasons it
@@ -250,7 +250,7 @@ export default function ClubPage() {
             <View
               style={{
                 padding: 14,
-                borderRadius: radius.control,
+                borderRadius: radius.row,
                 borderWidth: 1,
                 borderColor: club.verification === 'rejected' ? 'rgba(101,21,37,.5)' : goldAlpha.frame,
                 backgroundColor:
@@ -277,21 +277,22 @@ export default function ClubPage() {
             </Txt>
           ) : null}
 
+          {/* The captain's tools, as rows rather than a pair of buttons: they
+              are places to go, and the account menu already taught where
+              those live. */}
           {canManage ? (
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Button
-                label={busy ? t.uploading : t.changeCrest}
-                variant="ghost"
-                flex={1}
-                disabled={busy}
-                onPress={changeCrest}
-              />
-              <Button
-                label={t.invitePlayers}
-                flex={1}
+            <MenuGroup>
+              <MenuRow
+                icon={<Users size={19} color={gold.base} />}
+                title={t.invitePlayers}
                 onPress={() => router.push(`/clubs/${club.clubId}/invite`)}
               />
-            </View>
+              <MenuRow
+                icon={<Pencil size={19} color={gold.base} />}
+                title={busy ? t.uploading : t.changeCrest}
+                onPress={busy ? undefined : changeCrest}
+              />
+            </MenuGroup>
           ) : null}
 
           {notice ? (
@@ -300,50 +301,44 @@ export default function ClubPage() {
             </Txt>
           ) : null}
 
-          <Divider />
-
-          <View style={{ gap: 14 }}>
+          <View style={{ gap: 12 }}>
+            <SectionTitle title={t.clubSquad} />
             <Group label={t.starters} members={starters} {...squadProps} />
             <Group label={t.substitutes} members={subs} {...squadProps} />
             <Group label={t.doesNotPlay} members={bench} {...squadProps} />
             <Group label={t.clubInvitePending} members={pending} {...squadProps} />
           </View>
 
-          <Divider />
-
-          <View style={{ gap: 10 }}>
-            <Eyebrow>{t.honours}</Eyebrow>
+          <View style={{ gap: 12 }}>
+            <SectionTitle title={t.honours} />
             {!honours.length ? (
               <Txt size={13} color={onVoid.muted}>
                 {t.noHonoursYet}
               </Txt>
-            ) : null}
-            {honours.map((h, i) => (
-              <Reveal key={`${h.title}-${h.wonOn}-${i}`} index={i}>
-                <View
-                  style={{
-                    borderRadius: radius.row,
-                    borderWidth: 1,
-                    borderColor: goldAlpha.edge,
-                    backgroundColor: void_.inset,
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
-                    gap: 3,
-                  }}
-                >
-                  <Txt size={14} weight="semibold" color={gold.base}>
-                    {h.title}
-                  </Txt>
-                  <Txt size={11.5} color={onVoid.faint}>
-                    {[h.region, h.wonOn].filter(Boolean).join(' · ')}
-                  </Txt>
-                </View>
-              </Reveal>
-            ))}
+            ) : (
+              <MenuGroup>
+                {honours.map((h, i) => (
+                  <Reveal key={`${h.title}-${h.wonOn}-${i}`} index={Math.min(i, 7)}>
+                    <MenuRow
+                      icon={<Trophy size={19} color={gold.base} />}
+                      title={h.title}
+                      detail={[h.region, h.wonOn].filter(Boolean).join(' · ')}
+                    />
+                  </Reveal>
+                ))}
+              </MenuGroup>
+            )}
           </View>
 
           {!canManage ? (
-            <Button label={t.leaveTheClub} variant="ghost" onPress={() => act(() => leaveClub(club.clubId))} />
+            <MenuGroup>
+              <MenuRow
+                icon={<LogOut size={19} color={burgundy.action} />}
+                title={t.leaveTheClub}
+                tone="danger"
+                onPress={() => act(() => leaveClub(club.clubId))}
+              />
+            </MenuGroup>
           ) : null}
         </>
       ) : null}
@@ -396,24 +391,25 @@ function Row({
   num,
 }: RowProps) {
   const expanded = open === member.playerId;
+  const manageable = canManage && member.playerId !== captainId;
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: 10, paddingVertical: 12, paddingHorizontal: 14 }}>
       <PressScale
         accessibilityRole="button"
         accessibilityLabel={member.displayName}
-        disabled={!canManage || member.playerId === captainId}
+        accessibilityState={manageable ? { expanded } : undefined}
+        disabled={!manageable}
         onPress={() => setOpen(expanded ? null : member.playerId)}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           gap: 12,
-          paddingVertical: 8,
         }}
       >
         <Avatar
           name={member.displayName}
           url={member.photoUrl}
-          size={36}
+          size={40}
           background={void_.raised}
           border={onVoid.edge}
           color={onVoid.secondary}
@@ -440,9 +436,26 @@ function Row({
           ) : null}
         </View>
         {member.ovr != null ? (
-          <Txt size={13} weight="bold" color={gold.base}>
-            {num(member.ovr)}
-          </Txt>
+          <View
+            style={{
+              minWidth: 36,
+              paddingVertical: 4,
+              paddingHorizontal: 8,
+              borderRadius: radius.badge,
+              backgroundColor: goldAlpha.fill,
+              alignItems: 'center',
+            }}
+          >
+            <Txt size={13} weight="bold" color={gold.base}>
+              {num(member.ovr)}
+            </Txt>
+          </View>
+        ) : null}
+        {/* Only rows the captain can act on open, so only they say so. */}
+        {manageable ? (
+          <View style={expanded ? { transform: [{ rotate: '180deg' }] } : null}>
+            <ChevronDown size={16} color={onVoid.dim} />
+          </View>
         ) : null}
       </PressScale>
 
@@ -459,7 +472,7 @@ function Row({
       ) : null}
 
       {expanded ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 6 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {member.slotKind !== 'starter' ? (
             <Button
               label={t.makeStarter}
@@ -510,12 +523,28 @@ function Row({
 function Group({ label, members, ...shared }: GroupProps) {
   if (!members.length) return null;
   return (
-    <View style={{ gap: 2 }}>
-      <Eyebrow>{label}</Eyebrow>
-      {members.map((m) => (
-        <Row key={m.playerId} member={m} {...shared} />
+    <View
+      style={{
+        borderRadius: radius.cardInner,
+        borderWidth: 1,
+        borderColor: onVoid.edge,
+        backgroundColor: void_.surface,
+        overflow: 'hidden',
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, paddingHorizontal: 14 }}>
+        <Txt size={13.5} weight="bold" color={onVoid.secondary}>
+          {label}
+        </Txt>
+        <Txt size={12} weight="semibold" color={onVoid.faint}>
+          {shared.num(members.length)}
+        </Txt>
+      </View>
+      {members.map((m, i) => (
+        <View key={m.playerId} style={i > 0 ? { borderTopWidth: 1, borderTopColor: onVoid.edgeFaint } : null}>
+          <Row member={m} {...shared} />
+        </View>
       ))}
     </View>
   );
 }
-

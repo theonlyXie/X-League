@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
-import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
+import { ActionButton, Card } from '@/components/kit';
+import { ChevronLeft, Clock, Pin, Swords } from '@/components/icons';
+import { burgundy, gold, goldAlpha, onVoid, radius } from '@/theme/tokens';
 import { myChallenges, respondToChallenge, type Challenge } from '@/data/opponent';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
@@ -68,25 +68,17 @@ export default function Challenges() {
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/play'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.muted} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={19} weight="bold" em={-0.01} color={onVoid.primary}>
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
           {t.challenges}
         </Txt>
       </View>
@@ -105,63 +97,72 @@ export default function Challenges() {
         </Txt>
       ) : null}
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 12 }}>
         {rows.map((c) => (
-          <View
-            key={c.challengeId}
-            style={{
-              gap: 12,
-              paddingVertical: 14,
-              paddingHorizontal: 15,
-              borderRadius: radius.control,
-              backgroundColor: void_.surface,
-              borderWidth: 1,
-              borderColor: goldAlpha.edgeSoft,
-            }}
-          >
-            <View style={{ gap: 3 }}>
-              <Txt size={14.5} weight="semibold" color={onVoid.primary}>
-                {t.wantsToPlayYou(c.fromName)}
-              </Txt>
-              <Txt size={12} color={onVoid.muted}>
-                {c.venueName} · {c.pitchLabel} · {moment(c.startsAt)}
-              </Txt>
-              {/* Sent to a club they captain rather than to them personally.
-                  Worth saying: they are answering on somebody else's behalf. */}
-              {c.asClub ? (
-                <Txt size={11.5} color={gold.base}>
-                  {t.challengeOnBehalfOf(c.asClub)}
+          <Card key={c.challengeId} style={{ borderColor: goldAlpha.edgeSoft }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: radius.icon,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: goldAlpha.fill,
+                }}
+              >
+                <Swords size={20} color={gold.base} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Txt size={15} weight="bold" color={onVoid.primary}>
+                  {t.wantsToPlayYou(c.fromName)}
                 </Txt>
-              ) : null}
+                {/* Sent to a club they captain rather than to them personally.
+                    Worth saying: they are answering on somebody else's behalf. */}
+                {c.asClub ? (
+                  <Txt size={11.5} weight="semibold" color={gold.base}>
+                    {t.challengeOnBehalfOf(c.asClub)}
+                  </Txt>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: onVoid.edgeFaint, paddingTop: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Pin size={15} color={onVoid.faint} />
+                <Txt size={12.5} color={onVoid.secondary} style={{ flex: 1 }}>
+                  {[c.venueName, c.pitchLabel].filter(Boolean).join(' · ')}
+                </Txt>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Clock size={15} color={onVoid.faint} />
+                <Txt size={12.5} color={onVoid.secondary} style={{ flex: 1 }}>
+                  {moment(c.startsAt)}
+                </Txt>
+              </View>
               {c.note ? (
-                <Txt size={12} color={onVoid.faint}>
+                <Txt size={12} lh={1.5} color={onVoid.faint}>
                   {c.note}
                 </Txt>
               ) : null}
             </View>
 
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ActionButton
                 label={t.accept}
-                height={44}
-                round={radius.control}
-                size={14}
+                flex
                 disabled={busy === c.challengeId}
-                style={{ flex: 1 }}
                 onPress={() => void answer(c, true)}
               />
-              <Button
+              <ActionButton
                 label={t.decline}
                 variant="ghost"
-                height={44}
-                round={radius.control}
-                size={14}
+                flex
                 disabled={busy === c.challengeId}
-                style={{ flex: 1, borderColor: onVoid.line }}
                 onPress={() => void answer(c, false)}
               />
             </View>
-          </View>
+          </Card>
         ))}
       </View>
     </Screen>

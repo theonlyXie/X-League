@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { hitSlopTo44 } from '@/components/ui';
 import { Check } from '@/components/icons';
-import { burgundy, gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
+import { burgundy, gold, ink, onOperative, operative, radius } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import {
   Arrival,
@@ -16,7 +15,8 @@ import * as api from '@/data/api';
 import { markNoShow, recordPayment } from '@/data/manage';
 import { useBooking } from '@/state/booking';
 import { useI18n } from '@/i18n';
-import { OpStanding } from '@/components/operative';
+import { OpStanding, OpTile } from '@/components/operative';
+import { OpCard, OpEmpty, OpGroup, OpHeading, OpPage } from '@/components/kitOperative';
 import { useSession } from '@/state/session';
 import { useVenueStanding } from '@/state/standing';
 
@@ -67,14 +67,13 @@ export default function OwnerToday() {
       : null;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: operative.bg }}
-      contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 18, paddingBottom: 24, gap: 18 }}
-      showsVerticalScrollIndicator={false}
+    <OpPage
       // E-2: an operator works a whole shift off this screen. Without this the
       // 7 PM numbers were still on it at 11 PM.
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={ink} />}
     >
+      <OpHeading title={t.ownTabToday} />
+
       {/* Above the numbers, because a venue that has just signed up needs to
           know where it stands before it needs to know its occupancy — and this
           is the screen it lands on. It was only ever said four taps into Setup,
@@ -86,52 +85,21 @@ export default function OwnerToday() {
       {tiles ? (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {tiles.map((kpi) => (
-            <View
-              key={kpi.label}
-              style={{
-                flex: 1,
-                padding: 12,
-                borderRadius: radius.panel,
-                backgroundColor: operative.surface,
-                borderWidth: 1,
-                borderColor: kpi.accent ? 'rgba(198,163,75,.5)' : onOperative.hairline,
-                gap: 6,
-              }}
-            >
-              <Txt size={9.5} weight="semibold" em={0.14} color={onOperative.faint}>
-                {kpi.label}
-              </Txt>
-              <Txt size={20} weight="bold" em={-0.02} color={kpi.accent ? gold.ink : ink}>
-                {kpi.value}
-              </Txt>
-              <Txt size={10} color={onOperative.dim}>
-                {kpi.sub}
-              </Txt>
-            </View>
+            <OpTile key={kpi.label} label={kpi.label} value={kpi.value} sub={kpi.sub} accent={kpi.accent} />
           ))}
         </View>
       ) : null}
 
-      <View style={{ gap: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Txt size={10} weight="semibold" em={0.16} upper color={onOperative.faint}>
-            {t.ownNextArrivals}
-          </Txt>
-        </View>
-
+      <OpGroup title={t.ownNextArrivals}>
         {rows?.map((arrival, i) => (
           <ArrivalCard key={arrival.bookingId ?? `${arrival.time}-${i}`} arrival={arrival} onChanged={reload} />
         ))}
 
-        {rows && rows.length === 0 ? (
-          <Empty title={t.ownNoArrivals} blurb={t.ownNoArrivalsBlurb} />
-        ) : null}
+        {rows && rows.length === 0 ? <OpEmpty title={t.ownNoArrivals} blurb={t.ownNoArrivalsBlurb} /> : null}
 
-        {rows === null && !loading && !error ? (
-          <Empty title={t.ownNoVenue} blurb={t.ownNoVenueBlurb} />
-        ) : null}
+        {rows === null && !loading && !error ? <OpEmpty title={t.ownNoVenue} blurb={t.ownNoVenueBlurb} /> : null}
 
-        <Txt size={11} color={error ? burgundy.ink : onOperative.faint}>
+        <Txt size={11.5} color={error ? burgundy.ink : onOperative.faint}>
           {loading
             ? t.ownReadingCalendar
             : error
@@ -147,53 +115,22 @@ export default function OwnerToday() {
                   ? t.ownSampleShift
                   : ''}
         </Txt>
-      </View>
+      </OpGroup>
 
       {/* OWN-007: the open hours, and the lever that fills them. The count is
           the venue's own when there is one; the fixture only stands in for the
           showcase, and never beside a live tile saying something different. */}
       {summary || showcase ? (
-        <View
-          style={{
-            padding: 14,
-            borderRadius: radius.panel,
-            borderWidth: 1,
-            borderStyle: 'dashed',
-            borderColor: 'rgba(20,18,16,.22)',
-            gap: 3,
-          }}
-        >
-          <Txt size={13} weight="semibold" color={ink}>
+        <OpCard dashed pad={14} style={{ gap: 3 }}>
+          <Txt size={14} weight="semibold" color={ink}>
             {summary ? t.ownSlotsOpenToday(num(summary.openSlots)) : t.shSlotsOpen(num(showcaseOpenTonight(t).count))}
           </Txt>
-          <Txt size={11.5} color={onOperative.muted}>
+          <Txt size={12} lh={1.45} color={onOperative.muted}>
             {summary ? t.ownDiscountSoon : showcaseOpenTonight(t).detail}
           </Txt>
-        </View>
+        </OpCard>
       ) : null}
-    </ScrollView>
-  );
-}
-
-function Empty({ title, blurb }: { title: string; blurb: string }) {
-  return (
-    <View
-      style={{
-        padding: 18,
-        borderRadius: radius.panel,
-        backgroundColor: operative.surface,
-        borderWidth: 1,
-        borderColor: onOperative.hairline,
-        gap: 5,
-      }}
-    >
-      <Txt size={14} weight="semibold" color={ink}>
-        {title}
-      </Txt>
-      <Txt size={12} color={onOperative.muted}>
-        {blurb}
-      </Txt>
-    </View>
+    </OpPage>
   );
 }
 
@@ -232,7 +169,7 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
   return (
     <View
       style={{
-        borderRadius: radius.panel,
+        borderRadius: radius.cardInner,
         backgroundColor: operative.surface,
         borderWidth: 1,
         borderColor: highlighted ? 'rgba(198,163,75,.6)' : onOperative.hairline,
@@ -254,8 +191,8 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
             flexDirection: 'row',
             alignItems: 'center',
             gap: 8,
-            paddingVertical: 8,
-            paddingHorizontal: 14,
+            paddingVertical: 9,
+            paddingHorizontal: 16,
             backgroundColor: 'rgba(198,163,75,.14)',
             borderBottomWidth: 1,
             borderBottomColor: 'rgba(198,163,75,.3)',
@@ -272,10 +209,10 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
         </View>
       ) : null}
 
-      <View style={{ padding: 14, gap: 12 }}>
+      <View style={{ padding: 16, gap: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
           <View style={{ width: 52, alignItems: 'center', gap: 2 }}>
-            <Txt size={16} weight="bold" em={-0.02} color={ink}>
+            <Txt size={17} weight="bold" em={-0.02} color={ink}>
               {arrival.time}
             </Txt>
             <Txt size={10} color={onOperative.faint}>
@@ -285,7 +222,7 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
           <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: onOperative.hairline }} />
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-              <Txt size={14} weight="bold" color={ink}>
+              <Txt size={15} weight="bold" color={ink}>
                 {arrival.title}
               </Txt>
               {/* OWN-006: every occupancy item names its source. */}
@@ -305,12 +242,12 @@ function ArrivalCard({ arrival, onChanged }: { arrival: Arrival; onChanged?: () 
                 </View>
               ) : null}
             </View>
-            <Txt size={11.5} color={onOperative.muted}>
+            <Txt size={12} color={onOperative.muted}>
               {arrival.detail}
             </Txt>
             {arrival.money ? (
               <Txt
-                size={11.5}
+                size={12}
                 weight="semibold"
                 color={arrival.money.tone === 'due' ? gold.ink : burgundy.ink}
               >
@@ -389,23 +326,22 @@ function GateButton({
       accessibilityState={{ disabled: !!disabled, ...(checked !== undefined ? { checked } : null) }}
       onPress={onPress}
       disabled={disabled}
-      hitSlop={hitSlopTo44(38)}
       style={({ pressed }) => ({
         flex: 1,
-        height: 38,
+        height: 44,
         paddingHorizontal: 10,
-        borderRadius: radius.dense,
+        borderRadius: radius.row,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
         ...(filled
-          ? { backgroundColor: checked ? '#241f14' : void_.bg }
+          ? { backgroundColor: checked ? '#241f14' : ink }
           : { borderWidth: 1, borderColor: onOperative.line }),
         opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
       })}
     >
-      <Txt size={12.5} weight="semibold" color={filled ? operative.bg : ink} numberOfLines={1}>
+      <Txt size={13} weight="bold" color={filled ? operative.bg : ink} numberOfLines={1}>
         {label}
       </Txt>
       {trailing}

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { Txt } from '@/components/Txt';
-import { OpButton, OpHeader, OpNotice, OpRow, OpScreen, OpSection } from '@/components/operative';
-import { ink, onOperative, radius } from '@/theme/tokens';
+import { OpButton, OpNotice } from '@/components/operative';
+import { OpCard, OpEmpty, OpGroup, OpMenuGroup, OpMenuRow, OpPage, OpPill, OpPills } from '@/components/kitOperative';
+import { Search, User } from '@/components/icons';
+import { ink, onOperative, operative, radius } from '@/theme/tokens';
+import { face } from '@/theme/typography';
 import { setVenueStaff, venueStaffList, type StaffMember, type VenueRole } from '@/data/manage';
 import { findPlayers, type FoundPlayer } from '@/data/squad';
 import { useSession } from '@/state/session';
@@ -26,7 +28,6 @@ const ROLES: VenueRole[] = ['staff', 'manager', 'owner'];
  */
 export default function Staff() {
   const { reason, t } = useI18n();
-  const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
   const myRole = venue?.role ?? 'staff';
@@ -74,6 +75,12 @@ export default function Staff() {
     };
   }, [query]);
 
+  // The role as a word in the reader's language. The enum value was drawn
+  // as-is, so an Arabic manager read `staff`, `manager` and `owner` in English
+  // on every row, and a suspended one read " · suspended".
+  const roleLabel = (r: VenueRole) =>
+    r === 'owner' ? t.ownerRoleOwner : r === 'manager' ? t.ownerRoleManager : t.ownerRoleStaff;
+
   const grantable = ROLES.filter((r) => ROLES.indexOf(r) <= ROLES.indexOf(myRole));
   const onList = new Set(rows.map((r) => r.userId));
 
@@ -86,91 +93,109 @@ export default function Staff() {
   };
 
   return (
-    <OpScreen>
-      <OpHeader title={t.ownStaff} onBack={() => router.back()} />
+    <OpPage title={t.ownStaff} subtitle={venue?.name}>
       <OpNotice text={notice} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title={t.ownWorkingHere}>
-        <View style={{ gap: 8 }}>
-          {rows.map((m) => (
-            <OpRow key={m.userId} style={m.active ? undefined : { opacity: 0.55 }}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={13} weight="semibold" color={ink}>
+      <OpGroup title={t.ownWorkingHere}>
+        {rows.map((m) => (
+          <OpCard key={m.userId} pad={14} style={m.active ? undefined : { opacity: 0.55 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Initials name={m.displayName} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Txt size={14.5} weight="semibold" color={ink} numberOfLines={1}>
                   {m.displayName}
                 </Txt>
-                <Txt size={10.5} color="rgba(20,18,16,.45)">
-                  {m.role}
-                  {m.active ? '' : ' · suspended'}
+                <Txt size={11.5} color={onOperative.faint}>
+                  {m.active ? roleLabel(m.role) : `${roleLabel(m.role)} · ${t.ownerStaffSuspended}`}
                 </Txt>
               </View>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                {grantable.map((r) => (
-                  <Pressable
-                    key={r}
-                    accessibilityRole="button"
-                    accessibilityLabel={t.setRoleFor(m.displayName, r)}
-                    onPress={() => set(m.userId, r, true)}
-                    style={{
-                      paddingVertical: 6,
-                      paddingHorizontal: 10,
-                      borderRadius: radius.chip,
-                      borderWidth: 1,
-                      borderColor: m.role === r ? ink : onOperative.hairline,
-                    }}
-                  >
-                    <Txt size={10.5} weight={m.role === r ? 'semibold' : 'regular'} color={ink}>
-                      {r}
-                    </Txt>
-                  </Pressable>
-                ))}
-                <OpButton
-                  label={m.active ? t.ownSuspend : t.ownRestore}
-                  tone={m.active ? 'danger' : 'quiet'}
-                  onPress={() => set(m.userId, m.role, !m.active)}
+              <OpButton
+                label={m.active ? t.ownSuspend : t.ownRestore}
+                tone={m.active ? 'danger' : 'quiet'}
+                onPress={() => set(m.userId, m.role, !m.active)}
+              />
+            </View>
+            <OpPills>
+              {grantable.map((r) => (
+                <OpPill
+                  key={r}
+                  size="sm"
+                  role="button"
+                  on={m.role === r}
+                  label={roleLabel(r)}
+                  accessibilityLabel={t.setRoleFor(m.displayName, roleLabel(r))}
+                  onPress={() => set(m.userId, r, true)}
                 />
-              </View>
-            </OpRow>
-          ))}
-          {rows.length === 0 && !loading && !notice ? (
-            <Txt size={12.5} color={onOperative.dim}>
-              {t.ownNobodyElseWorksHere}
-            </Txt>
-          ) : null}
-        </View>
-      </OpSection>
+              ))}
+            </OpPills>
+          </OpCard>
+        ))}
+        {rows.length === 0 && !loading && !notice ? <OpEmpty title={t.ownNobodyElseWorksHere} /> : null}
+      </OpGroup>
 
-      <OpSection title={t.ownAddSomebody} hint={t.ownStaffHint}>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t.ownSearchByName}
-          placeholderTextColor="rgba(20,18,16,.32)"
-          autoCapitalize="none"
+      <OpGroup title={t.ownAddSomebody} hint={t.ownStaffHint}>
+        <View
           style={{
-            height: 40,
-            paddingHorizontal: 12,
-            borderRadius: radius.chip,
+            height: 48,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingHorizontal: 14,
+            borderRadius: radius.row,
             borderWidth: 1,
-            borderColor: onOperative.hairline,
-            backgroundColor: '#FFFDF9',
-            color: ink,
-            fontSize: 13,
+            borderColor: onOperative.line,
+            backgroundColor: operative.surface,
           }}
-        />
-        <View style={{ gap: 8 }}>
-          {results
-            .filter((p) => !onList.has(p.playerId))
-            .map((p) => (
-              <OpRow key={p.playerId}>
-                <Txt size={13} weight="semibold" color={ink} style={{ flex: 1 }}>
-                  {p.displayName}
-                </Txt>
-                <OpButton label={t.ownAddStaff} onPress={() => set(p.playerId, 'staff', true)} />
-              </OpRow>
-            ))}
+        >
+          <Search size={18} color={query ? ink : onOperative.faint} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder={t.ownSearchByName}
+            placeholderTextColor={onOperative.disabled}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            accessibilityLabel={t.ownSearchByName}
+            style={{ flex: 1, height: '100%', color: ink, fontFamily: face.regular, fontSize: 15 }}
+          />
         </View>
-      </OpSection>
-    </OpScreen>
+        {results.filter((p) => !onList.has(p.playerId)).length > 0 ? (
+          <OpMenuGroup>
+            {results
+              .filter((p) => !onList.has(p.playerId))
+              .map((p) => (
+                <OpMenuRow
+                  key={p.playerId}
+                  icon={<User size={19} color={ink} />}
+                  title={p.displayName}
+                  right={<OpButton label={t.ownAddStaff} onPress={() => set(p.playerId, 'staff', true)} />}
+                />
+              ))}
+          </OpMenuGroup>
+        ) : null}
+      </OpGroup>
+    </OpPage>
+  );
+}
+
+/** Two letters in a disc, where a staff member has no photo to show. */
+function Initials({ name }: { name: string }) {
+  return (
+    <View
+      style={{
+        width: 38,
+        height: 38,
+        borderRadius: radius.pill,
+        backgroundColor: operative.band,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Txt size={13} weight="bold" color={ink}>
+        {name.slice(0, 2).toUpperCase()}
+      </Txt>
+    </View>
   );
 }

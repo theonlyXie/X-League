@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { OpNotice, OpRow, OpScreen, OpSection, OpTile } from '@/components/operative';
+import { OpNotice, OpTile } from '@/components/operative';
+import { OpCard, OpEmpty, OpGroup, OpHeading, OpPage } from '@/components/kitOperative';
 import { Star } from '@/components/icons';
-import { gold, ink, onOperative, radius } from '@/theme/tokens';
+import { gold, ink, onOperative, operative, radius } from '@/theme/tokens';
 import { venueReviewSummary, type ReviewSummary } from '@/data/manage';
 import { venueReviews, type Review } from '@/data/discovery';
 import { useSession } from '@/state/session';
@@ -55,7 +56,9 @@ export default function OwnerReviews() {
   const max = Math.max(1, ...(summary?.histogram.map((h) => h.count) ?? [1]));
 
   return (
-    <OpScreen>
+    <OpPage>
+      <OpHeading title={t.ownTabReviews} />
+
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <OpTile
           label={t.ownRating}
@@ -65,12 +68,12 @@ export default function OwnerReviews() {
         />
         <OpTile
           label={t.ownFiveStar}
-          value={`${summary?.histogram.find((h) => h.stars === 5)?.count ?? 0}`}
+          value={num(summary?.histogram.find((h) => h.stars === 5)?.count ?? 0)}
           sub={t.ownOfAllReviews}
         />
         <OpTile
           label={t.ownOneStar}
-          value={`${summary?.histogram.find((h) => h.stars === 1)?.count ?? 0}`}
+          value={num(summary?.histogram.find((h) => h.stars === 1)?.count ?? 0)}
           sub={t.ownWorthReading}
         />
       </View>
@@ -78,68 +81,80 @@ export default function OwnerReviews() {
       <OpNotice text={error} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title={t.ownSpread}>
-        <View style={{ gap: 6 }}>
-          {(summary?.histogram ?? []).map((h) => (
-            <View key={h.stars} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Txt size={11} color={onOperative.dim} style={{ width: 14 }}>
-                {h.stars}
-              </Txt>
-              <View
-                style={{
-                  flex: 1,
-                  height: 6,
-                  borderRadius: radius.pill,
-                  backgroundColor: 'rgba(20,18,16,.07)',
-                  overflow: 'hidden',
-                }}
-              >
+      {summary?.histogram.length ? (
+        <OpGroup title={t.ownSpread}>
+          <OpCard style={{ gap: 9 }}>
+            {summary.histogram.map((h) => (
+              <View key={h.stars} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 28, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <Txt size={12} weight="semibold" color={onOperative.secondary}>
+                    {num(h.stars)}
+                  </Txt>
+                  <Star size={10} color={gold.border} />
+                </View>
                 <View
                   style={{
-                    width: `${(h.count / max) * 100}%`,
-                    height: '100%',
-                    backgroundColor: gold.border,
+                    flex: 1,
+                    height: 8,
+                    borderRadius: radius.pill,
+                    backgroundColor: 'rgba(20,18,16,.07)',
+                    overflow: 'hidden',
                   }}
-                />
-              </View>
-              <Txt size={11} color={onOperative.dim} style={{ width: 24, textAlign: 'right' }}>
-                {h.count}
-              </Txt>
-            </View>
-          ))}
-        </View>
-      </OpSection>
-
-      <OpSection title={t.ownRecent}>
-        {reviews.length === 0 && !loading ? (
-          <Txt size={12.5} color={onOperative.dim}>
-            {t.ownNoReviewsYet}
-          </Txt>
-        ) : null}
-        <View style={{ gap: 8 }}>
-          {reviews.map((r, i) => (
-            <OpRow key={i}>
-              <View style={{ flex: 1, gap: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Txt size={12.5} weight="semibold" color={ink}>
-                    {r.author}
-                  </Txt>
-                  <View style={{ flexDirection: 'row', gap: 2 }}>
-                    {Array.from({ length: r.rating }).map((_, s) => (
-                      <Star key={s} size={10} color={gold.border} />
-                    ))}
-                  </View>
+                >
+                  <View
+                    style={{
+                      width: `${(h.count / max) * 100}%`,
+                      height: '100%',
+                      borderRadius: radius.pill,
+                      backgroundColor: gold.border,
+                    }}
+                  />
                 </View>
-                {r.body ? (
-                  <Txt size={12} lh={1.5} color="rgba(20,18,16,.62)">
-                    {r.body}
-                  </Txt>
-                ) : null}
+                <Txt size={12} color={onOperative.dim} style={{ width: 28, textAlign: 'right' }}>
+                  {num(h.count)}
+                </Txt>
               </View>
-            </OpRow>
-          ))}
-        </View>
-      </OpSection>
-    </OpScreen>
+            ))}
+          </OpCard>
+        </OpGroup>
+      ) : null}
+
+      <OpGroup title={t.ownRecent}>
+        {reviews.length === 0 && !loading ? <OpEmpty title={t.ownNoReviewsYet} /> : null}
+        {reviews.map((r, i) => (
+          <OpCard key={i} pad={14} style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: radius.pill,
+                  backgroundColor: operative.band,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Txt size={12} weight="bold" color={ink}>
+                  {r.author.slice(0, 2).toUpperCase()}
+                </Txt>
+              </View>
+              <Txt size={14} weight="semibold" color={ink} style={{ flex: 1 }} numberOfLines={1}>
+                {r.author}
+              </Txt>
+              <View style={{ flexDirection: 'row', gap: 2 }}>
+                {Array.from({ length: r.rating }).map((_, s) => (
+                  <Star key={s} size={12} color={gold.border} />
+                ))}
+              </View>
+            </View>
+            {r.body ? (
+              <Txt size={13} lh={1.5} color={onOperative.secondary}>
+                {r.body}
+              </Txt>
+            ) : null}
+          </OpCard>
+        ))}
+      </OpGroup>
+    </OpPage>
   );
 }

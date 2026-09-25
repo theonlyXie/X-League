@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { OpButton, OpHeader, OpNotice, OpRow, OpScreen, OpSection } from '@/components/operative';
-import { ink, onOperative, radius } from '@/theme/tokens';
+import { OpNotice } from '@/components/operative';
+import { OpActionButton, OpCard, OpEmpty, OpGroup, OpPage } from '@/components/kitOperative';
+import { ChatBubble, CheckCircle } from '@/components/icons';
+import { gold, ink, onOperative, operative, radius, status } from '@/theme/tokens';
 import {
   confirmBookingPayment,
   venuePaymentClaims,
@@ -31,7 +32,6 @@ import { useI18n } from '@/i18n';
  */
 export default function Claims() {
   const { reason, t, num, moment } = useI18n();
-  const router = useRouter();
   const { activeVenue } = useSession();
   const venueId = activeVenue?.venueId ?? null;
 
@@ -103,87 +103,63 @@ export default function Claims() {
   const waiting = claims.filter((c) => !c.settled).length;
 
   return (
-    <OpScreen>
-      <OpHeader title={t.ownClaims} onBack={() => router.back()} />
+    <OpPage title={t.ownClaims} subtitle={activeVenue?.name}>
       <OpNotice text={notice} />
 
-      <OpSection
-        title={t.ownClaims}
-        hint={waiting > 0 ? t.ownWaitingOnYou(num(waiting)) : t.ownClaimsBlurb}
-      >
+      <OpGroup hint={waiting > 0 ? t.ownWaitingOnYou(num(waiting)) : t.ownClaimsBlurb}>
         {loading ? <ActivityIndicator color={ink} /> : null}
 
-        {!loading && unreachable ? (
-          <Txt size={12.5} color="rgba(20,18,16,.55)">
-            {t.listUnreachable}
-          </Txt>
-        ) : null}
+        {!loading && unreachable ? <OpNotice text={t.listUnreachable} /> : null}
 
-        {!loading && !unreachable && claims.length === 0 ? (
-          <Txt size={12.5} color="rgba(20,18,16,.55)">
-            {t.ownNoClaims}
-          </Txt>
-        ) : null}
+        {!loading && !unreachable && claims.length === 0 ? <OpEmpty title={t.ownNoClaims} /> : null}
 
-        <View style={{ gap: 10 }}>
-          {claims.map((c) => (
-            <View
-              key={c.bookingId}
-              style={{
-                padding: 13,
-                borderRadius: radius.control,
-                borderWidth: 1,
-                borderColor: c.settled ? onOperative.line : ink,
-                gap: 8,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Txt size={13.5} weight="semibold" color={ink} style={{ flex: 1 }}>
+        {claims.map((c) => (
+          // Gold-edged while it is waiting: it is money somebody says is
+          // already the venue's. Settled ones drop back to a plain card.
+          <OpCard key={c.bookingId} pad={14} accent={!c.settled}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Txt size={15} weight="bold" color={ink} numberOfLines={1}>
                   {c.captainName}
                 </Txt>
-                <Txt size={13.5} weight="bold" color={ink}>
-                  {num(c.priceEgp)}
+                <Txt size={12} color={onOperative.faint}>
+                  {c.code} · {c.pitchLabel} · {moment(c.startsAt)}
+                  {c.kind ? ` · ${kindLabel(c.kind)}` : ''}
                 </Txt>
               </View>
-
-              <Txt size={11.5} color="rgba(20,18,16,.55)">
-                {c.code} · {c.pitchLabel} · {moment(c.startsAt)}
-                {c.kind ? ` · ${kindLabel(c.kind)}` : ''}
+              <Txt size={15} weight="bold" color={gold.ink}>
+                {num(c.priceEgp)}
               </Txt>
+            </View>
 
-              {c.note ? (
-                <Txt size={12.5} lh={1.5} color="rgba(20,18,16,.75)">
+            {c.note ? (
+              <View style={{ padding: 12, borderRadius: radius.row, backgroundColor: operative.bg }}>
+                <Txt size={12.5} lh={1.5} color={onOperative.secondary}>
                   {c.note}
                 </Txt>
-              ) : null}
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                {c.settled ? (
-                  <Txt size={11.5} weight="semibold" color="rgba(20,18,16,.5)">
-                    {t.ownConfirmed}
-                  </Txt>
-                ) : (
-                  <OpButton
-                    label={t.ownConfirmArrived}
-                    disabled={busy}
-                    onPress={() => void confirm(c)}
-                  />
-                )}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t.ownMessageCaptain} ${c.code}`}
-                  onPress={() => void reachCaptain(c)}
-                  hitSlop={8}
-                >
-                  <Txt size={11.5} weight="semibold" color={ink}>
-                    {t.ownMessageCaptain}
-                  </Txt>
-                </Pressable>
               </View>
-            </View>
-          ))}
-        </View>
-      </OpSection>
-    </OpScreen>
+            ) : null}
+
+            {c.settled ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <CheckCircle size={18} color={status.positive} />
+                <Txt size={13} weight="semibold" color={status.positive}>
+                  {t.ownConfirmed}
+                </Txt>
+              </View>
+            ) : (
+              <OpActionButton label={t.ownConfirmArrived} disabled={busy} onPress={() => void confirm(c)} />
+            )}
+            <OpActionButton
+              label={t.ownMessageCaptain}
+              accessibilityLabel={`${t.ownMessageCaptain} ${c.code}`}
+              variant="ghost"
+              icon={<ChatBubble size={17} color={ink} />}
+              onPress={() => void reachCaptain(c)}
+            />
+          </OpCard>
+        ))}
+      </OpGroup>
+    </OpPage>
   );
 }

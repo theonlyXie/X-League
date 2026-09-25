@@ -4,9 +4,9 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Divider, Eyebrow } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
-import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
+import { ActionButton, Card, SectionTitle, Unreachable } from '@/components/kit';
+import { ChevronLeft } from '@/components/icons';
+import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
 import {
   matchAgreement,
@@ -144,17 +144,18 @@ export default function AgreeResult() {
   };
 
   return (
-    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 32, gap: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 32, gap: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
-          hitSlop={12}
+          hitSlop={8}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={20} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
           {t.agreeTitle}
         </Txt>
       </View>
@@ -165,131 +166,135 @@ export default function AgreeResult() {
         </View>
       ) : null}
 
-      {error ? (
-        <Txt size={12.5} color={gold.base}>
-          {error}
-        </Txt>
-      ) : null}
+      {error ? <Unreachable label={error} /> : null}
 
       {!loading && state && !mine ? (
-        <Txt size={13} color={onVoid.muted}>
-          {t.agreeNotACaptain}
-        </Txt>
+        <Card>
+          <Txt size={13.5} lh={1.5} color={onVoid.muted}>
+            {t.agreeNotACaptain}
+          </Txt>
+        </Card>
       ) : null}
 
       {!loading && state && mine ? (
         <>
-          <Txt size={12.5} lh={1.5} color={onVoid.muted}>
+          <Txt size={12.5} lh={1.55} color={onVoid.muted}>
             {t.agreeBlurb}
           </Txt>
 
-          {/* What each side has said so far, side by side. */}
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {[
-              { label: t.agreeYouSaid, claim: ourClaim },
-              { label: t.agreeTheySaid, claim: theirClaim },
-            ].map((box) => (
-              <View
-                key={box.label}
-                style={{
-                  flex: 1,
-                  paddingVertical: 14,
-                  borderRadius: radius.control,
-                  alignItems: 'center',
-                  gap: 6,
-                  backgroundColor: void_.surface,
-                  borderWidth: 1,
-                  borderColor: box.claim ? goldAlpha.edge : onVoid.edgeFaint,
-                }}
-              >
-                <Txt size={10.5} weight="semibold" em={0.06} color={onVoid.dim}>
-                  {box.label}
-                </Txt>
-                <Txt
-                  size={20}
-                  weight="bold"
-                  color={box.claim ? onVoid.primary : onVoid.disabled}
-                  style={{ fontFamily: mono }}
+          <Card>
+            {/* What each side has said so far, side by side. */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {[
+                { label: t.agreeYouSaid, claim: ourClaim },
+                { label: t.agreeTheySaid, claim: theirClaim },
+              ].map((box) => (
+                <View
+                  key={box.label}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 14,
+                    borderRadius: radius.row,
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: void_.inset,
+                    borderWidth: 1,
+                    borderColor: box.claim ? goldAlpha.edge : 'transparent',
+                  }}
                 >
-                  {box.claim ? `${num(box.claim.us)}–${num(box.claim.them)}` : '—'}
-                </Txt>
-              </View>
-            ))}
-          </View>
+                  <Txt size={12} weight="semibold" color={onVoid.faint}>
+                    {box.label}
+                  </Txt>
+                  <Txt
+                    size={24}
+                    weight="bold"
+                    color={box.claim ? onVoid.primary : onVoid.disabled}
+                    style={{ fontFamily: mono }}
+                  >
+                    {box.claim ? `${num(box.claim.us)}–${num(box.claim.them)}` : '—'}
+                  </Txt>
+                </View>
+              ))}
+            </View>
 
-          <Txt size={12.5} color={state.state === 'disputed' ? gold.base : onVoid.secondary}>
-            {state.state === 'agreed'
-              ? t.agreeDone
-              : state.state === 'disputed'
-                ? t.agreeDisputed
-                : theirClaim
-                  ? t.agreeWaitingYou
-                  : t.agreeWaitingThem}
-          </Txt>
-
-          {state.state !== 'agreed' ? (
-            <Txt size={11.5} color={onVoid.dim}>
-              {t.agreeNothingYet}
+            <Txt
+              size={13}
+              weight="semibold"
+              color={state.state === 'disputed' ? burgundy.action : state.state === 'agreed' ? gold.base : onVoid.secondary}
+            >
+              {state.state === 'agreed'
+                ? t.agreeDone
+                : state.state === 'disputed'
+                  ? t.agreeDisputed
+                  : theirClaim
+                    ? t.agreeWaitingYou
+                    : t.agreeWaitingThem}
             </Txt>
-          ) : null}
 
-          <Divider />
+            {state.state !== 'agreed' ? (
+              <Txt size={11.5} lh={1.5} color={onVoid.dim}>
+                {t.agreeNothingYet}
+              </Txt>
+            ) : null}
+          </Card>
 
           {/* Entered from this captain's own end, always. */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
-            {[
-              { label: t.agreeScoreUs, value: us, set: setUs },
-              { label: t.agreeScoreThem, value: them, set: setThem },
-            ].map((f) => (
-              <View key={f.label} style={{ flex: 1, gap: 6 }}>
-                <Txt size={11} weight="semibold" em={0.06} color={onVoid.dim}>
-                  {f.label}
-                </Txt>
-                <TextInput
-                  value={f.value}
-                  onChangeText={f.set}
-                  keyboardType="number-pad"
-                  accessibilityLabel={f.label}
-                  placeholderTextColor={onVoid.disabled}
-                  style={{
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
-                    borderRadius: radius.control,
-                    borderWidth: 1,
-                    borderColor: onVoid.line,
-                    backgroundColor: void_.inset,
-                    color: onVoid.primary,
-                    fontSize: 18,
-                    fontFamily: mono,
-                    textAlign: 'center',
-                  }}
-                />
-              </View>
-            ))}
-          </View>
+          <Card>
+            <SectionTitle title={t.refereeScore} />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
+              {[
+                { label: t.agreeScoreUs, value: us, set: setUs },
+                { label: t.agreeScoreThem, value: them, set: setThem },
+              ].map((f) => (
+                <View key={f.label} style={{ flex: 1, gap: 6 }}>
+                  <Txt size={12} weight="semibold" color={onVoid.faint}>
+                    {f.label}
+                  </Txt>
+                  <TextInput
+                    value={f.value}
+                    onChangeText={f.set}
+                    keyboardType="number-pad"
+                    accessibilityLabel={f.label}
+                    placeholderTextColor={onVoid.disabled}
+                    style={{
+                      height: 56,
+                      paddingHorizontal: 14,
+                      borderRadius: radius.row,
+                      borderWidth: 1,
+                      borderColor: onVoid.line,
+                      backgroundColor: void_.inset,
+                      color: onVoid.primary,
+                      fontSize: 22,
+                      fontFamily: mono,
+                      textAlign: 'center',
+                    }}
+                  />
+                </View>
+              ))}
+            </View>
 
-          <Button
-            label={t.agreeSubmit}
-            onPress={send}
-            disabled={saving || numeric(us) === null || numeric(them) === null}
-          />
+            <ActionButton
+              label={t.agreeSubmit}
+              onPress={send}
+              disabled={saving || numeric(us) === null || numeric(them) === null}
+            />
+          </Card>
 
           {/* Scorers, this side only — the other captain writes theirs. */}
           {ourLines.length > 0 && ourScore !== null ? (
-            <>
-              <Divider />
+            <Card>
+              <SectionTitle title={t.scorersTitle} />
               <View style={{ gap: 4 }}>
-                <Eyebrow>{t.scorersTitle}</Eyebrow>
                 <Txt size={11.5} lh={1.5} color={onVoid.dim}>
                   {t.scorersBlurb}
                 </Txt>
-                <Txt size={11.5} color={left === 0 ? onVoid.muted : gold.base}>
+                <Txt size={12} weight="semibold" color={left === 0 ? onVoid.muted : gold.base}>
                   {left > 0 ? t.scorersLeft(num(left)) : t.scorersAllIn}
                 </Txt>
               </View>
 
-              <View style={{ gap: 8 }}>
-                {ourLines.map((l) => (
+              <View>
+                {ourLines.map((l, i) => (
                   <View
                     key={l.playerId}
                     style={{
@@ -297,14 +302,11 @@ export default function AgreeResult() {
                       alignItems: 'center',
                       gap: 10,
                       paddingVertical: 10,
-                      paddingHorizontal: 14,
-                      borderRadius: radius.control,
-                      backgroundColor: void_.surface,
-                      borderWidth: 1,
-                      borderColor: onVoid.edgeFaint,
+                      borderTopWidth: i > 0 ? 1 : 0,
+                      borderTopColor: onVoid.edgeFaint,
                     }}
                   >
-                    <Txt size={13} weight="medium" color={onVoid.primary} style={{ flex: 1 }}>
+                    <Txt size={14} weight="semibold" color={onVoid.primary} style={{ flex: 1 }} numberOfLines={1}>
                       {l.displayName}
                     </Txt>
                     {(
@@ -314,7 +316,7 @@ export default function AgreeResult() {
                       ]
                     ).map((f) => (
                       <View key={f.key} style={{ alignItems: 'center', gap: 3 }}>
-                        <Txt size={9.5} color={onVoid.dim}>
+                        <Txt size={10} color={onVoid.dim}>
                           {f.label}
                         </Txt>
                         <TextInput
@@ -331,8 +333,8 @@ export default function AgreeResult() {
                           keyboardType="number-pad"
                           accessibilityLabel={`${l.displayName}. ${f.label}`}
                           style={{
-                            width: 46,
-                            paddingVertical: 7,
+                            width: 48,
+                            height: 38,
                             borderRadius: radius.badge,
                             borderWidth: 1,
                             borderColor: onVoid.line,
@@ -348,8 +350,13 @@ export default function AgreeResult() {
                 ))}
               </View>
 
-              <Button label={t.scorersSave} onPress={saveScorers} disabled={saving || left < 0} />
-            </>
+              <ActionButton
+                label={t.scorersSave}
+                variant="ghost"
+                onPress={saveScorers}
+                disabled={saving || left < 0}
+              />
+            </Card>
           ) : null}
         </>
       ) : null}

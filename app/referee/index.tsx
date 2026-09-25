@@ -3,8 +3,7 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Eyebrow } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
+import { CheckCircle, ChevronLeft, ChevronRight, Clock, Pin, Whistle } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { refereeFixtures, type RefFixture } from '@/data/referee';
 import { useI18n } from '@/i18n';
@@ -59,34 +58,31 @@ export default function RefereeList() {
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: onVoid.line,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={20} weight="semibold" color={onVoid.primary}>
-          {t.refereeTitle}
-        </Txt>
+        <View style={{ gap: 2, flex: 1 }}>
+          <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
+            {t.refereeTitle}
+          </Txt>
+          <Txt size={11.5} lh={1.5} color={onVoid.faint}>
+            {t.refereeBlurb}
+          </Txt>
+        </View>
       </View>
 
-      <Txt size={13} lh={1.5} color={onVoid.muted}>
-        {t.refereeBlurb}
-      </Txt>
-
-      {loading ? <ActivityIndicator color={gold.base} /> : null}
+      {loading ? (
+        <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+          <ActivityIndicator color={gold.base} />
+        </View>
+      ) : null}
 
       {!loading && unreachable ? (
         <View style={{ gap: 6 }}>
@@ -110,10 +106,19 @@ export default function RefereeList() {
         </View>
       ) : null}
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 12 }}>
         {fixtures.map((f) => {
           const placed = !!f.kicksOffAt;
           const future = placed && new Date(f.kicksOffAt as string) > new Date();
+          const state = !placed
+            ? t.refereeNotPlaced
+            : f.recorded
+              ? t.refereeRecorded
+              : future
+                ? t.refereeNotYet
+                : t.refereeRecordMatch;
+          // The one a referee is here for: played, not yet written down.
+          const due = placed && !future && !f.recorded;
 
           return (
             <Pressable
@@ -122,57 +127,96 @@ export default function RefereeList() {
               accessibilityLabel={`${f.homeName} v ${f.awayName}`}
               onPress={() => router.push(`/referee/${f.fixtureId}`)}
               style={({ pressed }) => ({
-                padding: 14,
-                borderRadius: radius.card,
-                backgroundColor: void_.surface,
+                borderRadius: radius.cardInner,
+                backgroundColor: pressed ? void_.raised : void_.surface,
                 borderWidth: 1,
-                borderColor: f.recorded
-                  ? goldAlpha.edgeSoft
-                  : pressed
-                    ? goldAlpha.edge
-                    : onVoid.edgeFaint,
-                gap: 8,
+                borderColor: f.recorded ? goldAlpha.edgeSoft : pressed ? goldAlpha.edge : onVoid.edge,
+                overflow: 'hidden',
               })}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Eyebrow>{f.tournamentName}</Eyebrow>
-                <Txt size={10.5} color={onVoid.dim}>
-                  {t.refereeRound(num(f.round))}
-                </Txt>
+              <View style={{ padding: 14, gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Txt size={12} weight="bold" color={gold.base} numberOfLines={1} style={{ flexShrink: 1 }}>
+                    {f.tournamentName}
+                  </Txt>
+                  <Txt size={11} color={onVoid.dim}>
+                    {t.refereeRound(num(f.round))}
+                  </Txt>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Txt size={15} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
+                    {f.homeName}
+                  </Txt>
+                  <View
+                    style={{
+                      minWidth: 58,
+                      paddingVertical: 5,
+                      paddingHorizontal: 10,
+                      borderRadius: radius.dense,
+                      alignItems: 'center',
+                      backgroundColor: f.recorded ? goldAlpha.fill : void_.inset,
+                    }}
+                  >
+                    <Txt size={15} weight="bold" color={f.recorded ? gold.base : onVoid.dim}>
+                      {f.scoreHome != null && f.scoreAway != null
+                        ? `${num(f.scoreHome)} – ${num(f.scoreAway)}`
+                        : 'v'}
+                    </Txt>
+                  </View>
+                  <Txt
+                    size={15}
+                    weight="semibold"
+                    color={onVoid.primary}
+                    style={{ flex: 1, textAlign: 'right' }}
+                  >
+                    {f.awayName}
+                  </Txt>
+                </View>
+
+                {placed ? (
+                  <View style={{ gap: 6 }}>
+                    {f.venueName ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                        <Pin size={14} color={onVoid.dim} />
+                        <Txt size={11.5} color={onVoid.faint} numberOfLines={1} style={{ flex: 1 }}>
+                          {f.pitchLabel ? t.groundAndPitch(f.venueName, f.pitchLabel) : f.venueName}
+                        </Txt>
+                      </View>
+                    ) : null}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                      <Clock size={14} color={onVoid.dim} />
+                      <Txt size={11.5} color={onVoid.faint} numberOfLines={1} style={{ flex: 1 }}>
+                        {moment(f.kicksOffAt as string)}
+                      </Txt>
+                    </View>
+                  </View>
+                ) : null}
               </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Txt size={15} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
-                  {f.homeName}
-                </Txt>
-                <Txt size={15} weight="bold" color={f.recorded ? gold.base : onVoid.dim}>
-                  {f.scoreHome != null && f.scoreAway != null
-                    ? `${num(f.scoreHome)} – ${num(f.scoreAway)}`
-                    : 'v'}
-                </Txt>
+              {/* What happens next with this match, as the card's foot. */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  paddingVertical: 11,
+                  paddingHorizontal: 14,
+                  borderTopWidth: 1,
+                  borderTopColor: onVoid.edgeFaint,
+                }}
+              >
+                {f.recorded ? <CheckCircle size={16} color={gold.base} filled /> : <Whistle size={16} color={due ? gold.base : onVoid.dim} />}
                 <Txt
-                  size={15}
+                  size={12.5}
                   weight="semibold"
-                  color={onVoid.primary}
-                  style={{ flex: 1, textAlign: 'right' }}
+                  color={f.recorded || due ? gold.base : onVoid.muted}
+                  style={{ flex: 1 }}
                 >
-                  {f.awayName}
+                  {state}
                 </Txt>
+                <ChevronRight size={16} color={onVoid.dim} />
               </View>
-
-              <Txt size={11.5} color={onVoid.faint}>
-                {!placed
-                  ? t.refereeNotPlaced
-                  : f.recorded
-                    ? t.refereeRecorded
-                    : future
-                      ? t.refereeNotYet
-                      : t.refereeRecordMatch}
-                {placed && f.venueName
-                  ? ` · ${f.pitchLabel ? t.groundAndPitch(f.venueName, f.pitchLabel) : f.venueName}`
-                  : ''}
-                {placed ? ` · ${moment(f.kicksOffAt as string)}` : ''}
-              </Txt>
             </Pressable>
           );
         })}

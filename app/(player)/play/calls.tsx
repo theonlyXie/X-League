@@ -4,9 +4,9 @@ import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native
 import * as Haptics from 'expo-haptics';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Eyebrow } from '@/components/ui';
+import { ActionButton, PitchArt } from '@/components/kit';
 import { Reveal } from '@/components/motion';
-import { ArrowLeft } from '@/components/icons';
+import { CheckCircle, ChevronLeft, Clock } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { answerCall, openCalls, type Call, type PositionCode } from '@/data/ready';
 import { useI18n } from '@/i18n';
@@ -101,25 +101,17 @@ export default function Calls() {
         ) : undefined
       }
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: onVoid.line,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={20} weight="semibold" color={onVoid.primary}>
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
           {t.callsTitle}
         </Txt>
       </View>
@@ -147,58 +139,76 @@ export default function Calls() {
         </Txt>
       ) : null}
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 12 }}>
         {calls.map((call, i) => {
           const said = answered.includes(call.callId);
           return (
             <Reveal key={call.callId} index={i}>
+              {/* The search results' row: the pitch on one side, the facts on
+                  the other, and the answer under both. A call carries no
+                  photograph, so the drawn pitch stands in. */}
               <View
                 style={{
-                  padding: 14,
-                  borderRadius: radius.control,
+                  padding: 10,
+                  borderRadius: radius.cardInner,
                   borderWidth: 1,
                   borderColor: said ? goldAlpha.frame : onVoid.edgeFaint,
-                  backgroundColor: said ? goldAlpha.fill : void_.surface,
-                  gap: 10,
+                  backgroundColor: said ? goldAlpha.fillSoft : void_.surface,
+                  gap: 12,
                 }}
               >
-                <View style={{ gap: 3 }}>
-                  <Txt size={15} weight="semibold" color={onVoid.primary}>
-                    {call.venueName}
-                  </Txt>
-                  <Txt size={12} color={onVoid.secondary}>
-                    {moment(call.kickOff)}
-                  </Txt>
-                  <Txt size={11.5} color={onVoid.faint}>
-                    {[call.area, call.captain ? t.calledBy(call.captain) : null]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Txt>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={{ width: 96 }}>
+                    <PitchArt height={96} round={radius.row} />
+                  </View>
+                  <View style={{ flex: 1, gap: 4, paddingVertical: 2 }}>
+                    <Txt size={15} weight="bold" color={onVoid.primary} numberOfLines={1}>
+                      {call.venueName}
+                    </Txt>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Clock size={13} color={gold.base} />
+                      <Txt size={12} weight="semibold" color={onVoid.secondary} style={{ flexShrink: 1 }}>
+                        {moment(call.kickOff)}
+                      </Txt>
+                    </View>
+                    <Txt size={11.5} color={onVoid.faint} numberOfLines={1}>
+                      {[call.area, call.captain ? t.calledBy(call.captain) : null]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </Txt>
+                    <View style={{ flex: 1 }} />
+                    {call.priceEgp != null ? (
+                      <Txt size={12.5} weight="bold" color={onVoid.primary}>
+                        {money(call.priceEgp)}
+                      </Txt>
+                    ) : null}
+                  </View>
                 </View>
 
                 {/* What the captain actually asked for. An empty list of
                     positions means anybody, and saying "anyone" is friendlier
                     than four chips that all look like requirements. */}
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 2 }}>
                   <Chip label={call.positions.length ? call.positions.map(positionLabel).join(' · ') : t.anyPosition} />
                   {call.minOvr != null ? <Chip label={t.ratingAtLeast(num(call.minOvr))} /> : null}
-                  {call.priceEgp != null ? <Chip label={money(call.priceEgp)} /> : null}
                 </View>
 
                 {call.note ? (
-                  <Txt size={12.5} lh={1.5} color={onVoid.secondary}>
+                  <Txt size={12.5} lh={1.5} color={onVoid.secondary} style={{ paddingHorizontal: 2 }}>
                     {call.note}
                   </Txt>
                 ) : null}
 
                 {said ? (
-                  <Txt size={12.5} lh={1.5} color={gold.base}>
-                    {t.offerSent}
-                  </Txt>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2, paddingBottom: 2 }}>
+                    <CheckCircle size={16} color={gold.base} />
+                    <Txt size={12.5} lh={1.5} color={gold.base} style={{ flex: 1 }}>
+                      {t.offerSent}
+                    </Txt>
+                  </View>
                 ) : (
-                  <Button
+                  <ActionButton
                     label={t.illPlay}
-                    height={42}
                     disabled={busy === call.callId}
                     onPress={() => void answer(call)}
                   />
@@ -227,7 +237,7 @@ function Chip({ label }: { label: string }) {
         borderRadius: radius.pill,
         borderWidth: 1,
         borderColor: goldAlpha.edge,
-        backgroundColor: void_.inset,
+        backgroundColor: goldAlpha.fillSoft,
       }}
     >
       <Txt size={11.5} weight="medium" color={gold.base}>

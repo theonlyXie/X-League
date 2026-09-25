@@ -3,8 +3,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Divider, Eyebrow } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
+import { ActionButton, Card, SectionTitle, Unreachable } from '@/components/kit';
+import { CheckCircle, ChevronLeft, Clock, Pin } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import {
   refereeFixtures,
@@ -119,45 +119,37 @@ export default function RefereeMatch() {
 
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 40, gap: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/referee'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: onVoid.line,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={20} weight="semibold" color={onVoid.primary}>
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
           {t.refereeTitle}
         </Txt>
       </View>
 
       {!signedIn ? (
-        <View style={{ gap: 12 }}>
+        <Card>
           <Txt size={13} lh={1.5} color={onVoid.muted}>
             {t.signInToSee}
           </Txt>
-          <Button label={t.signIn} onPress={() => router.push('/sign-in?next=/referee')} />
+          <ActionButton label={t.signIn} onPress={() => router.push('/sign-in?next=/referee')} />
+        </Card>
+      ) : null}
+
+      {loading ? (
+        <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+          <ActivityIndicator color={gold.base} />
         </View>
       ) : null}
 
-      {loading ? <ActivityIndicator color={gold.base} /> : null}
-
-      {signedIn && !loading && unreadable ? (
-        <Txt size={13} color={onVoid.muted}>
-          {t.refereeSheetUnreadable}
-        </Txt>
-      ) : null}
+      {signedIn && !loading && unreadable ? <Unreachable label={t.refereeSheetUnreadable} /> : null}
 
       {/* Reached with an id that resolves to nothing — a fixture that was
           removed, a cup that is not running, or somebody else's match — this
@@ -177,37 +169,53 @@ export default function RefereeMatch() {
 
       {fixture ? (
         <>
-          <View style={{ gap: 6 }}>
-            <Eyebrow>{fixture.tournamentName}</Eyebrow>
-            <Txt size={18} weight="bold" em={-0.02} color={onVoid.primary}>
-              {fixture.homeName} — {fixture.awayName}
-            </Txt>
-            <Txt size={12} color={onVoid.faint}>
-              {fixture.kicksOffAt
-                ? `${
-                    fixture.venueName
+          <Card>
+            <View style={{ gap: 6 }}>
+              <Txt size={12} weight="bold" color={gold.base}>
+                {fixture.tournamentName}
+              </Txt>
+              <Txt size={18} weight="bold" em={-0.02} color={onVoid.primary}>
+                {fixture.homeName} — {fixture.awayName}
+              </Txt>
+            </View>
+            <View style={{ height: 1, backgroundColor: onVoid.edgeFaint }} />
+            {fixture.kicksOffAt ? (
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Pin size={15} color={onVoid.dim} />
+                  <Txt size={12.5} color={onVoid.secondary} style={{ flex: 1 }}>
+                    {fixture.venueName
                       ? fixture.pitchLabel
                         ? t.groundAndPitch(fixture.venueName, fixture.pitchLabel)
                         : fixture.venueName
-                      : t.whereTbc
-                  } · ${moment(fixture.kicksOffAt)}`
-                : t.refereeNotPlaced}
-            </Txt>
-          </View>
+                      : t.whereTbc}
+                  </Txt>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Clock size={15} color={onVoid.dim} />
+                  <Txt size={12.5} color={onVoid.secondary} style={{ flex: 1 }}>
+                    {moment(fixture.kicksOffAt)}
+                  </Txt>
+                </View>
+              </View>
+            ) : (
+              <Txt size={12.5} color={onVoid.faint}>
+                {t.refereeNotPlaced}
+              </Txt>
+            )}
+          </Card>
 
           <View style={{ gap: 12 }}>
-            <Eyebrow>{t.refereeScore}</Eyebrow>
+            <SectionTitle title={t.refereeScore} />
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <Counter label={t.refereeHome} value={home} onChange={setHome} format={num} />
               <Counter label={t.refereeAway} value={away} onChange={setAway} format={num} />
             </View>
           </View>
 
-          <Divider />
-
-          <View style={{ gap: 6 }}>
-            <Eyebrow>{t.scorersTitle}</Eyebrow>
-            <Txt size={12} lh={1.5} color={onVoid.muted}>
+          <View style={{ gap: 4 }}>
+            <SectionTitle title={t.scorersTitle} />
+            <Txt size={12} lh={1.5} color={onVoid.faint}>
               {t.refereeSheetBlurb}
             </Txt>
           </View>
@@ -218,12 +226,25 @@ export default function RefereeMatch() {
             const target = side === 'home' ? home : away;
 
             return (
-              <View key={side} style={{ gap: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Txt size={13} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
+              <Card key={side} pad={0} style={{ gap: 0, overflow: 'hidden' }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    backgroundColor: void_.raised,
+                  }}
+                >
+                  <Txt size={14} weight="bold" color={onVoid.primary} style={{ flex: 1 }}>
                     {side === 'home' ? fixture.homeName : fixture.awayName}
                   </Txt>
-                  <Txt size={11.5} color={scored > target ? burgundy.action : onVoid.dim}>
+                  <Txt
+                    size={11.5}
+                    weight="semibold"
+                    color={scored > target ? burgundy.action : scored === target ? gold.base : onVoid.dim}
+                  >
                     {scored > target
                       ? // The same sentence the server refuses with, said before
                         // the referee taps save rather than after.
@@ -238,11 +259,10 @@ export default function RefereeMatch() {
                   <View
                     key={l.playerId}
                     style={{
-                      padding: 12,
-                      borderRadius: radius.control,
-                      backgroundColor: void_.surface,
-                      borderWidth: 1,
-                      borderColor: onVoid.edgeFaint,
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderTopWidth: 1,
+                      borderTopColor: onVoid.edgeFaint,
                       gap: 10,
                     }}
                   >
@@ -285,26 +305,26 @@ export default function RefereeMatch() {
                     </View>
                   </View>
                 ))}
-              </View>
+              </Card>
             );
           })}
 
-          {notice ? (
-            <Txt size={12.5} color={burgundy.action}>
-              {notice}
-            </Txt>
-          ) : null}
+          {notice ? <Unreachable label={notice} /> : null}
 
           {saved && !notice ? (
-            <Txt size={12.5} color={gold.base}>
-              {t.refereeSaved}
-            </Txt>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <CheckCircle size={18} color={gold.base} filled />
+              <Txt size={12.5} weight="semibold" color={gold.base} style={{ flex: 1 }}>
+                {t.refereeSaved}
+              </Txt>
+            </View>
           ) : null}
 
-          <Button
+          <ActionButton
             label={t.refereeSaveSheet}
             disabled={saving || tooMany}
             onPress={() => void save()}
+            icon={saving ? <ActivityIndicator color={void_.bg} /> : undefined}
           />
         </>
       ) : null}
@@ -328,8 +348,8 @@ function Counter({
     <View
       style={{
         flex: 1,
-        paddingVertical: 14,
-        borderRadius: radius.card,
+        paddingVertical: 16,
+        borderRadius: radius.cardInner,
         borderWidth: 1,
         borderColor: goldAlpha.edge,
         backgroundColor: void_.surface,
@@ -337,7 +357,9 @@ function Counter({
         gap: 8,
       }}
     >
-      <Eyebrow>{label}</Eyebrow>
+      <Txt size={13} weight="semibold" color={onVoid.secondary}>
+        {label}
+      </Txt>
       <Txt size={36} weight="bold" em={-0.03} color={gold.base}>
         {format(value)}
       </Txt>

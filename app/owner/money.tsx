@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { OpMono, OpNotice, OpRow, OpScreen, OpSection, OpTile } from '@/components/operative';
-import { ChevronRight } from '@/components/icons';
+import { OpMono, OpNotice, OpTile } from '@/components/operative';
+import { OpEmpty, OpGroup, OpHeading, OpMenuGroup, OpMenuRow, OpPage, opIconInk } from '@/components/kitOperative';
+import { Users, Wallet } from '@/components/icons';
 import { gold, ink, onOperative } from '@/theme/tokens';
 import { venuePayouts, type PayoutRow } from '@/data/manage';
 import { useSession } from '@/state/session';
@@ -18,7 +19,7 @@ import { useI18n } from '@/i18n';
  * the number a venue reconciles against at the end of a week is the second one.
  */
 export default function OwnerMoney() {
-  const { t, num } = useI18n();
+  const { t, num, shortDate } = useI18n();
   const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
@@ -57,7 +58,9 @@ export default function OwnerMoney() {
   );
 
   return (
-    <OpScreen>
+    <OpPage>
+      <OpHeading title={t.ownTabMoney} />
+
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <OpTile label={t.ownCollected} value={num(total.collected)} sub={t.ownEgp30Days} accent />
         <OpTile label={t.ownOutstanding} value={num(total.outstanding)} sub={t.ownEgpAtGate} />
@@ -66,67 +69,62 @@ export default function OwnerMoney() {
 
       <OpNotice text={error} />
 
-      {/* Money somebody says they have already sent, waiting to be checked
-          against the wallet. Above the takings on purpose: a player is waiting
-          on each of these, and the day's total is not. */}
-      <OpRow onPress={() => router.push('/owner/claims')}>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Txt size={13.5} weight="semibold" color={ink}>
-            {t.ownClaims}
-          </Txt>
-          <Txt size={10.5} color="rgba(20,18,16,.45)">
-            {t.ownClaimsBlurb}
-          </Txt>
-        </View>
-        <ChevronRight size={14} color={onOperative.dim} />
-      </OpRow>
-
-      {/* The other half of the commercial picture, and the only way into it —
-          Owner Mode's tab bar is five items by design and this is not a sixth. */}
-      <OpRow onPress={() => router.push('/owner/customers')}>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Txt size={13.5} weight="semibold" color={ink}>
-            {t.ownCustomers}
-          </Txt>
-          <Txt size={10.5} color="rgba(20,18,16,.45)">
-            {t.ownCustomersBlurb}
-          </Txt>
-        </View>
-        <ChevronRight size={14} color={onOperative.dim} />
-      </OpRow>
+      <OpMenuGroup>
+        {/* Money somebody says they have already sent, waiting to be checked
+            against the wallet. Above the takings on purpose: a player is waiting
+            on each of these, and the day's total is not. */}
+        <OpMenuRow
+          icon={<Wallet size={19} color={opIconInk('money')} />}
+          tone="money"
+          title={t.ownClaims}
+          detail={t.ownClaimsBlurb}
+          onPress={() => router.push('/owner/claims')}
+        />
+        {/* The other half of the commercial picture, and the only way into it —
+            Owner Mode's tab bar is five items by design and this is not a sixth. */}
+        <OpMenuRow
+          icon={<Users size={19} color={ink} />}
+          title={t.ownCustomers}
+          detail={t.ownCustomersBlurb}
+          onPress={() => router.push('/owner/customers')}
+        />
+      </OpMenuGroup>
 
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title={t.ownByEvening} hint={t.ownGrossHint}>
-        {rows.length === 0 && !loading ? (
-          <Txt size={12.5} color={onOperative.dim}>
-            {t.ownNothingBooked}
-          </Txt>
-        ) : null}
+      <OpGroup title={t.ownByEvening} hint={t.ownGrossHint}>
+        {rows.length === 0 && !loading ? <OpEmpty title={t.ownNothingBooked} /> : null}
 
-        <View style={{ gap: 8 }}>
-          {rows.map((r) => (
-            <OpRow key={r.onDate} accent={r.outstandingEgp > 0}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={13} weight="semibold" color={ink}>
-                  {r.onDate}
-                </Txt>
-                <Txt size={10.5} color="rgba(20,18,16,.45)">
-                  {t.ownDayLine(num(r.bookings), num(r.grossEgp))}
-                </Txt>
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 3 }}>
-                <OpMono>{r.collectedEgp} in</OpMono>
-                {r.outstandingEgp > 0 ? (
-                  <Txt size={10.5} color={gold.ink}>
-                    {r.outstandingEgp} due
+        {rows.length > 0 ? (
+          <OpMenuGroup>
+            {rows.map((r) => (
+              <View
+                key={r.onDate}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, paddingHorizontal: 14 }}
+              >
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Txt size={14} weight="semibold" color={ink}>
+                    {shortDate(`${r.onDate}T12:00:00Z`)}
                   </Txt>
-                ) : null}
+                  <Txt size={11.5} color={onOperative.faint}>
+                    {t.ownDayLine(num(r.bookings), num(r.grossEgp))}
+                  </Txt>
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 3 }}>
+                  {/* These two were bare English — `300 in`, `150 due` — on a
+                      screen otherwise read in the manager's language. */}
+                  <OpMono>{t.ownerAmountIn(num(r.collectedEgp))}</OpMono>
+                  {r.outstandingEgp > 0 ? (
+                    <Txt size={11.5} weight="semibold" color={gold.ink}>
+                      {t.ownerAmountDue(num(r.outstandingEgp))}
+                    </Txt>
+                  ) : null}
+                </View>
               </View>
-            </OpRow>
-          ))}
-        </View>
-      </OpSection>
-    </OpScreen>
+            ))}
+          </OpMenuGroup>
+        ) : null}
+      </OpGroup>
+    </OpPage>
   );
 }

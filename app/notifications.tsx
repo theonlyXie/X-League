@@ -3,8 +3,9 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { ArrowLeft } from '@/components/icons';
-import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
+import { MenuGroup } from '@/components/kit';
+import { Bell, Calendar, CheckCircle, ChevronLeft, Megaphone, Shield, Swords, Trophy, Users, Whistle } from '@/components/icons';
+import { gold, goldAlpha, onVoid, radius } from '@/theme/tokens';
 import {
   markNotificationsRead,
   myNotifications,
@@ -112,25 +113,17 @@ export default function Notifications() {
         ) : undefined
       }
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
           {t.notifications}
         </Txt>
         {rows.some((n) => !n.read) ? (
@@ -144,7 +137,7 @@ export default function Notifications() {
               reload();
             }}
           >
-            <Txt size={11.5} weight="semibold" color={gold.base}>
+            <Txt size={12.5} weight="semibold" color={gold.base}>
               {t.markAllRead}
             </Txt>
           </Pressable>
@@ -163,44 +156,86 @@ export default function Notifications() {
         </Txt>
       ) : null}
 
-      <View style={{ gap: 8 }}>
-        {rows.map((n) => (
-          <Pressable
-            key={n.notificationId}
-            accessibilityRole="button"
-            accessibilityLabel={say(n.title) ?? n.title}
-            onPress={() => open(n)}
-            style={({ pressed }) => ({
-              paddingVertical: 13,
-              paddingHorizontal: 15,
-              borderRadius: radius.control,
-              backgroundColor: void_.surface,
-              borderWidth: 1,
-              borderColor: !n.read ? goldAlpha.edgeSoft : pressed ? goldAlpha.edge : onVoid.edgeFaint,
-              gap: 4,
-            })}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {!n.read ? (
+      {rows.length ? (
+        <MenuGroup>
+          {rows.map((n) => {
+            const Icon = iconFor(n);
+            return (
+              <Pressable
+                key={n.notificationId}
+                accessibilityRole="button"
+                accessibilityLabel={say(n.title) ?? n.title}
+                onPress={() => open(n)}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  gap: 13,
+                  paddingVertical: 13,
+                  paddingHorizontal: 14,
+                  // Unread is the one thing this list has to say at a glance,
+                  // so it is the row that carries the gold, not a badge beside it.
+                  backgroundColor: pressed ? goldAlpha.fill : !n.read ? goldAlpha.fillSoft : 'transparent',
+                })}
+              >
                 <View
-                  style={{ width: 6, height: 6, borderRadius: radius.pill, backgroundColor: gold.base }}
-                />
-              ) : null}
-              <Txt size={13.5} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
-                {say(n.title)}
-              </Txt>
-              <Txt size={10.5} color={onVoid.dim}>
-                {sameDay(n.at) ? hour(n.at) : shortDate(n.at)}
-              </Txt>
-            </View>
-            {n.body ? (
-              <Txt size={12} lh={1.5} color={onVoid.muted}>
-                {say(n.body)}
-              </Txt>
-            ) : null}
-          </Pressable>
-        ))}
-      </View>
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: radius.icon,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: !n.read ? goldAlpha.fill : 'rgba(243,238,229,.05)',
+                  }}
+                >
+                  <Icon size={18} color={!n.read ? gold.base : onVoid.muted} />
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Txt
+                      size={14}
+                      weight={!n.read ? 'bold' : 'semibold'}
+                      color={onVoid.primary}
+                      style={{ flex: 1 }}
+                    >
+                      {say(n.title)}
+                    </Txt>
+                    <Txt size={10.5} weight={!n.read ? 'semibold' : 'regular'} color={!n.read ? gold.base : onVoid.dim}>
+                      {sameDay(n.at) ? hour(n.at) : shortDate(n.at)}
+                    </Txt>
+                    {!n.read ? (
+                      <View style={{ width: 7, height: 7, borderRadius: radius.pill, backgroundColor: gold.base }} />
+                    ) : null}
+                  </View>
+                  {n.body ? (
+                    <Txt size={12} lh={1.5} color={!n.read ? onVoid.secondary : onVoid.faint}>
+                      {say(n.body)}
+                    </Txt>
+                  ) : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </MenuGroup>
+      ) : null}
     </Screen>
   );
+}
+
+/**
+ * The icon a notification wears. The server's `kind` is the better witness,
+ * the payload's `screen` the fallback, and anything neither names gets the
+ * bell rather than a guess.
+ */
+function iconFor(n: Notification): typeof Bell {
+  const k = n.kind ?? '';
+  const screen = n.payload?.screen;
+  if (k.startsWith('challenge') || screen === 'challenges') return Swords;
+  if (k.startsWith('club') || screen === 'club') return Shield;
+  if (k.startsWith('tournament') || screen === 'tournament') return Trophy;
+  if (k.startsWith('result') || screen === 'result') return Whistle;
+  if (k.startsWith('payment')) return CheckCircle;
+  if (k === 'squad_invite' || k.startsWith('call') || screen === 'lobby') return Users;
+  if (k === 'message') return Megaphone;
+  if (k.startsWith('booking') || screen === 'booking') return Calendar;
+  return Bell;
 }

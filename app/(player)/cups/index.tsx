@@ -5,9 +5,10 @@ import * as Haptics from 'expo-haptics';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { NotificationBell } from '@/components/NotificationBell';
-import { Button, Eyebrow } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
 import { CapacityBar, PressScale, Reveal } from '@/components/motion';
+import { MenuGroup, MenuRow, PitchArt, Pill, SectionTitle, Tag } from '@/components/kit';
+import { Podium, Trophy } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import {
   listTournaments,
@@ -29,11 +30,15 @@ import { isLive } from '@/lib/supabase';
  * Open to guests, because a cup nobody can see is a cup nobody enters. The
  * player's own entries sit above the public list: "am I in this" is the first
  * question anybody opens this tab with.
+ *
+ * In the redesign's feed idiom: a title row, headed sections, and each cup as
+ * a picture-led card like the venue feed's — the drawn pitch with the cup's
+ * state laid over it, and the facts in a panel along its lower edge.
  */
 export default function Cups() {
   const router = useRouter();
   const { signedIn } = useSession();
-  const { t, num, money, shortDate, moment } = useI18n();
+  const { t, num, moment } = useI18n();
 
   // The refresh button in the top bar.
   const tick = useRefreshTick();
@@ -100,7 +105,7 @@ export default function Cups() {
 
   return (
     <Screen
-      contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}
+      contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 22 }}
       refreshControl={
         isLive ? (
           <RefreshControl refreshing={loading} onRefresh={reload} tintColor={gold.base} colors={[gold.base]} />
@@ -125,69 +130,79 @@ export default function Cups() {
           answer to the only question a player opens this tab with. */}
       {matches.length > 0 ? (
         <View style={{ gap: 12 }}>
-          <Eyebrow>{t.yourMatches}</Eyebrow>
-          <View style={{ gap: 8 }}>
+          <SectionTitle title={t.yourMatches} />
+          <View style={{ gap: 10 }}>
             {matches.map((m, i) => (
               <Reveal key={m.fixtureId} index={i}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${m.cupName}. ${
-                    m.opponent ? t.againstName(m.opponent) : t.bye
-                  }. ${
-                    m.venueName
-                      ? m.pitchLabel
-                        ? t.groundAndPitch(m.venueName, m.pitchLabel)
-                        : m.venueName
-                      : t.whereTbc
-                  }. ${m.kicksOffAt ? moment(m.kicksOffAt) : t.whenTbc}`}
-                  onPress={() => router.push(`/cups/${m.tournamentId}`)}
+                <View
                   style={{
-                    paddingVertical: 14,
-                    paddingHorizontal: 16,
-                    borderRadius: radius.control,
+                    borderRadius: radius.cardInner,
                     backgroundColor: void_.surface,
                     borderWidth: 1,
                     borderColor: goldAlpha.edge,
-                    gap: 6,
+                    overflow: 'hidden',
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Txt size={14.5} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
-                      {m.opponent ? t.againstName(m.opponent) : t.bye}
-                    </Txt>
-                    <Txt size={10.5} weight="semibold" em={0.06} color={gold.base}>
-                      {m.mySide === 'home' ? t.matchAtHome : t.matchAway}
-                    </Txt>
-                  </View>
-                  <Txt size={11.5} color={onVoid.secondary}>
-                    {m.venueName
-                      ? m.pitchLabel
-                        ? t.groundAndPitch(m.venueName, m.pitchLabel)
-                        : m.venueName
-                      : t.whereTbc}
-                  </Txt>
-                  <Txt size={11.5} color={m.kicksOffAt ? onVoid.secondary : onVoid.faint}>
-                    {m.kicksOffAt ? moment(m.kicksOffAt) : t.whenTbc}
-                  </Txt>
-                  <Txt size={11} color={onVoid.faint}>
-                    {t.cupAndRound(m.cupName, t.roundN(num(m.round)))}
-                  </Txt>
-                </Pressable>
-                {/* A cup match is now the only kind that becomes evidence, and
-                    it only becomes evidence once the people in it rate each
-                    other. This is the one route to that from the Cups tab. */}
-                {m.canRate && m.matchId ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={t.rateThisMatch}
-                    onPress={() => router.push(`/play/rate?match=${m.matchId}`)}
-                    style={{ paddingVertical: 8, alignItems: 'center' }}
+                    accessibilityLabel={`${m.cupName}. ${
+                      m.opponent ? t.againstName(m.opponent) : t.bye
+                    }. ${
+                      m.venueName
+                        ? m.pitchLabel
+                          ? t.groundAndPitch(m.venueName, m.pitchLabel)
+                          : m.venueName
+                        : t.whereTbc
+                    }. ${m.kicksOffAt ? moment(m.kicksOffAt) : t.whenTbc}`}
+                    onPress={() => router.push(`/cups/${m.tournamentId}`)}
+                    style={({ pressed }) => ({
+                      paddingVertical: 14,
+                      paddingHorizontal: 16,
+                      gap: 6,
+                      backgroundColor: pressed ? goldAlpha.fillSoft : 'transparent',
+                    })}
                   >
-                    <Txt size={12} weight="semibold" color={gold.base}>
-                      {t.rateThisMatch}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Txt size={15} weight="bold" color={onVoid.primary} style={{ flex: 1 }}>
+                        {m.opponent ? t.againstName(m.opponent) : t.bye}
+                      </Txt>
+                      <Tag label={m.mySide === 'home' ? t.matchAtHome : t.matchAway} />
+                    </View>
+                    <Txt size={12} color={onVoid.secondary}>
+                      {m.venueName
+                        ? m.pitchLabel
+                          ? t.groundAndPitch(m.venueName, m.pitchLabel)
+                          : m.venueName
+                        : t.whereTbc}
+                    </Txt>
+                    <Txt size={12} weight="semibold" color={m.kicksOffAt ? gold.base : onVoid.faint}>
+                      {m.kicksOffAt ? moment(m.kicksOffAt) : t.whenTbc}
+                    </Txt>
+                    <Txt size={11} color={onVoid.faint}>
+                      {t.cupAndRound(m.cupName, t.roundN(num(m.round)))}
                     </Txt>
                   </Pressable>
-                ) : null}
+                  {/* A cup match is now the only kind that becomes evidence, and
+                      it only becomes evidence once the people in it rate each
+                      other. This is the one route to that from the Cups tab. */}
+                  {m.canRate && m.matchId ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t.rateThisMatch}
+                      onPress={() => router.push(`/play/rate?match=${m.matchId}`)}
+                      style={{
+                        paddingVertical: 11,
+                        alignItems: 'center',
+                        borderTopWidth: 1,
+                        borderTopColor: onVoid.edgeFaint,
+                      }}
+                    >
+                      <Txt size={12.5} weight="semibold" color={gold.base}>
+                        {t.rateThisMatch}
+                      </Txt>
+                    </Pressable>
+                  ) : null}
+                </View>
               </Reveal>
             ))}
           </View>
@@ -196,33 +211,18 @@ export default function Cups() {
 
       {mine.length > 0 ? (
         <View style={{ gap: 12 }}>
-          <Eyebrow>{t.yourCups}</Eyebrow>
-          <View style={{ gap: 8 }}>
+          <SectionTitle title={t.yourCups} />
+          <MenuGroup>
             {mine.map((cup) => (
-              <Pressable
+              <MenuRow
                 key={cup.tournamentId}
-                accessibilityRole="button"
-                accessibilityLabel={`${cup.name}, ${cup.teamName}`}
+                icon={<Trophy size={19} color={gold.base} />}
+                title={cup.name}
+                detail={`${cup.teamName} · ${cup.registrationState === 'pending' ? t.invited : stateLabel(cup.state)}`}
                 onPress={() => router.push(`/cups/${cup.tournamentId}`)}
-                style={{
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                  borderRadius: radius.control,
-                  backgroundColor: void_.surface,
-                  borderWidth: 1,
-                  borderColor: goldAlpha.edgeSoft,
-                  gap: 4,
-                }}
-              >
-                <Txt size={14.5} weight="semibold" color={onVoid.primary}>
-                  {cup.name}
-                </Txt>
-                <Txt size={11.5} color={onVoid.faint}>
-                  {cup.teamName} · {cup.registrationState === 'pending' ? t.invited : stateLabel(cup.state)}
-                </Txt>
-              </Pressable>
+              />
             ))}
-          </View>
+          </MenuGroup>
         </View>
       ) : null}
 
@@ -230,45 +230,31 @@ export default function Cups() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingRight: 20 }}
+          style={{ marginHorizontal: -20 }}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
         >
-          {[null, ...regions.map((r) => r.region)].map((option) => {
-            const on = place === option;
-            return (
-              <PressScale
-                key={option ?? '*'}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={option ?? t.allRegions}
-                onPress={() => {
-                  setPlace(option);
-                  void Haptics.selectionAsync();
-                }}
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 14,
-                  borderRadius: radius.chip,
-                  borderWidth: 1,
-                  borderColor: on ? goldAlpha.frame : onVoid.line,
-                  backgroundColor: on ? goldAlpha.fill : 'transparent',
-                }}
-              >
-                <Txt size={12} weight="medium" color={on ? gold.base : onVoid.secondary}>
-                  {option ?? t.allRegions}
-                </Txt>
-              </PressScale>
-            );
-          })}
+          {[null, ...regions.map((r) => r.region)].map((option) => (
+            <Pill
+              key={option ?? '*'}
+              label={option ?? t.allRegions}
+              on={place === option}
+              onPress={() => {
+                setPlace(option);
+                void Haptics.selectionAsync();
+              }}
+            />
+          ))}
         </ScrollView>
       ) : null}
 
       {holders.length > 0 ? (
-        <View style={{ gap: 10 }}>
-          <Eyebrow>{t.featuredClubs}</Eyebrow>
+        <View style={{ gap: 12 }}>
+          <SectionTitle title={t.featuredClubs} />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingRight: 20 }}
+            style={{ marginHorizontal: -20 }}
+            contentContainerStyle={{ gap: 10, paddingHorizontal: 20 }}
           >
             {holders.map((club) => (
               <PressScale
@@ -277,28 +263,28 @@ export default function Cups() {
                 accessibilityLabel={club.name}
                 onPress={() => router.push(`/clubs/${club.clubId}`)}
                 style={{
-                  width: 132,
+                  width: 136,
                   padding: 12,
-                  borderRadius: radius.control,
+                  borderRadius: radius.cardInner,
                   borderWidth: 1,
-                  borderColor: goldAlpha.edge,
-                  backgroundColor: void_.inset,
+                  borderColor: onVoid.edge,
+                  backgroundColor: void_.surface,
                   gap: 8,
                 }}
               >
                 <Avatar
                   name={club.name}
                   url={club.crestUrl}
-                  size={38}
+                  size={40}
                   radius={radius.chip}
                   background={void_.raised}
                   border={goldAlpha.edge}
                   color={gold.base}
                 />
-                <Txt size={13} weight="semibold" color={onVoid.primary} numberOfLines={2}>
+                <Txt size={13.5} weight="bold" color={onVoid.primary} numberOfLines={2}>
                   {club.name}
                 </Txt>
-                <Txt size={11} color={gold.base}>
+                <Txt size={11.5} weight="semibold" color={gold.base}>
                   {t.trophyCount(num(club.trophies))}
                 </Txt>
               </PressScale>
@@ -309,12 +295,13 @@ export default function Cups() {
 
       {/* The record belongs on the competitive tab, not only in a row on the
           account screen. Somebody looking for who is scoring looks here. */}
-      <Button
-        label={t.topScorersEverywhere}
-        variant="ghost"
-        height={44}
-        onPress={() => router.push('/leaderboard')}
-      />
+      <MenuGroup>
+        <MenuRow
+          icon={<Podium size={19} color={gold.base} />}
+          title={t.topScorersEverywhere}
+          onPress={() => router.push('/leaderboard')}
+        />
+      </MenuGroup>
 
       {!loading && all.length === 0 ? (
         <View style={{ gap: 6 }}>
@@ -328,87 +315,119 @@ export default function Cups() {
       ) : null}
 
       <View style={{ gap: 12 }}>
-        {all.length > 0 ? <Eyebrow>{t.allCups}</Eyebrow> : null}
-        <View style={{ gap: 10 }}>
+        {all.length > 0 ? <SectionTitle title={t.allCups} /> : null}
+        <View style={{ gap: 14 }}>
           {all.map((cup) => (
-            <Pressable
+            <CupCard
               key={cup.tournamentId}
-              accessibilityRole="button"
-              accessibilityLabel={`${cup.name} at ${cup.venueName}`}
+              cup={cup}
+              stateLabel={stateLabel(cup.state)}
               onPress={() => router.push(`/cups/${cup.tournamentId}`)}
-              style={({ pressed }) => ({
-                padding: 16,
-                borderRadius: radius.cardInner,
-                backgroundColor: void_.surface,
-                borderWidth: 1,
-                borderColor: pressed ? goldAlpha.edge : onVoid.edgeFaint,
-                gap: 10,
-              })}
-            >
-              <View
-                style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}
-              >
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Txt size={16} weight="bold" em={-0.015} color={onVoid.primary}>
-                    {cup.name}
-                  </Txt>
-                  <Txt size={11.5} color={onVoid.faint}>
-                    {cup.venueName}
-                    {cup.region ? ` · ${cup.region}` : ''}
-                  </Txt>
-                </View>
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: cup.state === 'open' ? goldAlpha.accent : onVoid.hairline,
-                    borderRadius: radius.badge,
-                    paddingVertical: 3,
-                    paddingHorizontal: 7,
-                  }}
-                >
-                  <Txt
-                    size={9.5}
-                    weight="bold"
-                    em={0.08}
-                    color={cup.state === 'open' ? gold.base : onVoid.dim}
-                  >
-                    {stateLabel(cup.state).toUpperCase()}
-                  </Txt>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                <Txt size={11.5} color={onVoid.muted}>
-                  {t.teamsEntered(num(cup.entered), num(cup.maxTeams))}
-                </Txt>
-                {cup.entryFeeEgp > 0 ? (
-                  <Txt size={11.5} color={onVoid.muted}>
-                    {t.entryFee(money(cup.entryFeeEgp))}
-                  </Txt>
-                ) : null}
-                {cup.prizePoolEgp > 0 ? (
-                  <Txt size={11.5} weight="semibold" color={gold.base}>
-                    {t.prizePool} {money(cup.prizePoolEgp)}
-                  </Txt>
-                ) : null}
-                {cup.startsOn ? (
-                  <Txt size={11.5} color={onVoid.muted}>
-                    {shortDate(`${cup.startsOn}T18:00:00Z`)}
-                  </Txt>
-                ) : null}
-              </View>
-
-              <CapacityBar
-                filled={cup.entered}
-                capacity={cup.maxTeams}
-                track={onVoid.edge}
-                fill={gold.base}
-                full={onVoid.line}
-              />
-            </Pressable>
+            />
           ))}
         </View>
       </View>
     </Screen>
+  );
+}
+
+/** What kind of competition it is, in the reader's language. */
+function cupFormatLabel(format: TournamentSummary['format'], t: ReturnType<typeof useI18n>['t']): string {
+  return format === 'knockout' ? t.cupsFormatKnockout : format === 'group_knockout' ? t.cupsFormatGroups : t.cupsFormatLeague;
+}
+
+/**
+ * One cup in the feed, shaped like the venue feed's card: the drawn pitch with
+ * its state, format and prize over it, and the facts in a panel on its lower
+ * edge — name and start date on one line, where and what it costs on the next,
+ * and how full it is under both.
+ */
+function CupCard({
+  cup,
+  stateLabel,
+  onPress,
+}: {
+  cup: TournamentSummary;
+  stateLabel: string;
+  onPress: () => void;
+}) {
+  const { t, num, money, shortDate } = useI18n();
+  const open = cup.state === 'open';
+  const where = [cup.venueName, cup.region].filter(Boolean).join(' · ');
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[cup.name, where, stateLabel, cup.entryFeeEgp > 0 ? t.entryFee(money(cup.entryFeeEgp)) : null]
+        .filter(Boolean)
+        .join(', ')}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        borderRadius: radius.card,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: pressed ? goldAlpha.edge : onVoid.edge,
+        backgroundColor: void_.surface,
+      })}
+    >
+      <PitchArt height={212} />
+      <View style={{ position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', gap: 6 }}>
+        <Tag label={stateLabel} tone={open ? 'gold' : 'plain'} />
+        <Tag label={cupFormatLabel(cup.format, t)} />
+        <View style={{ flex: 1 }} />
+        {cup.prizePoolEgp > 0 ? <Tag label={`${t.prizePool} ${money(cup.prizePoolEgp)}`} /> : null}
+      </View>
+      <View
+        style={{
+          position: 'absolute',
+          left: 10,
+          right: 10,
+          bottom: 10,
+          borderRadius: radius.row,
+          backgroundColor: 'rgba(14,14,14,.94)',
+          borderWidth: 1,
+          borderColor: onVoid.edge,
+          paddingVertical: 11,
+          paddingHorizontal: 13,
+          gap: 6,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <Txt size={15.5} weight="bold" color={onVoid.primary} numberOfLines={1} style={{ flexShrink: 1 }}>
+            {cup.name}
+          </Txt>
+          {cup.startsOn ? (
+            <Txt size={12} weight="semibold" color={gold.base}>
+              {shortDate(`${cup.startsOn}T18:00:00Z`)}
+            </Txt>
+          ) : null}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+          <Txt size={11.5} color={onVoid.faint} numberOfLines={1} style={{ flexShrink: 1 }}>
+            {where}
+          </Txt>
+          {cup.entryFeeEgp > 0 ? (
+            <Txt size={12} weight="semibold" color={onVoid.primary}>
+              {t.entryFee(money(cup.entryFeeEgp))}
+            </Txt>
+          ) : null}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <CapacityBar
+              filled={cup.entered}
+              capacity={cup.maxTeams}
+              height={4}
+              track={onVoid.edge}
+              fill={gold.base}
+              full={onVoid.line}
+            />
+          </View>
+          <Txt size={11} color={onVoid.muted}>
+            {t.teamsEntered(num(cup.entered), num(cup.maxTeams))}
+          </Txt>
+        </View>
+      </View>
+    </Pressable>
   );
 }

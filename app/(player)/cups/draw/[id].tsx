@@ -11,10 +11,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Eyebrow } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
 import { EASE_OUT, Reveal } from '@/components/motion';
-import { ArrowLeft } from '@/components/icons';
+import { ActionButton, SectionTitle } from '@/components/kit';
+import { ChevronLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { tournamentDetail, type Fixture, type TournamentDetail } from '@/data/cups';
 import { useI18n } from '@/i18n';
@@ -36,6 +36,10 @@ import { isLive } from '@/lib/supabase';
  * eventually, so revealing all of it would be six minutes of theatre for
  * information the fixtures tab shows better; the opening round is the part
  * where "who do we get" has an answer.
+ *
+ * The redesign touches only the frame — the header, the section titles and
+ * the buttons speak the kit's idiom. The ceremony itself, the field and the
+ * pairings landing one at a time, is left exactly as it was staged.
  */
 export default function DrawReveal() {
   const router = useRouter();
@@ -129,18 +133,26 @@ export default function DrawReveal() {
 
   return (
     <Screen contentStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 22 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 6 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
-          hitSlop={12}
-          onPress={() => router.back()}
+          hitSlop={8}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/cups'))}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={20} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
-          {t.drawTitle}
-        </Txt>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
+            {t.drawTitle}
+          </Txt>
+          {cup ? (
+            <Txt size={11.5} weight="semibold" color={gold.base} numberOfLines={1}>
+              {cup.name}
+            </Txt>
+          ) : null}
+        </View>
         {!done && ties.length > 0 ? (
           <Pressable
             accessibilityRole="button"
@@ -172,19 +184,17 @@ export default function DrawReveal() {
 
       {cup ? (
         <>
-          <Txt size={13} color={onVoid.secondary}>
-            {cup.name}
-          </Txt>
-
           {/* Act one: the field. Everyone who is in, before anybody knows who
               they have got. */}
           <View style={{ gap: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
-              <Eyebrow>{t.drawField}</Eyebrow>
-              <Txt size={11} color={onVoid.faint}>
-                {t.drawFieldCount(num(entrants.length))}
-              </Txt>
-            </View>
+            <SectionTitle
+              title={t.drawField}
+              right={
+                <Txt size={12} color={onVoid.faint}>
+                  {t.drawFieldCount(num(entrants.length))}
+                </Txt>
+              }
+            />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {entrants.map((e, i) => (
                 <Reveal key={`${runs}-${e.registration_id}`} index={i}>
@@ -193,24 +203,24 @@ export default function DrawReveal() {
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 8,
-                      paddingVertical: 7,
-                      paddingHorizontal: 11,
-                      borderRadius: radius.chip,
+                      paddingVertical: 6,
+                      paddingHorizontal: 10,
+                      borderRadius: radius.pill,
                       borderWidth: 1,
                       borderColor: onVoid.line,
-                      backgroundColor: void_.inset,
+                      backgroundColor: void_.surface,
                     }}
                   >
                     <Avatar
                       name={e.entrant_name}
                       url={e.crest_url}
                       size={22}
-                      radius={radius.badge}
+                      radius={radius.pill}
                       background={void_.raised}
                       border={goldAlpha.edge}
                       color={gold.base}
                     />
-                    <Txt size={12.5} weight="medium" color={onVoid.primary}>
+                    <Txt size={12.5} weight="semibold" color={onVoid.primary}>
                       {e.entrant_name}
                     </Txt>
                   </View>
@@ -236,12 +246,14 @@ export default function DrawReveal() {
               onPress={nudge}
               style={{ gap: 12 }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
-                <Eyebrow>{t.drawPairings}</Eyebrow>
-                <Txt size={11} color={onVoid.faint}>
-                  {cup.format === 'knockout' ? t.drawFirstMatches : t.drawOpeningRound}
-                </Txt>
-              </View>
+              <SectionTitle
+                title={t.drawPairings}
+                right={
+                  <Txt size={12} color={onVoid.faint}>
+                    {cup.format === 'knockout' ? t.drawFirstMatches : t.drawOpeningRound}
+                  </Txt>
+                }
+              />
 
               <View style={{ gap: 10 }}>
                 {ties.slice(0, step).map((f, i) => (
@@ -272,15 +284,11 @@ export default function DrawReveal() {
                   {t.drawThenEveryone}
                 </Txt>
               ) : null}
-              <Button
+              <ActionButton
                 label={t.drawSeeFixtures}
                 onPress={() => router.replace(`/cups/${cup.tournamentId}`)}
               />
-              <Pressable accessibilityRole="button" accessibilityLabel={t.drawAgain} onPress={again}>
-                <Txt size={12.5} weight="semibold" color={gold.base} style={{ textAlign: 'center' }}>
-                  {t.drawAgain}
-                </Txt>
-              </Pressable>
+              <ActionButton label={t.drawAgain} variant="ghost" onPress={again} />
             </Reveal>
           ) : null}
         </>
@@ -352,9 +360,9 @@ function Tie({
   return (
     <View
       style={{
-        paddingVertical: 12,
+        paddingVertical: 14,
         paddingHorizontal: 14,
-        borderRadius: radius.control,
+        borderRadius: radius.cardInner,
         backgroundColor: void_.surface,
         borderWidth: 1,
         borderColor: goldAlpha.edge,

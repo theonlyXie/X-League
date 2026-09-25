@@ -4,8 +4,9 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Divider, Eyebrow } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
+import { ActionButton, Card, MenuGroup, SectionTitle } from '@/components/kit';
+import { ChevronLeft, ChevronRight, Plus } from '@/components/icons';
+import { familyFor } from '@/theme/typography';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { createTeam, myTeams, respondToTeamInvite, type Team } from '@/data/squad';
 import { useI18n } from '@/i18n';
@@ -22,7 +23,7 @@ import { useSession } from '@/state/session';
 export default function Teams() {
   const { signedIn } = useSession();
   const router = useRouter();
-  const { reason, t, num } = useI18n();
+  const { reason, t, num, rtl } = useI18n();
 
   // The refresh button in the top bar.
   const tick = useRefreshTick();
@@ -69,27 +70,63 @@ export default function Teams() {
   const invited = teams.filter((team) => team.state === 'invited');
   const active = teams.filter((team) => team.state === 'active');
 
+  const field = {
+    flex: 1,
+    minWidth: 0,
+    height: 48,
+    borderRadius: radius.row,
+    borderWidth: 1,
+    borderColor: onVoid.line,
+    backgroundColor: void_.bg,
+    paddingHorizontal: 14,
+    color: onVoid.primary,
+    fontFamily: familyFor('regular', rtl),
+    fontSize: 15,
+  } as const;
+
+  async function answer(teamId: string, accept: boolean) {
+    try {
+      await respondToTeamInvite(teamId, accept);
+    } catch {
+      setNotice(t.offline);
+    } finally {
+      reload();
+    }
+  }
+
+  async function create() {
+    setCreating(true);
+    try {
+      const res = await createTeam(name.trim());
+      if (res.ok) {
+        setName('');
+        setNotice(null);
+        reload();
+      } else {
+        setNotice(reason(res.reason) ?? null);
+      }
+    } catch {
+      // A dropped connection used to leave the button disabled for good,
+      // because `creating` was only cleared on the path that returned.
+      setNotice(t.offline);
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} style={{ flex: 1 }}>
           {t.teamsTitle}
         </Txt>
       </View>
@@ -102,59 +139,31 @@ export default function Teams() {
 
       {invited.length > 0 ? (
         <View style={{ gap: 12 }}>
-          <Eyebrow>{t.invitation}</Eyebrow>
+          <SectionTitle title={t.invitation} />
           {invited.map((team) => (
-            <View
-              key={team.teamId}
-              style={{
-                padding: 16,
-                borderRadius: radius.cardInner,
-                backgroundColor: void_.surface,
-                borderWidth: 1,
-                borderColor: goldAlpha.edgeSoft,
-                gap: 12,
-              }}
-            >
-              <View style={{ gap: 3 }}>
-                <Txt size={14.5} weight="semibold" color={onVoid.primary}>
-                  {team.name}
-                </Txt>
-                <Txt size={11.5} color={onVoid.faint}>
-                  {t.members(num(team.members))}
-                  {team.homeArea ? ` · ${team.homeArea}` : ''}
-                </Txt>
+            <Card key={team.teamId} style={{ borderColor: goldAlpha.edgeSoft }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Crest name={team.name} hue={team.crestHue} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Txt size={15} weight="bold" color={onVoid.primary} numberOfLines={1}>
+                    {team.name}
+                  </Txt>
+                  <Txt size={11.5} color={onVoid.faint}>
+                    {t.members(num(team.members))}
+                    {team.homeArea ? ` · ${team.homeArea}` : ''}
+                  </Txt>
+                </View>
               </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button
-                  label={t.joinTeam}
-                  variant="accept"
-                  flex={1}
-                  height={38}
-                  round={radius.chip}
-                  size={13}
-                  onPress={async () => {
-                    await respondToTeamInvite(team.teamId, true);
-                    reload();
-                  }}
-                />
-                <Button
-                  label={t.declineTeam}
-                  variant="decline"
-                  flex={1}
-                  height={38}
-                  round={radius.chip}
-                  size={13}
-                  onPress={async () => {
-                    await respondToTeamInvite(team.teamId, false);
-                    reload();
-                  }}
-                />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <ActionButton label={t.joinTeam} flex onPress={() => answer(team.teamId, true)} />
+                <ActionButton label={t.declineTeam} variant="ghost" flex onPress={() => answer(team.teamId, false)} />
               </View>
-            </View>
+            </Card>
           ))}
         </View>
       ) : null}
 
+      {/* Two different silences: nothing here, and could not read the list. */}
       {!loading && active.length === 0 ? (
         <View style={{ gap: 6 }}>
           <Txt size={15} weight="semibold" color={onVoid.primary}>
@@ -166,98 +175,87 @@ export default function Teams() {
         </View>
       ) : null}
 
-      <View style={{ gap: 8 }}>
-        {active.map((team) => (
-          <Pressable
-            key={team.teamId}
-            accessibilityRole="button"
-            accessibilityLabel={team.name}
-            onPress={() => router.push(`/teams/${team.teamId}`)}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              paddingVertical: 13,
-              paddingHorizontal: 14,
-              borderRadius: radius.control,
-              backgroundColor: void_.surface,
-              borderWidth: 1,
-              borderColor: pressed ? goldAlpha.edge : onVoid.edgeFaint,
-            })}
-          >
-            <View
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: radius.chip,
-                backgroundColor:
-                  team.crestHue != null ? `hsl(${team.crestHue}, 30%, 18%)` : void_.inset,
+      {active.length ? (
+        <MenuGroup>
+          {active.map((team) => (
+            <Pressable
+              key={team.teamId}
+              accessibilityRole="button"
+              accessibilityLabel={team.name}
+              onPress={() => router.push(`/teams/${team.teamId}`)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
-              }}
+                gap: 12,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                backgroundColor: pressed ? goldAlpha.fillSoft : 'transparent',
+              })}
             >
-              <Txt size={12} weight="bold" color={gold.base}>
-                {team.name.slice(0, 2).toUpperCase()}
-              </Txt>
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={14} weight="semibold" color={onVoid.primary}>
-                {team.name}
-              </Txt>
-              <Txt size={11.5} color={onVoid.faint}>
-                {t.members(num(team.members))}
-                {team.role === 'captain' ? ` · ${t.captain}` : ''}
-              </Txt>
-            </View>
-          </Pressable>
-        ))}
-      </View>
+              <Crest name={team.name} hue={team.crestHue} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Txt size={15} weight="semibold" color={onVoid.primary} numberOfLines={1}>
+                  {team.name}
+                </Txt>
+                <Txt size={11.5} color={onVoid.faint}>
+                  {t.members(num(team.members))}
+                  {team.role === 'captain' ? ` · ${t.captain}` : ''}
+                </Txt>
+              </View>
+              <ChevronRight size={16} color={onVoid.dim} />
+            </Pressable>
+          ))}
+        </MenuGroup>
+      ) : null}
 
-      <Divider />
-
-      <View style={{ gap: 10 }}>
-        <Eyebrow>{t.newTeam}</Eyebrow>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder={t.teamName}
-            placeholderTextColor={onVoid.dim}
-            style={{
-              flex: 1,
-              height: 46,
-              paddingHorizontal: 14,
-              borderRadius: radius.control,
-              borderWidth: 1,
-              borderColor: onVoid.edge,
-              color: onVoid.primary,
-              backgroundColor: void_.surface,
-            }}
-          />
-          <Button
-            label={t.create}
-            height={46}
-            disabled={creating || name.trim().length < 2}
-            onPress={async () => {
-              setCreating(true);
-              const res = await createTeam(name.trim());
-              setCreating(false);
-              if (res.ok) {
-                setName('');
-                setNotice(null);
-                reload();
-              } else {
-                setNotice(reason(res.reason) ?? null);
-              }
-            }}
-          />
-        </View>
-        {notice ? (
-          <Txt size={12} color={burgundy.action}>
-            {notice}
-          </Txt>
-        ) : null}
+      <View style={{ gap: 12 }}>
+        <SectionTitle title={t.newTeam} />
+        <Card>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder={t.teamName}
+              placeholderTextColor={onVoid.disabled}
+              accessibilityLabel={t.teamName}
+              style={field}
+            />
+            <ActionButton
+              label={t.create}
+              disabled={creating || name.trim().length < 2}
+              icon={<Plus size={16} color={void_.bg} />}
+              onPress={create}
+            />
+          </View>
+          {notice ? (
+            <Txt size={12} color={burgundy.action}>
+              {notice}
+            </Txt>
+          ) : null}
+        </Card>
       </View>
     </Screen>
+  );
+}
+
+/** A team's badge: its initials on the hue it was given, or on the inset. */
+function Crest({ name, hue }: { name: string; hue: number | null }) {
+  return (
+    <View
+      style={{
+        width: 46,
+        height: 46,
+        borderRadius: radius.chip,
+        backgroundColor: hue != null ? `hsl(${hue}, 30%, 18%)` : void_.inset,
+        borderWidth: 1,
+        borderColor: goldAlpha.edgeSoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Txt size={13} weight="bold" color={gold.base}>
+        {name.slice(0, 2).toUpperCase()}
+      </Txt>
+    </View>
   );
 }

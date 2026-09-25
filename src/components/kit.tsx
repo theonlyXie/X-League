@@ -242,6 +242,7 @@ export function SearchField({
         placeholderTextColor={onVoid.disabled}
         autoFocus={autoFocus}
         autoCorrect={false}
+        autoCapitalize="none"
         returnKeyType="search"
         accessibilityLabel={placeholder}
         style={{

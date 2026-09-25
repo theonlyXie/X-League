@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { OpButton, OpField, OpHeader, OpNotice, OpRow, OpScreen, OpSection } from '@/components/operative';
-import { ink, onOperative, operative, radius } from '@/theme/tokens';
+import { OpButton, OpField, OpNotice } from '@/components/operative';
+import {
+  OpActionButton,
+  OpCard,
+  OpGroup,
+  OpMenuGroup,
+  OpMenuRow,
+  OpPage,
+  OpPill,
+  OpPills,
+} from '@/components/kitOperative';
+import { Ball, Plus } from '@/components/icons';
+import { ink, onOperative } from '@/theme/tokens';
 import {
   addPitch,
   setVenueHours,
@@ -34,7 +44,6 @@ import { useI18n } from '@/i18n';
  */
 export default function Hours() {
   const { reason, t } = useI18n();
-  const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
 
@@ -115,36 +124,13 @@ export default function Hours() {
   };
 
   return (
-    <OpScreen>
-      <OpHeader title={t.ownHours} onBack={() => router.back()} />
-
+    <OpPage title={t.ownHours} subtitle={pitches.find((p) => p.id === pitchId)?.label ?? venue?.name}>
       {pitches.length > 1 ? (
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          {pitches.map((p) => {
-            const on = p.id === pitchId;
-            return (
-              <Pressable
-                key={p.id}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={p.label}
-                onPress={() => setPitchId(p.id)}
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 13,
-                  borderRadius: radius.chip,
-                  borderWidth: 1,
-                  borderColor: on ? ink : onOperative.hairline,
-                  backgroundColor: on ? ink : 'transparent',
-                }}
-              >
-                <Txt size={12} weight="semibold" color={on ? operative.surface : ink}>
-                  {p.label}
-                </Txt>
-              </Pressable>
-            );
-          })}
-        </View>
+        <OpPills>
+          {pitches.map((p) => (
+            <OpPill key={p.id} label={p.label} on={p.id === pitchId} onPress={() => setPitchId(p.id)} />
+          ))}
+        </OpPills>
       ) : null}
 
       <OpNotice text={notice} />
@@ -155,8 +141,8 @@ export default function Hours() {
         </View>
       ) : null}
 
-      <OpSection title={t.ownWeek2} hint={t.ownHoursBlurb}>
-        <View style={{ gap: 8 }}>
+      <OpGroup title={t.ownWeek2} hint={t.ownHoursBlurb}>
+        <OpMenuGroup>
           {week.map((d) => (
             <DayRow
               key={d.day}
@@ -166,39 +152,36 @@ export default function Hours() {
               onSave={(open, close) => save(d.day, open, close)}
             />
           ))}
-        </View>
-      </OpSection>
+        </OpMenuGroup>
+      </OpGroup>
 
-      <OpSection title={t.ownPitches} hint={t.ownNewPitchInherits}>
-        <View style={{ gap: 8 }}>
-          {pitches.map((p) => (
-            <OpRow key={p.id}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={13.5} weight="semibold" color={ink}>
-                  {p.label}
-                </Txt>
-                <Txt size={10.5} color={onOperative.dim}>
-                  {p.format}
-                </Txt>
-              </View>
-              <OpButton label={t.ownRetirePitch} tone="danger" onPress={() => setOperational(p.id, false)} />
-            </OpRow>
-          ))}
-
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
-            <View style={{ flex: 1 }}>
-              <OpField
-                label={t.ownPitchName}
-                value={newPitch}
-                onChangeText={setNewPitch}
-                placeholder={t.ownEgPitchName}
+      <OpGroup title={t.ownPitches} hint={t.ownNewPitchInherits}>
+        {pitches.length > 0 ? (
+          <OpMenuGroup>
+            {pitches.map((p) => (
+              <OpMenuRow
+                key={p.id}
+                icon={<Ball size={19} color={ink} />}
+                title={p.label}
+                detail={p.format}
+                right={<OpButton label={t.ownRetirePitch} tone="danger" onPress={() => setOperational(p.id, false)} />}
               />
-            </View>
-            <OpButton label={t.ownAddAPitch} onPress={add} disabled={newPitch.trim().length === 0} />
-          </View>
-        </View>
-      </OpSection>
-    </OpScreen>
+            ))}
+          </OpMenuGroup>
+        ) : null}
+
+        <OpCard>
+          <OpField label={t.ownPitchName} value={newPitch} onChangeText={setNewPitch} placeholder={t.ownEgPitchName} />
+          <OpActionButton
+            label={t.ownAddAPitch}
+            variant="ghost"
+            icon={<Plus size={18} color={ink} />}
+            onPress={add}
+            disabled={newPitch.trim().length === 0}
+          />
+        </OpCard>
+      </OpGroup>
+    </OpPage>
   );
 }
 
@@ -231,20 +214,22 @@ function DayRow({
   const closed = openHour === null;
 
   return (
-    <OpRow>
-      <View style={{ width: 78, gap: 2 }}>
-        <Txt size={12.5} weight="semibold" color={ink}>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingVertical: 12, paddingHorizontal: 14 }}>
+      <View style={{ flex: 1, gap: 2, paddingBottom: 12 }}>
+        <Txt size={14} weight="semibold" color={ink} numberOfLines={1}>
           {name}
         </Txt>
         {closed ? (
-          <Txt size={10} color={onOperative.dim}>
+          <Txt size={11} color={onOperative.dim}>
             {t.ownClosedDay}
           </Txt>
         ) : null}
       </View>
       <OpField label={t.ownOpens} value={open} onChangeText={setOpen} keyboardType="number-pad" width={62} />
       <OpField label={t.ownCloses} value={close} onChangeText={setClose} keyboardType="number-pad" width={62} />
-      <OpButton label={t.ownSetDay} onPress={() => onSave(Number(open), Number(close))} />
-    </OpRow>
+      <View style={{ paddingBottom: 4 }}>
+        <OpButton label={t.ownSetDay} onPress={() => onSave(Number(open), Number(close))} />
+      </View>
+    </View>
   );
 }
