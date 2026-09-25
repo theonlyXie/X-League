@@ -74,6 +74,20 @@ export async function lookAround(page) {
   // back asynchronously and the gate redirects to /sign-in after that. Looking
   // for the link on the frame that just loaded finds nothing and reports a
   // missing link, which is a lie about the screen. Wait for it instead.
+  //
+  // A first launch meets the welcome cards before the door, so skip them if
+  // they are there. Skipping is the first-launch path to the same link.
+  for (const label of ['Skip', 'تخطّي']) {
+    const skip = page.getByLabel(label, { exact: true }).first();
+    try {
+      await skip.waitFor({ state: 'visible', timeout: 4000 });
+      await skip.click();
+      await page.waitForTimeout(800);
+      break;
+    } catch {
+      /* not on the welcome cards */
+    }
+  }
   for (const label of ['Look around without an account', 'اتفرج من غير حساب']) {
     const link = page.getByLabel(label).first();
     try {

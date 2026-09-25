@@ -4,10 +4,10 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Eyebrow } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
-import { PressScale, Reveal } from '@/components/motion';
-import { ArrowLeft } from '@/components/icons';
+import { Reveal } from '@/components/motion';
+import { MenuGroup, Pill, Unreachable } from '@/components/kit';
+import { ChevronLeft } from '@/components/icons';
 import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { keeperLeaderboard, leaderboard, type BoardRow, type KeeperRow } from '@/data/board';
 import { useI18n } from '@/i18n';
@@ -68,75 +68,71 @@ export default function Leaderboard() {
 
   const empty = board === 'scorers' ? !scorers.length : !keepers.length;
 
+  // The places, in one shape for either board: the top three stand apart in
+  // gold, the rest sit together in one card below them.
+  const places =
+    board === 'scorers'
+      ? scorers.map((row) => ({
+          id: row.playerId,
+          place: row.place,
+          name: row.displayName,
+          photo: row.photoUrl,
+          figure: num(row.goals),
+          detail: `${num(row.assists)} ${t.assistsShort} · ${num(row.matches)} ${t.matchesShort}`,
+          aside: row.cupGoals > 0 ? t.ofWhichCup(num(row.cupGoals)) : null,
+        }))
+      : keepers.map((row) => ({
+          id: row.playerId,
+          place: row.place,
+          name: row.displayName,
+          photo: row.photoUrl,
+          figure: num(row.cleanSheets),
+          detail: `${num(row.conceded)} ${t.conceded} · ${num(row.matches)} ${t.matchesShort}`,
+          aside: null,
+        }));
+  // By place rather than by index, so a tie for third is two gold rows.
+  const podium = places.filter((p) => p.place <= 3);
+  const rest = places.filter((p) => p.place > 3);
+
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: onVoid.line,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <View style={{ flex: 1 }}>
-          <Txt size={20} weight="semibold" color={onVoid.primary}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
             {t.leaderboards}
           </Txt>
-          <Txt size={12} color={onVoid.dim}>
+          <Txt size={11.5} weight="semibold" color={gold.base}>
             {venue ? (name ?? t.venueBoard) : t.globalBoard}
           </Txt>
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        {(['scorers', 'keepers'] as const).map((which) => {
-          const on = board === which;
-          return (
-            <PressScale
-              key={which}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              accessibilityLabel={which === 'scorers' ? t.scorers : t.keepers}
-              onPress={() => {
-                setBoard(which);
-                void Haptics.selectionAsync();
-              }}
-              style={{
-                flex: 1,
-                height: 40,
-                borderRadius: radius.control,
-                borderWidth: 1,
-                borderColor: on ? goldAlpha.frame : onVoid.line,
-                backgroundColor: on ? goldAlpha.fill : 'transparent',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Txt size={13} weight="medium" color={on ? gold.base : onVoid.secondary}>
-                {which === 'scorers' ? t.scorers : t.keepers}
-              </Txt>
-            </PressScale>
-          );
-        })}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {(['scorers', 'keepers'] as const).map((which) => (
+          <Pill
+            key={which}
+            label={which === 'scorers' ? t.scorers : t.keepers}
+            on={board === which}
+            onPress={() => {
+              setBoard(which);
+              void Haptics.selectionAsync();
+            }}
+          />
+        ))}
       </View>
 
       {loading ? <ActivityIndicator color={gold.base} /> : null}
 
-      {unreachable ? (
-        <Txt size={13} color={onVoid.muted}>
-          {t.boardUnreadable}
-        </Txt>
-      ) : null}
+      {unreachable ? <Unreachable label={t.boardUnreadable} /> : null}
 
       {!loading && !unreachable && empty ? (
         <Txt size={13} lh={1.5} color={onVoid.muted}>
@@ -144,43 +140,30 @@ export default function Leaderboard() {
         </Txt>
       ) : null}
 
-      {board === 'scorers' ? (
-        <View style={{ gap: 4 }}>
-          {scorers.length ? (
-            <Eyebrow>{`${t.goalsShort} · ${t.assistsShort} · ${t.matchesShort}`}</Eyebrow>
+      {places.length ? (
+        <View style={{ gap: 10 }}>
+          {/* What the big figure on the far side of each row is. */}
+          <Txt size={12} weight="semibold" color={onVoid.faint}>
+            {board === 'scorers' ? `${t.goalsShort} · ${t.assistsShort} · ${t.matchesShort}` : t.cleanSheets}
+          </Txt>
+          {podium.map((p, i) => (
+            <Reveal key={p.id} index={i}>
+              <Place {...p} top />
+            </Reveal>
+          ))}
+          {rest.length ? (
+            <MenuGroup>
+              {rest.map((p, i) => (
+                // Only the first few are staggered; forty reveals in sequence
+                // is a wait, not an entrance.
+                <Reveal key={p.id} index={Math.min(podium.length + i, 7)}>
+                  <Place {...p} top={false} />
+                </Reveal>
+              ))}
+            </MenuGroup>
           ) : null}
-          {scorers.map((row, i) => (
-            // Only the first few are staggered; forty reveals in sequence is a
-            // wait, not an entrance.
-            <Reveal key={row.playerId} index={Math.min(i, 7)}>
-              <Place
-                place={row.place}
-                name={row.displayName}
-                photo={row.photoUrl}
-                figure={num(row.goals)}
-                detail={`${num(row.assists)} ${t.assistsShort} · ${num(row.matches)} ${t.matchesShort}`}
-                aside={row.cupGoals > 0 ? t.ofWhichCup(num(row.cupGoals)) : null}
-              />
-            </Reveal>
-          ))}
         </View>
-      ) : (
-        <View style={{ gap: 4 }}>
-          {keepers.length ? <Eyebrow>{t.cleanSheets}</Eyebrow> : null}
-          {keepers.map((row, i) => (
-            <Reveal key={row.playerId} index={Math.min(i, 7)}>
-              <Place
-                place={row.place}
-                name={row.displayName}
-                photo={row.photoUrl}
-                figure={num(row.cleanSheets)}
-                detail={`${num(row.conceded)} ${t.conceded} · ${num(row.matches)} ${t.matchesShort}`}
-                aside={null}
-              />
-            </Reveal>
-          ))}
-        </View>
-      )}
+      ) : null}
     </Screen>
   );
 }
@@ -192,6 +175,7 @@ function Place({
   figure,
   detail,
   aside,
+  top,
 }: {
   place: number;
   name: string;
@@ -199,41 +183,57 @@ function Place({
   figure: string;
   detail: string;
   aside: string | null;
+  top: boolean;
 }) {
   const { num } = useI18n();
-  const top = place <= 3;
+  const first = place === 1;
   return (
     <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: radius.row,
-        backgroundColor: top ? void_.inset : 'transparent',
-        borderWidth: 1,
-        borderColor: top ? goldAlpha.edge : 'transparent',
-      }}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingVertical: top ? 12 : 11,
+          paddingHorizontal: 14,
+        },
+        top
+          ? {
+              borderRadius: radius.cardInner,
+              borderWidth: 1,
+              borderColor: first ? goldAlpha.frame : goldAlpha.edge,
+              backgroundColor: first ? goldAlpha.fill : void_.surface,
+            }
+          : null,
+      ]}
     >
-      <Txt
-        size={13}
-        weight="bold"
-        color={top ? gold.base : onVoid.dim}
-        style={{ width: 22, textAlign: 'center' }}
+      {/* The place: a gold medallion on the podium, a plain figure below it. */}
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: radius.pill,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: first ? gold.base : 'transparent',
+          borderWidth: top && !first ? 1 : 0,
+          borderColor: goldAlpha.accent,
+        }}
       >
-        {num(place)}
-      </Txt>
+        <Txt size={13} weight="bold" color={first ? void_.bg : top ? gold.base : onVoid.dim}>
+          {num(place)}
+        </Txt>
+      </View>
       <Avatar
         name={name}
         url={photo}
-        size={36}
+        size={top ? 44 : 38}
         background={void_.raised}
-        border={onVoid.edge}
-        color={onVoid.secondary}
+        border={top ? goldAlpha.edge : onVoid.edge}
+        color={top ? gold.base : onVoid.secondary}
       />
       <View style={{ flex: 1, gap: 2 }}>
-        <Txt size={14} weight="semibold" color={onVoid.primary}>
+        <Txt size={14.5} weight={top ? 'bold' : 'semibold'} color={onVoid.primary} numberOfLines={1}>
           {name}
         </Txt>
         <Txt size={11.5} color={onVoid.faint}>
@@ -241,7 +241,7 @@ function Place({
           {aside ? ` · ${aside}` : ''}
         </Txt>
       </View>
-      <Txt size={18} weight="bold" color={onVoid.primary}>
+      <Txt size={top ? 22 : 18} weight="bold" color={top ? gold.base : onVoid.primary}>
         {figure}
       </Txt>
     </View>

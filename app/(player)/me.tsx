@@ -6,9 +6,29 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
+import { NotificationBell } from '@/components/NotificationBell';
 import { Button, Eyebrow } from '@/components/ui';
 import { myAvailability, setAvailability, type Availability } from '@/data/ready';
-import { ChevronRight, TrendUp } from '@/components/icons';
+import {
+  Ban,
+  Bell,
+  Briefcase,
+  Calendar,
+  ChevronRight,
+  Document,
+  Globe,
+  Key,
+  LogOut,
+  Podium,
+  Shield,
+  Swords,
+  Trash,
+  TrendUp,
+  User,
+  Users,
+  Whistle,
+} from '@/components/icons';
+import { MenuGroup, MenuRow } from '@/components/kit';
 import { StrokeLine } from '@/components/StrokeLine';
 import { VoidMark } from '@/components/VoidMark';
 import { cssAngle } from '@/theme/gradient';
@@ -69,12 +89,68 @@ export default function Me() {
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20, alignItems: 'center' }}>
       <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
+        <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
+          {t.myAccount}
+        </Txt>
+        <NotificationBell />
+      </View>
+
+      {/* The redesign's profile card: who this is, before what they are rated. */}
+      {signedIn ? (
+        <View
+          style={{
+            width: '100%',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+            padding: 14,
+            borderRadius: radius.cardInner,
+            borderWidth: 1,
+            borderColor: onVoid.edge,
+            backgroundColor: void_.surface,
+          }}
+        >
+          <View
+            style={{
+              width: 58,
+              height: 58,
+              borderRadius: radius.pill,
+              overflow: 'hidden',
+              backgroundColor: void_.inset,
+              borderWidth: 1,
+              borderColor: goldAlpha.edge,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {live && card.photoUrl ? (
+              <Image source={{ uri: card.photoUrl }} style={{ width: '100%', height: '100%' }} />
+            ) : (
+              <Txt size={18} weight="bold" color={gold.base}>
+                {(displayName ?? name).slice(0, 2).toUpperCase()}
+              </Txt>
+            )}
+          </View>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Txt size={17} weight="bold" color={gold.base} numberOfLines={1}>
+              {displayName ?? name}
+            </Txt>
+            <Txt size={12} color={onVoid.faint}>
+              {[live ? t.levelN(num(evidence?.level ?? 1)) : null, t.season(num(1))].filter(Boolean).join(' · ')}
+            </Txt>
+          </View>
+        </View>
+      ) : null}
+
+      <View style={{ width: '100%', flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <Txt size={17} weight="bold" color={onVoid.primary}>
           {t.yourCard}
         </Txt>
-        <Txt size={11.5} color={onVoid.dim}>
-          {t.season(num(1))}
-        </Txt>
+        {signedIn ? null : (
+          <Txt size={11.5} color={onVoid.dim}>
+            {t.season(num(1))}
+          </Txt>
+        )}
       </View>
 
       {blank && !loading ? (
@@ -216,110 +292,91 @@ export default function Me() {
           team, and what the product has told them. All reachable from here
           rather than hidden. */}
       {signedIn || !isLive ? (
-        <View style={{ width: '100%', gap: 8 }}>
-          <RowLink label={t.bookingsTitle} onPress={() => router.push('/bookings')} />
-          <RowLink label={t.clubs} onPress={() => router.push('/clubs')} />
-          <RowLink label={t.teamsTitle} onPress={() => router.push('/teams')} />
-          <RowLink label={t.leaderboards} onPress={() => router.push('/leaderboard')} />
-          <RowLink label={t.notifications} onPress={() => router.push('/notifications')} />
+        <MenuGroup>
+          <RowLink icon={<Calendar size={19} color={gold.base} />} label={t.bookingsTitle} onPress={() => router.push('/bookings')} />
+          {/* A permanent row rather than one that appears only when something
+              is waiting. A challenge that has already been answered still has
+              to be findable, and a row that comes and goes teaches nobody
+              where to look. */}
+          <RowLink icon={<Swords size={19} color={gold.base} />} label={t.challenges} onPress={() => router.push('/play/challenges')} />
+          <RowLink icon={<Users size={19} color={gold.base} />} label={t.clubs} onPress={() => router.push('/clubs')} />
+          <RowLink icon={<Shield size={19} color={gold.base} />} label={t.teamsTitle} onPress={() => router.push('/teams')} />
+          <RowLink icon={<Podium size={19} color={gold.base} />} label={t.leaderboards} onPress={() => router.push('/leaderboard')} />
+          <RowLink icon={<Bell size={19} color={gold.base} />} label={t.notifications} onPress={() => router.push('/notifications')} />
           {/* Only for the few X League has made referees. Nothing here decides
               anything — every referee function checks for itself — but a door
               that will not open should not be shown. */}
           {isReferee ? (
-            <RowLink label={t.refereeTitle} onPress={() => router.push('/referee')} />
+            <RowLink icon={<Whistle size={19} color={gold.base} />} label={t.refereeTitle} onPress={() => router.push('/referee')} />
           ) : null}
+        </MenuGroup>
+      ) : null}
+
+      {/* A build with no database used to hide the way in and show a
+          showcase venue in its place, so it looked like an app whose sign-in
+          had simply gone missing. It says so now. */}
+      {!isLive ? (
+        <View
+          style={{
+            width: '100%',
+            padding: 14,
+            borderRadius: radius.control,
+            borderWidth: 1,
+            borderColor: goldAlpha.frame,
+            backgroundColor: goldAlpha.fill,
+            gap: 5,
+          }}
+        >
+          <Txt size={13.5} weight="semibold" color={gold.base}>
+            {t.authNoDatabase}
+          </Txt>
+          <Txt size={11.5} lh={1.5} color={onVoid.secondary}>
+            {t.noDatabaseBlurb}
+          </Txt>
         </View>
       ) : null}
 
-      <View style={{ width: '100%', gap: 12 }}>
-        <Eyebrow>{signedIn || !isLive ? t.workspace : t.account}</Eyebrow>
-        <View style={{ gap: 8 }}>
-          {isLive && !signedIn ? (
+      {/* The redesign's "Business" row: Owner Mode for somebody who runs a
+          venue, and the way to register one for somebody who does not yet.
+          Which venues appear is the server's answer (`my_venues`), not a
+          guess — RBAC-002 scoping is enforced on every call anyway. */}
+      {signedIn || !isLive ? (
+        <MenuGroup>
+          {isLive && venues.length === 0 ? (
             <WorkspaceRow
-              title={t.signIn}
-              detail={t.verifyToBook}
-              onPress={() => router.push('/sign-in?next=/me')}
-            />
-          ) : null}
-
-          {/* A build with no database used to hide the way in and show a
-              showcase venue in its place, so it looked like an app whose
-              sign-in had simply gone missing. It says so now: the one screen
-              somebody checks when they cannot get in is this one. */}
-          {!isLive ? (
-            <View
-              style={{
-                padding: 14,
-                borderRadius: radius.control,
-                borderWidth: 1,
-                borderColor: goldAlpha.frame,
-                backgroundColor: goldAlpha.fill,
-                gap: 5,
-              }}
-            >
-              <Txt size={13.5} weight="semibold" color={gold.base}>
-                {t.authNoDatabase}
-              </Txt>
-              <Txt size={11.5} lh={1.5} color={onVoid.secondary}>
-                {t.noDatabaseBlurb}
-              </Txt>
-            </View>
-          ) : null}
-
-          {/* Somebody who joined as a player and turns out to have a pitch.
-              Offered only when they staff nothing, because an owner already
-              has Owner Mode above and a second door to the same place would
-              read as a second venue. */}
-          {isLive && signedIn && venues.length === 0 ? (
-            <WorkspaceRow
+              icon={<Briefcase size={19} color={gold.base} />}
               title={t.venueOpen}
               detail={t.venueOpenDetail}
               onPress={() => router.push('/open-a-venue')}
             />
           ) : null}
-
           {(isLive ? venues : [{ venueId: 'demo', name: 'Stadium One', role: 'manager' as const }]).map((v) => (
             <WorkspaceRow
               key={v.venueId}
+              icon={<Briefcase size={19} color={gold.base} />}
               title={t.ownerMode}
-              detail={`${v.name} · calendar, arrivals and CRM`}
+              detail={t.ownerModeDetail(v.name)}
               onPress={() => router.push('/owner')}
             />
           ))}
+        </MenuGroup>
+      ) : null}
 
-          {/* The admin console is a desktop web app now, at its own
-              deployment. Platform work is monitoring and adjudication done
-              sitting down — a verification queue and a policy table are not
-              phone work — and a second implementation on a 390-point screen
-              was one more place for the two to disagree.
+      <MenuGroup>
+        {isLive && !signedIn ? (
+          <WorkspaceRow
+            icon={<User size={19} color={gold.base} />}
+            title={t.signIn}
+            detail={t.verifyToBook}
+            onPress={() => router.push('/sign-in?next=/me')}
+          />
+        ) : null}
 
-              `platformRole` is no longer read here as a result. It is still on
-              the session, because `identityFailed` needs it to tell a dropped
-              connection apart from a demotion, and Owner Mode still shows. */}
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              paddingVertical: 12,
-              paddingHorizontal: 14,
-              borderRadius: radius.control,
-              backgroundColor: void_.surface,
-              borderWidth: 1,
-              borderColor: onVoid.edgeFaint,
-            }}
-          >
-            <View style={{ flex: 1, gap: 3 }}>
-              <Txt size={14.5} weight="semibold" color={onVoid.primary}>
-                {t.language}
-              </Txt>
-              {needsRestart ? (
-                <Txt size={11.5} color={gold.base}>
-                  {t.restartToMirror}
-                </Txt>
-              ) : null}
-            </View>
+        <MenuRow
+          icon={<Globe size={19} color={gold.base} />}
+          title={t.language}
+          detail={needsRestart ? t.restartToMirror : null}
+          right={
             <View
               style={{
                 flexDirection: 'row',
@@ -341,7 +398,7 @@ export default function Me() {
                     onPress={() => void setLocale(code)}
                     style={{
                       paddingVertical: 6,
-                      paddingHorizontal: 14,
+                      paddingHorizontal: 12,
                       borderRadius: radius.pill,
                       backgroundColor: on ? 'rgba(198,163,75,.16)' : 'transparent',
                     }}
@@ -353,40 +410,52 @@ export default function Me() {
                 );
               })}
             </View>
-          </View>
+          }
+        />
 
-          {signedIn ? <ChangePassword /> : null}
+        {signedIn ? <ChangePassword /> : null}
 
-          {signedIn ? (
-            <WorkspaceRow
-              title={t.blockedPlayers}
-              detail={t.blockedPlayersDetail}
-              onPress={() => router.push('/blocked')}
-            />
-          ) : null}
+        {signedIn ? (
+          <WorkspaceRow
+            icon={<Ban size={19} color={gold.base} />}
+            title={t.blockedPlayers}
+            detail={t.blockedPlayersDetail}
+            onPress={() => router.push('/blocked')}
+          />
+        ) : null}
 
-          {/* The policy and the terms were linked from the sign-up screen and
-              nowhere else, so a reviewer signing in with the demo account — or
-              anybody who accepted them once and wanted to read them again —
-              could not reach either from inside the app. Two links rather than
-              one row, because they are two documents and picking between them
-              should not depend on knowing about a long press. */}
-          {legalConfigured ? <LegalLinks /> : null}
+        {/* The policy and the terms, reachable from inside the app — two
+            rows, because they are two documents. */}
+        {legalConfigured ? (
+          <WorkspaceRow
+            icon={<Document size={19} color={gold.base} />}
+            title={t.termsLink}
+            detail={t.legalRowDetail}
+            onPress={() => void Linking.openURL(TERMS_URL)}
+          />
+        ) : null}
+        {legalConfigured ? (
+          <WorkspaceRow
+            icon={<Document size={19} color={gold.base} />}
+            title={t.privacyLink}
+            detail={t.legalRowDetail}
+            onPress={() => void Linking.openURL(PRIVACY_URL)}
+          />
+        ) : null}
 
-          {signedIn ? (
-            <WorkspaceRow
-              title={t.signOut}
-              detail={displayName ? t.signedInAs(displayName) : t.endThisSession}
-              onPress={() => void signOut()}
-            />
-          ) : null}
+        {signedIn ? (
+          <WorkspaceRow
+            icon={<LogOut size={19} color={gold.base} />}
+            title={t.signOut}
+            detail={displayName ? t.signedInAs(displayName) : t.endThisSession}
+            onPress={() => void signOut()}
+          />
+        ) : null}
+      </MenuGroup>
 
-          {/* Last, and on its own, because it is the one row here that cannot
-              be undone. Apple has required this since 2022 and there was
-              nothing anywhere in the app that removed a person. */}
-          {signedIn ? <DeleteAccount /> : null}
-        </View>
-      </View>
+      {/* Last, and on its own, because it is the one row here that cannot be
+          undone. Apple has required this since 2022. */}
+      {signedIn ? <DeleteAccount /> : null}
     </Screen>
   );
 }
@@ -411,6 +480,12 @@ function VoidCard({
   explained: string;
   level: number;
 }) {
+  // Every number on the card goes through the reader's own numerals. It used
+  // to render them raw, so an Arabic card showed `الموسم ١` at the top, `75`
+  // in the middle and `من أين جاء ٨٥` underneath — three numerals in two
+  // systems on one screen, about the same player.
+  const { num } = useI18n();
+
   return (
     <LinearGradient
       colors={[void_.cardTop, void_.bg]}
@@ -477,26 +552,36 @@ function VoidCard({
         {[38, -38].map((deg) => (
           <StrokeLine key={deg} length={300} angle={deg} top={178} left={-20} color={goldAlpha.stroke} />
         ))}
-        <View
-          style={{
-            position: 'absolute',
-            top: 160,
-            left: '50%',
-            marginLeft: -18,
-            width: 36,
-            height: 36,
-            borderRadius: radius.pill,
-            backgroundColor: void_.disc,
-            borderWidth: 1,
-            borderColor: goldAlpha.discEdge,
-          }}
-        />
+        {/* The void at the centre — and only when there is a void. It is
+            painted at the exact middle of where the photograph goes, so on a
+            card with a face it was a filled disc over the player's face. The
+            rings and strokes still frame the portrait; this one piece is what
+            stands in for a portrait that is not there. */}
+        {photoUrl ? null : (
+          <View
+            style={{
+              position: 'absolute',
+              top: 160,
+              left: '50%',
+              marginLeft: -18,
+              width: 36,
+              height: 36,
+              borderRadius: radius.pill,
+              backgroundColor: void_.disc,
+              borderWidth: 1,
+              borderColor: goldAlpha.discEdge,
+            }}
+          />
+        )}
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <View>
-          <Txt size={52} weight="extrabold" em={-0.04} lh={0.9} color={gold.base}>
-            {ovr}
+          {/* No line-height under 1 here. At 52pt a 0.9 multiplier gives the
+              line less room than the face needs and iOS clips the top of the
+              digits rather than letting them overflow. */}
+          <Txt size={52} weight="extrabold" em={-0.04} lh={1} color={gold.base}>
+            {num(ovr)}
           </Txt>
           <Txt size={12} weight="bold" em={0.16} color="rgba(243,238,229,.7)" style={{ marginTop: 4 }}>
             {positionCode}
@@ -524,7 +609,7 @@ function VoidCard({
           {name.toUpperCase()}
         </Txt>
         <Txt size={9.5} weight="semibold" em={0.2} color="rgba(198,163,75,.85)">
-          VOID CARD · LVL {level}
+          VOID CARD · LVL {num(level)}
         </Txt>
       </View>
 
@@ -538,7 +623,7 @@ function VoidCard({
                   {attr.key}
                 </Txt>
                 <Txt size={13} weight="bold" color={attr.key === explained ? gold.base : onVoid.primary}>
-                  {attr.value}
+                  {num(attr.value)}
                 </Txt>
               </View>
             ))}
@@ -622,31 +707,9 @@ function MatchEvidenceList({
   );
 }
 
-/** A plain destination row, in the design's list idiom. */
-function RowLink({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: radius.control,
-        backgroundColor: void_.surface,
-        borderWidth: 1,
-        borderColor: pressed ? goldAlpha.edge : onVoid.edgeFaint,
-      })}
-    >
-      <Txt size={14} weight="semibold" color={onVoid.primary}>
-        {label}
-      </Txt>
-      <ChevronRight size={14} color={onVoid.dim} />
-    </Pressable>
-  );
+/** A plain destination row, in the redesign's menu idiom. */
+function RowLink({ label, onPress, icon }: { label: string; onPress: () => void; icon: React.ReactNode }) {
+  return <MenuRow icon={icon} title={label} onPress={onPress} />;
 }
 
 function StatTile({ label, value, gold: isGold, icon }: { label: string; value: string; gold?: boolean; icon?: boolean }) {
@@ -735,25 +798,22 @@ function DeleteAccount() {
 
   if (!asking) {
     return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t.deleteAccount}
-        onPress={() => setAsking(true)}
-        style={{ paddingVertical: 14, paddingHorizontal: 14 }}
-      >
-        <Txt size={13.5} weight="semibold" color={burgundy.action}>
-          {t.deleteAccount}
-        </Txt>
-        <Txt size={11.5} color={onVoid.faint}>
-          {t.deleteAccountDetail}
-        </Txt>
-      </Pressable>
+      <MenuGroup>
+        <MenuRow
+          tone="danger"
+          icon={<Trash size={19} color={burgundy.action} />}
+          title={t.deleteAccount}
+          detail={t.deleteAccountDetail}
+          onPress={() => setAsking(true)}
+        />
+      </MenuGroup>
     );
   }
 
   return (
     <View
       style={{
+        width: '100%',
         padding: 16,
         borderRadius: radius.control,
         borderWidth: 1,
@@ -806,6 +866,7 @@ function ChangePassword() {
   if (!open) {
     return (
       <WorkspaceRow
+        icon={<Key size={19} color={gold.base} />}
         title={t.changePassword}
         detail={done ? t.passwordChanged : t.authPasswordHint}
         onPress={() => {
@@ -836,16 +897,7 @@ function ChangePassword() {
   };
 
   return (
-    <View
-      style={{
-        gap: 10,
-        padding: 14,
-        borderRadius: radius.control,
-        backgroundColor: void_.surface,
-        borderWidth: 1,
-        borderColor: onVoid.edge,
-      }}
-    >
+    <View style={{ gap: 10, padding: 14 }}>
       <Txt size={13.5} weight="semibold" color={onVoid.primary}>
         {t.changePassword}
       </Txt>
@@ -902,65 +954,18 @@ function PasswordField({
   );
 }
 
-/** The two published documents, reachable from inside the app. */
-function LegalLinks() {
-  const { t } = useI18n();
-  const link = (label: string, url: string) => (
-    <Pressable
-      accessibilityRole="link"
-      accessibilityLabel={label}
-      hitSlop={10}
-      onPress={() => void Linking.openURL(url)}
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-    >
-      <Txt size={12.5} weight="semibold" color={gold.base}>
-        {label}
-      </Txt>
-    </Pressable>
-  );
-
-  return (
-    <View style={{ gap: 8, paddingHorizontal: 14, paddingTop: 4 }}>
-      <Txt size={11.5} color={onVoid.faint}>
-        {t.legalRowDetail}
-      </Txt>
-      <View style={{ flexDirection: 'row', gap: 18 }}>
-        {link(t.termsLink, TERMS_URL)}
-        {link(t.privacyLink, PRIVACY_URL)}
-      </View>
-    </View>
-  );
-}
-
-function WorkspaceRow({ title, detail, onPress }: { title: string; detail: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${detail}`}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        borderRadius: radius.control,
-        backgroundColor: void_.surface,
-        borderWidth: 1,
-        borderColor: pressed ? goldAlpha.edge : onVoid.edgeFaint,
-      })}
-    >
-      <View style={{ flex: 1, gap: 3 }}>
-        <Txt size={14.5} weight="semibold" color={onVoid.primary}>
-          {title}
-        </Txt>
-        <Txt size={11.5} color={onVoid.faint}>
-          {detail}
-        </Txt>
-      </View>
-      <ChevronRight size={16} color={onVoid.dim} />
-    </Pressable>
-  );
+function WorkspaceRow({
+  title,
+  detail,
+  onPress,
+  icon,
+}: {
+  title: string;
+  detail: string;
+  onPress: () => void;
+  icon: React.ReactNode;
+}) {
+  return <MenuRow icon={icon} title={title} detail={detail} onPress={onPress} />;
 }
 
 /**
@@ -1127,11 +1132,26 @@ function ReadyToPlay() {
   const router = useRouter();
   const { t, num } = useI18n();
   const [state, setState] = useState<Availability | null>(null);
+  // The switch's own position, separate from the server's answer.
+  //
+  // It used to be driven straight off `state.available`, which only changes
+  // once two round trips have finished. On Android that reads as a fault: the
+  // native switch moves its thumb the instant it is touched, React re-renders
+  // with the value still unchanged and pushes the old position back down, so
+  // the thumb snaps back — then flips again half a second later when the
+  // server replies. Flip, snap back, flip. iOS hides it because its switch
+  // reconciles a late value differently, which is why this only showed up on
+  // the Android build.
+  //
+  // So the switch answers the thumb, and the network catches up behind it.
+  const [on, setOn] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setState(await myAvailability());
+      const next = await myAvailability();
+      setState(next);
+      setOn(next.available);
     } catch {
       /* The switch simply does not appear rather than showing a wrong one. */
     }
@@ -1145,13 +1165,20 @@ function ReadyToPlay() {
 
   const toggle = async () => {
     if (busy) return;
+    const next = !on;
     setBusy(true);
+    setOn(next);
+    // On the gesture, not on the reply. A confirmation that arrives after the
+    // network has answered is not feedback for the tap, it is news.
+    void Haptics.selectionAsync();
     try {
-      await setAvailability(!state.available);
+      await setAvailability(next);
+      // For `openCalls`, and so the server has the last word on the state.
       await load();
-      void Haptics.selectionAsync();
     } catch {
-      /* Left as it was; the next read corrects it. */
+      // Put it back. Leaving it where the thumb went would tell somebody they
+      // are available to a database that never heard about it.
+      setOn(!next);
     } finally {
       setBusy(false);
     }
@@ -1164,30 +1191,34 @@ function ReadyToPlay() {
         padding: 14,
         borderRadius: radius.control,
         borderWidth: 1,
-        borderColor: state.available ? goldAlpha.frame : onVoid.edgeFaint,
-        backgroundColor: state.available ? goldAlpha.fill : void_.surface,
+        borderColor: on ? goldAlpha.frame : onVoid.edgeFaint,
+        backgroundColor: on ? goldAlpha.fill : void_.surface,
         gap: 10,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1, gap: 3 }}>
-          <Txt size={14} weight="semibold" color={state.available ? gold.base : onVoid.primary}>
-            {state.available ? t.readyOn : t.readyOff}
+          <Txt size={14} weight="semibold" color={on ? gold.base : onVoid.primary}>
+            {on ? t.readyOn : t.readyOff}
           </Txt>
           <Txt size={11.5} lh={1.5} color={onVoid.faint}>
-            {state.available ? t.readyOnBlurb : t.readyOffBlurb}
+            {on ? t.readyOnBlurb : t.readyOffBlurb}
           </Txt>
         </View>
+        {/* Not `disabled` while the write is in flight. Android greys the whole
+            control out, which on a half-second request is a flicker rather
+            than information — and the guard at the top of `toggle` already
+            refuses the second tap. */}
         <Switch
-          value={state.available}
+          value={on}
           onValueChange={() => void toggle()}
-          disabled={busy}
           trackColor={{ false: void_.inset, true: goldAlpha.frame }}
-          thumbColor={state.available ? gold.base : onVoid.dim}
+          thumbColor={on ? gold.base : onVoid.dim}
+          accessibilityLabel={t.readyOn}
         />
       </View>
 
-      {state.available && state.openCalls > 0 ? (
+      {on && state.openCalls > 0 ? (
         <Button
           label={t.callsWaiting(num(state.openCalls))}
           height={40}

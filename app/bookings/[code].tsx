@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, Share as NativeShare, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { TextInput } from '@/components/TextField';
 import { Txt } from '@/components/Txt';
-import { Button, Divider } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
+import { ActionButton, Card, MenuGroup, MenuRow, SectionTitle, Tag, VenuePhoto } from '@/components/kit';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { CheckCircle, ChevronLeft, Clock, Share, Star, User, Users } from '@/components/icons';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
+import { mono } from '@/theme/typography';
 import { bookingTerms, myBookings, type BookingTerms, type PastBooking } from '@/data/discovery';
 import {
   claimBookingPayment,
-  venueConversation,
   venuePaymentChannels,
   type ChannelKind,
   type VenueChannel,
@@ -93,35 +94,42 @@ export default function BookingDetail() {
       no_show: t.bookingStateNoShow,
     })[state];
 
-  const back = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t.back}
-      onPress={() => (router.canGoBack() ? router.back() : router.replace('/bookings'))}
-      hitSlop={8}
-      style={{
-        width: 34,
-        height: 34,
-        borderRadius: radius.icon,
-        borderWidth: 1,
-        borderColor: onVoid.line,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <ArrowLeft size={16} color={onVoid.secondary} />
-    </Pressable>
-  );
+  // Nothing to take to a gate or pass round the group once the hour is gone
+  // for good, so the card stops offering to share it.
+  const over = (s: PastBooking['state']) => s === 'expired' || s === 'cancelled' || s === 'no_show';
+  const canShare = !!booking?.code && !over(booking.state);
+  const canLobby = booking?.state === 'confirmed' || booking?.state === 'held';
+
+  const share = () => {
+    if (!booking) return;
+    const when = `${longDate(booking.startsAt)} · ${hourLabel(new Date(booking.startsAt).getHours())}`;
+    NativeShare.share({
+      message: t.shareBookingMessage(
+        [booking.venueName, booking.pitchLabel].filter(Boolean).join(' · '),
+        when,
+        booking.code ?? '',
+        '',
+      ),
+    }).catch(() => {});
+  };
 
   // `Screen` for the same three reasons as the list next door: the safe-area
   // inset this drew over, the top bar it was missing, and the keyboard that
   // used to sit on top of the payment-reference field near the bottom.
   return (
     <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        {back}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.back}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/bookings'))}
+          hitSlop={8}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
+        >
+          <ChevronLeft size={22} color={onVoid.primary} />
+        </Pressable>
         <View style={{ gap: 2, flex: 1 }}>
-          <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
+          <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary} numberOfLines={1}>
             {booking?.venueName ?? t.bookingsTitle}
           </Txt>
           {booking ? (
@@ -167,53 +175,98 @@ export default function BookingDetail() {
 
       {booking ? (
         <>
-          {/* The code first and largest. It is the only thing on this screen
-              somebody needs while standing at a gate with a phone in one hand. */}
-          {booking.code ? (
-            <View
-              style={{
-                borderWidth: 1,
-                borderColor: onVoid.line,
-                borderRadius: radius.card,
-                padding: 16,
-                gap: 4,
-              }}
-            >
-              <Txt size={11} weight="semibold" em={0.08} upper color={onVoid.faint}>
-                {t.bookingCode}
-              </Txt>
-              <Txt size={28} weight="bold" em={0.04} color={gold.base}>
-                {booking.code}
-              </Txt>
+          {/* The confirmation screen's summary card, for any booking: the
+              picture, the code, the facts, and the two things a player does
+              with it next. */}
+          <Card pad={0} style={{ overflow: 'hidden', gap: 0 }}>
+            <View>
+              <VenuePhoto uri={booking.coverUrl} height={132} />
+              <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row' }}>
+                <Tag
+                  label={stateLabel(booking.state)}
+                  tone={booking.state === 'confirmed' || booking.state === 'checked_in' ? 'gold' : 'plain'}
+                />
+              </View>
             </View>
-          ) : null}
 
-          <View style={{ gap: 0 }}>
-            <Row label={t.bookingsState} value={stateLabel(booking.state)} />
-            <Divider />
-            <Row label={t.bookingsPitch} value={booking.pitchLabel} />
-            <Divider />
-            <Row label={t.bookingsPrice} value={money(booking.priceEgp)} />
-          </View>
+            <View style={{ padding: 16, gap: 14 }}>
+              {/* The code first and largest. It is the only thing on this screen
+                  somebody needs while standing at a gate with a phone in one hand. */}
+              {booking.code ? (
+                <View
+                  style={{
+                    padding: 14,
+                    borderRadius: radius.row,
+                    backgroundColor: void_.bg,
+                    borderWidth: 1,
+                    borderStyle: 'dashed',
+                    borderColor: 'rgba(198,163,75,.35)',
+                    gap: 4,
+                  }}
+                  accessibilityLabel={t.bookingCodeIs(booking.code)}
+                >
+                  <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
+                    {t.bookingCode}
+                  </Txt>
+                  <Txt size={24} weight="bold" em={0.14} color={gold.base} style={{ fontFamily: mono }}>
+                    {booking.code}
+                  </Txt>
+                </View>
+              ) : null}
 
-          {/* What is still owed, and by when it can be undone — the two facts
-              a player checks before the day arrives.
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 }}>
+                <Fact label={t.bookingsState} value={stateLabel(booking.state)} />
+                <Fact label={t.bookingsPitch} value={booking.pitchLabel} />
+                <Fact label={t.bookingsPrice} value={money(booking.priceEgp)} />
+                <Fact
+                  label={t.time}
+                  value={[longDate(booking.startsAt), hourLabel(new Date(booking.startsAt).getHours())].join(' · ')}
+                />
+              </View>
 
-              Withheld on a booking that never happened. `booking_terms` reports
-              the balance from the price whatever the state, so an expired hold
-              rendered "EGP 300 due at the venue" beside a closed cancellation
-              window: a bill for a pitch nobody took, and a cutoff for a
-              cancellation there is nothing left to cancel. */}
-          {terms && booking.state !== 'expired' && booking.state !== 'cancelled' ? (
-            <View style={{ gap: 6 }}>
-              <Txt size={12.5} color={onVoid.secondary}>
-                {terms.balanceEgp > 0 ? t.bookingsDueAtVenue(money(terms.balanceEgp)) : t.bookingsSettled}
-              </Txt>
-              <Txt size={11.5} color={onVoid.faint}>
-                {terms.freeNow ? t.freeUntil(moment(terms.cutoffAt)) : t.cutoffPassed}
-              </Txt>
+              {/* What is still owed, and by when it can be undone — the two facts
+                  a player checks before the day arrives.
+
+                  Withheld on a booking that never happened. `booking_terms` reports
+                  the balance from the price whatever the state, so an expired hold
+                  rendered "EGP 300 due at the venue" beside a closed cancellation
+                  window: a bill for a pitch nobody took, and a cutoff for a
+                  cancellation there is nothing left to cancel. */}
+              {terms && booking.state !== 'expired' && booking.state !== 'cancelled' ? (
+                <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: onVoid.edgeFaint, paddingTop: 12 }}>
+                  <Txt size={13} weight="semibold" color={terms.balanceEgp > 0 ? onVoid.primary : gold.base}>
+                    {terms.balanceEgp > 0 ? t.bookingsDueAtVenue(money(terms.balanceEgp)) : t.bookingsSettled}
+                  </Txt>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Clock size={13} color={onVoid.faint} />
+                    <Txt size={11.5} color={onVoid.faint} style={{ flexShrink: 1 }}>
+                      {terms.freeNow ? t.freeUntil(moment(terms.cutoffAt)) : t.cutoffPassed}
+                    </Txt>
+                  </View>
+                </View>
+              ) : null}
             </View>
-          ) : null}
+
+            {canShare || canLobby ? (
+              <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: onVoid.edgeFaint }}>
+                {canShare ? (
+                  <BarButton label={t.share} onPress={share} icon={<Share size={17} color={gold.base} />} />
+                ) : null}
+                {canShare && canLobby ? <View style={{ width: 1, backgroundColor: onVoid.edgeFaint }} /> : null}
+                {/* Cancelling lives in the lobby, and is linked to rather than
+                    rebuilt here. It is a decision with money attached — free
+                    before the cutoff, the full pitch price after — and a second
+                    implementation of that is a second chance to get it wrong. */}
+                {canLobby ? (
+                  <BarButton
+                    label={t.matchLobby}
+                    onPress={() => router.push(`/play/lobby?booking=${booking.bookingId}`)}
+                    icon={<Users size={17} color={gold.base} />}
+                  />
+                ) : null}
+              </View>
+            ) : null}
+          </Card>
 
           {/* Where the money goes, and the captain's half of agreeing it went.
               Only while there is still something outstanding: a settled booking
@@ -233,89 +286,89 @@ export default function BookingDetail() {
           ) : null}
 
           {squad.length ? (
-            <View style={{ gap: 0 }}>
-              <Txt size={11} weight="semibold" em={0.08} upper color={onVoid.faint} style={{ paddingBottom: 6 }}>
-                {t.squadTitle}
-              </Txt>
-              {squad.map((m, i) => (
-                <View key={m.participantId}>
-                  {i > 0 ? <Divider /> : null}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 }}>
-                    <Txt size={13} weight="semibold" color={onVoid.primary} style={{ flex: 1 }}>
-                      {m.displayName}
-                    </Txt>
-                    {m.isCaptain ? (
-                      <Txt size={11} color={gold.base}>
-                        {t.captain}
-                      </Txt>
-                    ) : null}
-                    {/* Null for a guest with no account, and left blank rather
-                        than shown as a zero somebody could mistake for a score. */}
-                    {m.ovr !== null ? (
-                      <Txt size={12} weight="semibold" color={onVoid.secondary}>
-                        {num(m.ovr)}
-                      </Txt>
-                    ) : null}
-                  </View>
-                </View>
-              ))}
+            <View style={{ gap: 12 }}>
+              <SectionTitle title={t.squadTitle} />
+              <MenuGroup>
+                {squad.map((m) => (
+                  <MenuRow
+                    key={m.participantId}
+                    icon={<User size={18} color={gold.base} />}
+                    title={m.displayName}
+                    detail={m.isCaptain ? t.captain : null}
+                    // Null for a guest with no account, and left blank rather
+                    // than shown as a zero somebody could mistake for a score.
+                    right={
+                      m.ovr !== null ? (
+                        <Txt size={13} weight="bold" color={onVoid.secondary}>
+                          {num(m.ovr)}
+                        </Txt>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </MenuGroup>
             </View>
           ) : null}
 
-          <View style={{ gap: 10 }}>
-            {/* One screen hosts both the score and the pitch review, so this is
-                one link with two names rather than two links to the same
-                place. Which name depends on what is actually outstanding. */}
-            {booking.awaitingResult || (booking.state === 'completed' && !booking.reviewed) ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push(`/play/result?booking=${booking.bookingId}`)}
-                hitSlop={8}
-              >
-                <Txt size={13} weight="semibold" color={gold.base}>
-                  {booking.awaitingResult ? t.resultGoTo : t.bookingsReviewIt}
-                </Txt>
-              </Pressable>
-            ) : null}
+          {/* One screen hosts both the score and the pitch review, so this is
+              one link with two names rather than two links to the same
+              place. Which name depends on what is actually outstanding. */}
+          {booking.awaitingResult || (booking.state === 'completed' && !booking.reviewed) ? (
+            <ActionButton
+              label={booking.awaitingResult ? t.resultGoTo : t.bookingsReviewIt}
+              icon={<Star size={16} color={void_.bg} />}
+              onPress={() => router.push(`/play/result?booking=${booking.bookingId}`)}
+            />
+          ) : null}
 
-            {booking.reviewed ? (
+          {booking.reviewed ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <CheckCircle size={16} color={gold.base} />
               <Txt size={12.5} color={onVoid.faint}>
                 {t.bookingsReviewed}
               </Txt>
-            ) : null}
-
-            {/* Cancelling lives in the lobby, and is linked to rather than
-                rebuilt here. It is a decision with money attached — free
-                before the cutoff, the full pitch price after — and a second
-                implementation of that is a second chance to get it wrong. */}
-            {booking.state === 'confirmed' || booking.state === 'held' ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push(`/play/lobby?booking=${booking.bookingId}`)}
-                hitSlop={8}
-              >
-                <Txt size={13} weight="semibold" color={onVoid.secondary}>
-                  {t.matchLobby}
-                </Txt>
-              </Pressable>
-            ) : null}
-          </View>
+            </View>
+          ) : null}
         </>
       ) : null}
     </Screen>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }}>
-      <Txt size={12.5} color={onVoid.faint} style={{ flex: 1 }}>
+    <View style={{ width: '50%', gap: 4, paddingRight: 10 }}>
+      <Txt size={11} color={onVoid.faint}>
         {label}
       </Txt>
       <Txt size={13} weight="semibold" color={onVoid.primary}>
         {value}
       </Txt>
     </View>
+  );
+}
+
+function BarButton({ label, onPress, icon }: { label: string; onPress: () => void; icon?: ReactNode }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 14,
+        backgroundColor: pressed ? goldAlpha.fillSoft : 'transparent',
+      })}
+    >
+      {icon}
+      <Txt size={13} weight="semibold" color={onVoid.primary}>
+        {label}
+      </Txt>
+    </Pressable>
   );
 }
 
@@ -396,29 +449,22 @@ function PayBlock({
     }
   };
 
-  const openRoom = async () => {
-    try {
-      const res = await venueConversation(bookingId);
-      if (res.ok && res.conversationId) router.push(`/chat/${res.conversationId}`);
-      else setNotice(reason(res.reason) ?? null);
-    } catch {
-      setNotice(t.offline);
-    }
-  };
-
   if (settled) {
     return (
-      <Txt size={12.5} color={gold.base}>
-        {t.paySettled}
-      </Txt>
+      <Card>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <CheckCircle size={18} color={gold.base} />
+          <Txt size={13} weight="semibold" color={gold.base} style={{ flex: 1 }}>
+            {t.paySettled}
+          </Txt>
+        </View>
+      </Card>
     );
   }
 
   return (
-    <View style={{ gap: 12 }}>
-      <Txt size={11} weight="semibold" em={0.08} upper color={onVoid.faint}>
-        {t.payTitle}
-      </Txt>
+    <Card>
+      <SectionTitle title={t.payTitle} />
 
       {channels.length === 0 ? (
         <Txt size={12.5} lh={1.5} color={onVoid.muted}>
@@ -434,10 +480,10 @@ function PayBlock({
               key={c.channelId}
               style={{
                 padding: 12,
-                borderRadius: radius.control,
+                borderRadius: radius.row,
                 borderWidth: 1,
                 borderColor: goldAlpha.edge,
-                backgroundColor: void_.surface,
+                backgroundColor: void_.bg,
                 gap: 3,
               }}
             >
@@ -474,7 +520,14 @@ function PayBlock({
           <Txt size={11.5} lh={1.5} color={onVoid.muted}>
             {t.payClaimedBlurb}
           </Txt>
-          <Button label={t.payTalkToVenue} variant="ghost" height={42} onPress={() => void openRoom()} />
+          {/* The thread a captain and a venue settled a payment in is gone.
+              This is the same conversation, on the venue's own number. */}
+          <WhatsAppButton
+            bookingId={bookingId}
+            label={t.payTalkToVenue}
+            height={42}
+            onNotice={setNotice}
+          />
         </View>
       ) : open ? (
         <View style={{ gap: 10 }}>
@@ -489,24 +542,24 @@ function PayBlock({
             multiline
             style={{
               minHeight: 62,
-              borderRadius: radius.control,
+              borderRadius: radius.row,
               borderWidth: 1,
               borderColor: onVoid.line,
-              backgroundColor: void_.surface,
+              backgroundColor: void_.bg,
               paddingHorizontal: 13,
               paddingTop: 11,
               color: onVoid.primary,
             }}
           />
-          <Button
+          <ActionButton
             label={t.payISentIt}
             disabled={busy || note.trim().length < 3}
             onPress={() => void claim()}
           />
         </View>
       ) : (
-        <Button label={t.payISentIt} variant="ghost" height={44} onPress={() => setOpen(true)} />
+        <ActionButton label={t.payISentIt} variant="ghost" onPress={() => setOpen(true)} />
       )}
-    </View>
+    </Card>
   );
 }

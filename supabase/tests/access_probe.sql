@@ -39,13 +39,19 @@ declare
   -- an account: a roll of honour behind a sign-in is not a roll of honour.
   -- None of the six reads anything a person did not choose to put on a public
   -- card, and none of them writes.
+  --
+  -- `venue_pay_at_venue` is the newest, and is here rather than behind sign-in
+  -- because it decides whether the button on the booking screen says "Book" or
+  -- "Request". Those are two different promises, and the person weighing a
+  -- venue is very often not signed in yet. It reads one boolean off a venue and
+  -- writes nothing; the writes that depend on it are all `authenticated`.
   v_want text[] := array[
     'auth_email_for_sign_in', 'club_honours', 'featured_clubs', 'hold_slot',
     'keeper_leaderboard', 'leaderboard', 'list_tournaments',
     'nearest_alternatives', 'search_availability', 'search_venues', 'sign_up',
     'staff_reset_password',
     'tournament_awards', 'tournament_detail', 'tournament_regions',
-    'tournament_venues', 'venue_detail', 'venue_reviews'
+    'tournament_venues', 'venue_detail', 'venue_pay_at_venue', 'venue_reviews'
   ];
   v_open text;
   v_n    integer;

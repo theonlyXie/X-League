@@ -29,6 +29,11 @@ export type ClubSummary = {
   trophies: number;
   playing: number;
   eligible: boolean;
+  /**
+   * The share of a cup win the captain promised when they asked. Null is the
+   * ordinary case — most places carry no bounty — and is not the same as zero.
+   */
+  bountyPct: number | null;
 };
 
 export async function myClubs(): Promise<ClubSummary[]> {
@@ -46,6 +51,7 @@ export async function myClubs(): Promise<ClubSummary[]> {
     trophies: r.trophies,
     playing: r.playing,
     eligible: r.eligible,
+    bountyPct: r.bounty_pct === null || r.bounty_pct === undefined ? null : Number(r.bounty_pct),
   }));
 }
 
@@ -105,6 +111,8 @@ export type ClubMember = {
   state: MembershipState;
   isCaptain: boolean;
   ovr: number | null;
+  /** What this member was promised of a cup win. The captain's own record. */
+  bountyPct: number | null;
 };
 
 export async function clubSquad(clubId: string): Promise<ClubMember[]> {
@@ -119,6 +127,7 @@ export async function clubSquad(clubId: string): Promise<ClubMember[]> {
     state: r.state,
     isCaptain: r.is_captain,
     ovr: r.ovr,
+    bountyPct: r.bounty_pct === null || r.bounty_pct === undefined ? null : Number(r.bounty_pct),
   }));
 }
 
@@ -163,18 +172,84 @@ export async function setClubCrest(clubId: string, url: string | null): Promise<
   return outcome(data as any[]);
 }
 
+/**
+ * Asking somebody to join, with the offer attached.
+ *
+ * `bountyPct` is the share of a cup prize the captain is promising — the thing
+ * that actually gets a good player to sign, written down at the moment it is
+ * offered rather than remembered differently by each side after the final.
+ * Null or zero means no bounty, which is the ordinary case.
+ *
+ * Nothing like this exists on a squad invitation for an ordinary match. A
+ * Thursday booking has no prize, so there is nothing to take a share of.
+ */
 export async function inviteToClub(
   clubId: string,
   playerId: string,
   slotKind: SlotKind | null,
+  bountyPct?: number | null,
 ): Promise<Outcome> {
   const { data, error } = await supabase().rpc('invite_to_club', {
     p_club_id: clubId,
     p_player_id: playerId,
     p_slot_kind: slotKind,
+    p_bounty_pct: bountyPct ?? null,
   });
   if (error) throw error;
   return outcome(data as any[]);
+}
+
+/** Change what a member was promised, or clear it by passing null. */
+export async function setClubBounty(
+  clubId: string,
+  playerId: string,
+  bountyPct: number | null,
+): Promise<Outcome> {
+  const { data, error } = await supabase().rpc('set_club_bounty', {
+    p_club_id: clubId,
+    p_player_id: playerId,
+    p_bounty_pct: bountyPct,
+  });
+  if (error) throw error;
+  return outcome(data as any[]);
+}
+
+export type Bounty = {
+  tournamentId: string;
+  tournamentName: string;
+  clubId: string;
+  clubName: string;
+  /** 'invited' while it is still an offer, 'active' once it was accepted. */
+  membershipState: MembershipState;
+  state: string;
+  startsOn: string | null;
+  prizePoolEgp: number;
+  bountyPct: number;
+  /** The percentage against the pot, in pounds, rounded down by the server. */
+  shareEgp: number;
+};
+
+/**
+ * What this player stands to take, cup by cup.
+ *
+ * A percentage on its own is not an answer to "what am I playing for", so the
+ * server joins the share to the pot of every live cup the club is entered in.
+ */
+export async function myBounties(): Promise<Bounty[]> {
+  const { data, error } = await supabase().rpc('my_bounties');
+  if (error) throw error;
+  return (data as any[]).map((r) => ({
+    tournamentId: r.tournament_id,
+    tournamentName: r.tournament_name,
+    clubId: r.club_id,
+    clubName: r.club_name,
+    membershipState: r.membership_state,
+    state: r.state,
+    startsOn: r.starts_on,
+    prizePoolEgp: Number(r.prize_pool_egp ?? 0),
+    bountyPct: Number(r.bounty_pct),
+    shareEgp: Number(r.share_egp ?? 0),
+  }));
 }
 
 export async function respondToClubInvite(clubId: string, accept: boolean): Promise<Outcome> {

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Txt } from '@/components/Txt';
+import { OpButton, OpField, OpNotice } from '@/components/operative';
 import {
-  OpButton,
-  OpField,
-  OpHeader,
-  OpNotice,
-  OpRow,
-  OpScreen,
-  OpSection,
-} from '@/components/operative';
-import { ink, onOperative, radius } from '@/theme/tokens';
+  OpCard,
+  OpEmpty,
+  OpGroup,
+  OpMenuGroup,
+  OpMenuRow,
+  OpPage,
+  OpPill,
+  OpPills,
+} from '@/components/kitOperative';
+import { Ban } from '@/components/icons';
+import { burgundy, ink, onOperative, operative, radius } from '@/theme/tokens';
 import { closeSlot, reopenSlot, venueClosures, type Closure } from '@/data/manage';
 import { venueDetail, type VenuePitch } from '@/data/discovery';
 import { searchAvailability, type Slot } from '@/data/api';
@@ -44,8 +46,7 @@ const KINDS: { kind: Closure['kind']; label: TextKey }[] = [
  * the server: the venue has to speak to them, and cancelling is the honest way.
  */
 export default function Closures() {
-  const { reason, t, hourLabel } = useI18n();
-  const router = useRouter();
+  const { reason, t, hourLabel, moment } = useI18n();
   const { activeVenue } = useSession();
   const venue = activeVenue;
 
@@ -100,117 +101,78 @@ export default function Closures() {
     };
   }, [pitchId, date, rows]);
 
-  return (
-    <OpScreen>
-      <OpHeader title={t.ownClosures} onBack={() => router.back()} />
+  const kindName = (k: Closure['kind']) => {
+    const key = KINDS.find((entry) => entry.kind === k)?.label;
+    return key ? t[key] : k;
+  };
 
+  return (
+    <OpPage title={t.ownClosures} subtitle={venue?.name}>
       <OpNotice text={notice} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection title={t.ownBookedOff}>
-        {rows.length === 0 && !loading ? (
-          <Txt size={12.5} color={onOperative.dim}>
-            {t.ownNothingClosed}
-          </Txt>
-        ) : null}
-        <View style={{ gap: 8 }}>
-          {rows.map((c) => (
-            <OpRow key={c.exceptionId}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={13} weight="semibold" color={ink}>
-                  {c.pitchLabel} · {new Date(c.startsAt).toLocaleString('en-GB', {
-                    timeZone: 'Africa/Cairo',
-                    day: 'numeric',
-                    month: 'short',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                </Txt>
-                <Txt size={10.5} color="rgba(20,18,16,.45)">
-                  {c.kind}
-                  {c.note ? ` · ${c.note}` : ''}
-                </Txt>
-              </View>
-              <OpButton
-                label={t.ownReopen}
-                tone="quiet"
-                onPress={async () => {
-                  const res = await reopenSlot(c.exceptionId);
-                  if (!res.ok) setNotice(reason(res.reason) ?? null);
-                  void load();
-                }}
+      <OpGroup title={t.ownBookedOff}>
+        {rows.length === 0 && !loading ? <OpEmpty title={t.ownNothingClosed} /> : null}
+        {rows.length > 0 ? (
+          <OpMenuGroup>
+            {rows.map((c) => (
+              <OpMenuRow
+                key={c.exceptionId}
+                // Burgundy, as a blocked hour is in the calendar's legend.
+                icon={<Ban size={19} color={burgundy.ink} />}
+                // The pitch and the hour in the reader's language and digits,
+                // and the reason as a word rather than its enum value — this
+                // row printed `maintenance` in English on the Arabic screen
+                // that had just offered it as صيانة, and the time in en-GB.
+                title={`${c.pitchLabel} · ${moment(c.startsAt)}`}
+                detail={c.note ? `${kindName(c.kind)} · ${c.note}` : kindName(c.kind)}
+                right={
+                  <OpButton
+                    label={t.ownReopen}
+                    tone="quiet"
+                    onPress={async () => {
+                      const res = await reopenSlot(c.exceptionId);
+                      if (!res.ok) setNotice(reason(res.reason) ?? null);
+                      void load();
+                    }}
+                  />
+                }
               />
-            </OpRow>
-          ))}
-        </View>
-      </OpSection>
-
-      <OpSection title={t.ownCloseHour} hint={t.ownCloseHourHint}>
-        {pitches.length > 1 ? (
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            {pitches.map((p) => {
-              const on = p.id === pitchId;
-              return (
-                <Pressable
-                  key={p.id}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={p.label}
-                  onPress={() => setPitchId(p.id)}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 13,
-                    borderRadius: radius.chip,
-                    borderWidth: 1,
-                    borderColor: on ? ink : onOperative.hairline,
-                    backgroundColor: on ? ink : 'transparent',
-                  }}
-                >
-                  <Txt size={12} weight="semibold" color={on ? '#FFFDF9' : ink}>
-                    {p.label}
-                  </Txt>
-                </Pressable>
-              );
-            })}
-          </View>
+            ))}
+          </OpMenuGroup>
         ) : null}
+      </OpGroup>
 
-        <OpField label={t.ownDate} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" width={140} />
+      <OpGroup title={t.ownCloseHour} hint={t.ownCloseHourHint}>
+        <OpCard>
+          {pitches.length > 1 ? (
+            <OpPills>
+              {pitches.map((p) => (
+                <OpPill key={p.id} label={p.label} on={p.id === pitchId} onPress={() => setPitchId(p.id)} />
+              ))}
+            </OpPills>
+          ) : null}
 
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          {KINDS.map(({ kind: k, label }) => {
-            const on = k === kind;
-            return (
-              <Pressable
-                key={k}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={t[label]}
-                onPress={() => setKind(k)}
-                style={{
-                  paddingVertical: 7,
-                  paddingHorizontal: 12,
-                  borderRadius: radius.chip,
-                  borderWidth: 1,
-                  borderColor: on ? ink : onOperative.hairline,
-                }}
-              >
-                <Txt size={11.5} weight={on ? 'semibold' : 'regular'} color={ink}>
-                  {t[label]}
-                </Txt>
-              </Pressable>
-            );
-          })}
-        </View>
+          <OpField label={t.ownDate} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" width={160} />
 
-        <OpField label={t.ownNote} value={note} onChangeText={setNote} placeholder={t.ownEgExample} />
+          <OpPills>
+            {KINDS.map(({ kind: k, label }) => (
+              <OpPill key={k} size="sm" label={t[label]} on={k === kind} onPress={() => setKind(k)} />
+            ))}
+          </OpPills>
 
+          <OpField label={t.ownNote} value={note} onChangeText={setNote} placeholder={t.ownEgExample} />
+        </OpCard>
+
+        {/* The hours themselves, dense on purpose: a venue closing an evening
+            taps five of these in a row. */}
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {slots.map((s) => (
             <Pressable
               key={s.startsAt}
               accessibilityRole="button"
               accessibilityLabel={t.ownCloseHourAt(hourLabel(s.hour))}
+              accessibilityState={{ disabled: !s.available }}
               disabled={!s.available}
               onPress={async () => {
                 if (!pitchId) return;
@@ -219,19 +181,19 @@ export default function Closures() {
                 else setNotice(null);
                 void load();
               }}
-              style={{
-                width: 62,
-                height: 40,
-                borderRadius: radius.chip,
+              style={({ pressed }) => ({
+                width: 66,
+                height: 44,
+                borderRadius: radius.row,
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderWidth: 1,
-                borderColor: onOperative.hairline,
-                backgroundColor: s.available ? 'transparent' : 'rgba(20,18,16,.05)',
+                borderColor: pressed ? ink : onOperative.line,
+                backgroundColor: s.available ? operative.surface : 'rgba(20,18,16,.05)',
                 opacity: s.available ? 1 : 0.45,
-              }}
+              })}
             >
-              <Txt size={12} weight={s.available ? 'semibold' : 'regular'} color={ink}>
+              <Txt size={12.5} weight={s.available ? 'semibold' : 'regular'} color={ink}>
                 {s.hour}:00
               </Txt>
             </Pressable>
@@ -242,7 +204,7 @@ export default function Closures() {
             </Txt>
           ) : null}
         </View>
-      </OpSection>
-    </OpScreen>
+      </OpGroup>
+    </OpPage>
   );
 }

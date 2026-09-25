@@ -8,12 +8,6 @@ import {
 } from '@/data/squad';
 import { bookingTerms, myBookings, type BookingTerms, type PastBooking } from '@/data/discovery';
 import { useI18n } from '@/i18n';
-import {
-  conversationMessages,
-  lobbyConversation,
-  markConversationRead,
-  type Message,
-} from '@/data/social';
 
 /**
  * P-13's data, for one booking.
@@ -22,9 +16,10 @@ import {
  * screen holds: a player may be shown only part of a squad, and counting what
  * they can see would report "3 of 5" for a match that is full.
  *
- * The lobby conversation is opened on mount. That call is idempotent — it
- * returns the existing room if there is one — so this cannot accumulate empty
- * rooms by being visited twice.
+ * There is no conversation to open any more. The lobby used to fetch a room
+ * and its last fifty messages on mount; a squad now reaches each other on
+ * WhatsApp, one button per person, and that number is fetched only when
+ * somebody presses it.
  */
 
 export type LobbyState = {
@@ -35,10 +30,7 @@ export type LobbyState = {
   counts: SquadCounts | null;
   booking: PastBooking | null;
   terms: BookingTerms | null;
-  conversationId: string | null;
-  messages: Message[];
   reload: () => void;
-  reloadMessages: () => void;
 };
 
 export function useLobby(bookingId: string | null): LobbyState {
@@ -49,13 +41,9 @@ export function useLobby(bookingId: string | null): LobbyState {
   const [counts, setCounts] = useState<SquadCounts | null>(null);
   const [booking, setBooking] = useState<PastBooking | null>(null);
   const [terms, setTerms] = useState<BookingTerms | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [nonce, setNonce] = useState(0);
-  const [msgNonce, setMsgNonce] = useState(0);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
-  const reloadMessages = useCallback(() => setMsgNonce((n) => n + 1), []);
 
   useEffect(() => {
     if (!isLive || !bookingId) {
@@ -87,14 +75,6 @@ export function useLobby(bookingId: string | null): LobbyState {
         setCounts(cnt);
         setBooking(mine.find((b) => b.bookingId === bookingId) ?? null);
         setTerms(tms);
-
-        const room = await lobbyConversation(bookingId);
-        if (cancelled) return;
-        if (room.ok && room.conversationId) {
-          setConversationId(room.conversationId);
-          setMessages(await conversationMessages(room.conversationId, 50));
-          void markConversationRead(room.conversationId);
-        }
       } catch (e: unknown) {
         // RBAC-006: not being in a squad is a legitimate answer, not a crash.
         if (!cancelled) {
@@ -115,24 +95,6 @@ export function useLobby(bookingId: string | null): LobbyState {
     };
   }, [bookingId, nonce]);
 
-  // Messages refresh on their own beat, so sending one does not re-fetch the
-  // whole squad.
-  useEffect(() => {
-    if (!isLive || !conversationId || msgNonce === 0) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const rows = await conversationMessages(conversationId, 50);
-        if (!cancelled) setMessages(rows);
-      } catch {
-        /* the thread keeps what it had */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [conversationId, msgNonce]);
-
   return {
     loading: isLive ? loading : false,
     denied,
@@ -140,9 +102,6 @@ export function useLobby(bookingId: string | null): LobbyState {
     counts,
     booking,
     terms,
-    conversationId,
-    messages,
     reload,
-    reloadMessages,
   };
 }

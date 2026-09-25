@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
-import { TextInput } from '@/components/TextField';
+import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { OpButton, OpHeader, OpNotice, OpRow, OpScreen, OpSection } from '@/components/operative';
-import { ink, onOperative, radius } from '@/theme/tokens';
+import { OpField, OpNotice } from '@/components/operative';
+import {
+  OpActionButton,
+  OpCard,
+  OpEmpty,
+  OpGroup,
+  OpLink,
+  OpMenuGroup,
+  OpPage,
+  OpPill,
+  OpPills,
+} from '@/components/kitOperative';
+import { Wallet } from '@/components/icons';
+import { gold, ink, onOperative, operative, radius } from '@/theme/tokens';
+import { mono } from '@/theme/typography';
 import {
   deleteVenuePaymentChannel,
   setVenuePaymentChannel,
@@ -32,7 +43,6 @@ const KINDS: ChannelKind[] = ['wallet', 'instapay', 'bank', 'contact'];
  */
 export default function MoneyIn() {
   const { reason, t } = useI18n();
-  const router = useRouter();
   const { activeVenue } = useSession();
   const venueId = activeVenue?.venueId ?? null;
   const mayEdit = activeVenue?.role === 'manager' || activeVenue?.role === 'owner';
@@ -112,188 +122,151 @@ export default function MoneyIn() {
           : t.payContact;
 
   return (
-    <OpScreen>
-      <OpHeader title={t.ownMoneyIn} onBack={() => router.back()} />
+    <OpPage
+      title={t.ownMoneyIn}
+      subtitle={activeVenue?.name}
+      footer={
+        mayEdit ? (
+          <OpActionButton
+            label={t.ownAddDestination}
+            disabled={busy || label.trim().length < 2 || value.trim().length < 3}
+            onPress={() => void add()}
+            flex
+          />
+        ) : undefined
+      }
+    >
       <OpNotice text={notice} />
 
-      <OpSection title={t.ownMoneyIn} hint={t.ownMoneyInBlurb}>
+      <OpGroup hint={t.ownMoneyInBlurb}>
         {loading ? <ActivityIndicator color={ink} /> : null}
 
-        {!loading && unreachable ? (
-          <Txt size={12.5} color="rgba(20,18,16,.55)">
-            {t.listUnreachable}
-          </Txt>
-        ) : null}
+        {!loading && unreachable ? <OpNotice text={t.listUnreachable} /> : null}
 
-        {!loading && !unreachable && channels.length === 0 ? (
-          <Txt size={12.5} lh={1.5} color="rgba(20,18,16,.55)">
-            {t.ownNoDestinations}
-          </Txt>
-        ) : null}
+        {!loading && !unreachable && channels.length === 0 ? <OpEmpty title={t.ownNoDestinations} /> : null}
 
-        <View style={{ gap: 8 }}>
-          {channels.map((c) => (
-            <OpRow key={c.channelId}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Txt size={13.5} weight="semibold" color={ink}>
-                    {c.label}
+        {channels.length > 0 ? (
+          <OpMenuGroup>
+            {channels.map((c) => (
+              <View
+                key={c.channelId}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 13, paddingVertical: 13, paddingHorizontal: 14 }}
+              >
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: radius.icon,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: c.active ? 'rgba(198,163,75,.18)' : operative.band,
+                  }}
+                >
+                  <Wallet size={19} color={c.active ? gold.ink : onOperative.dim} />
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Txt size={14.5} weight="semibold" color={ink}>
+                      {c.label}
+                    </Txt>
+                    <Badge label={kindLabel(c.kind)} />
+                    {!c.active ? <Badge label={t.ownDestinationOff} /> : null}
+                  </View>
+                  <Txt size={13} weight="semibold" color={onOperative.secondary} style={{ fontFamily: mono }}>
+                    {c.value}
                   </Txt>
-                  <Txt size={10} weight="bold" em={0.08} upper color="rgba(20,18,16,.4)">
-                    {kindLabel(c.kind)}
-                  </Txt>
-                  {!c.active ? (
-                    <Txt size={10} weight="bold" em={0.08} upper color="rgba(20,18,16,.4)">
-                      {t.ownDestinationOff}
+                  {c.instructions ? (
+                    <Txt size={11.5} lh={1.45} color={onOperative.faint}>
+                      {c.instructions}
                     </Txt>
                   ) : null}
-                </View>
-                <Txt size={12.5} color="rgba(20,18,16,.6)">
-                  {c.value}
-                </Txt>
-                {c.instructions ? (
-                  <Txt size={11} lh={1.45} color="rgba(20,18,16,.45)">
-                    {c.instructions}
-                  </Txt>
-                ) : null}
-              </View>
 
-              {mayEdit ? (
-                <View style={{ gap: 6, alignItems: 'flex-end' }}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={c.active ? t.ownHideIt : t.ownShowIt}
-                    disabled={busy}
-                    onPress={() =>
-                      void run(() =>
-                        setVenuePaymentChannel({
-                          channelId: c.channelId,
-                          venueId: venueId as string,
-                          kind: c.kind,
-                          label: c.label,
-                          value: c.value,
-                          instructions: c.instructions,
-                          active: !c.active,
-                          sort: c.sort,
-                        }),
-                      )
-                    }
-                    hitSlop={8}
-                  >
-                    <Txt size={11.5} weight="semibold" color={ink}>
-                      {c.active ? t.ownHideIt : t.ownShowIt}
-                    </Txt>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`${t.ownRemoveIt} ${c.label}`}
-                    disabled={busy}
-                    onPress={() => void run(() => deleteVenuePaymentChannel(c.channelId))}
-                    hitSlop={8}
-                  >
-                    <Txt size={11.5} color="rgba(140,40,40,.9)">
-                      {t.ownRemoveIt}
-                    </Txt>
-                  </Pressable>
+                  {mayEdit ? (
+                    <View style={{ flexDirection: 'row', gap: 18, paddingTop: 6 }}>
+                      <OpLink
+                        label={c.active ? t.ownHideIt : t.ownShowIt}
+                        disabled={busy}
+                        onPress={() =>
+                          void run(() =>
+                            setVenuePaymentChannel({
+                              channelId: c.channelId,
+                              venueId: venueId as string,
+                              kind: c.kind,
+                              label: c.label,
+                              value: c.value,
+                              instructions: c.instructions,
+                              active: !c.active,
+                              sort: c.sort,
+                            }),
+                          )
+                        }
+                      />
+                      <OpLink
+                        label={t.ownRemoveIt}
+                        accessibilityLabel={`${t.ownRemoveIt} ${c.label}`}
+                        tone="danger"
+                        disabled={busy}
+                        onPress={() => void run(() => deleteVenuePaymentChannel(c.channelId))}
+                      />
+                    </View>
+                  ) : null}
                 </View>
-              ) : null}
-            </OpRow>
-          ))}
-        </View>
-      </OpSection>
+              </View>
+            ))}
+          </OpMenuGroup>
+        ) : null}
+      </OpGroup>
 
       {mayEdit ? (
-        <OpSection title={t.ownAddDestination}>
-          <View style={{ gap: 12 }}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {KINDS.map((k) => {
-                const on = k === kind;
-                return (
-                  <Pressable
-                    key={k}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={kindLabel(k)}
-                    onPress={() => setKind(k)}
-                    style={{
-                      paddingHorizontal: 12,
-                      height: 34,
-                      justifyContent: 'center',
-                      borderRadius: radius.chip,
-                      borderWidth: 1,
-                      borderColor: on ? ink : onOperative.line,
-                      backgroundColor: on ? 'rgba(20,18,16,.06)' : 'transparent',
-                    }}
-                  >
-                    <Txt size={12} weight={on ? 'semibold' : 'regular'} color={ink}>
-                      {kindLabel(k)}
-                    </Txt>
-                  </Pressable>
-                );
-              })}
-            </View>
+        <OpGroup title={t.ownAddDestination}>
+          <OpCard>
+            <OpPills>
+              {KINDS.map((k) => (
+                <OpPill key={k} size="sm" label={kindLabel(k)} on={k === kind} onPress={() => setKind(k)} />
+              ))}
+            </OpPills>
 
-            <Field
+            <OpField
               label={t.ownDestinationName}
               value={label}
               onChangeText={setLabel}
               placeholder={t.ownDestinationNamePlaceholder}
             />
-            <Field
+            <OpField
               label={t.ownDestinationValue}
               value={value}
               onChangeText={setValue}
               placeholder={t.ownDestinationValuePlaceholder}
+              autoCapitalize="none"
             />
-            <Field
+            <OpField
               label={t.ownDestinationNote}
               value={instructions}
               onChangeText={setInstructions}
               placeholder={t.ownDestinationNotePlaceholder}
+              multiline
             />
-
-            <OpButton
-              label={t.ownAddDestination}
-              disabled={busy || label.trim().length < 2 || value.trim().length < 3}
-              onPress={() => void add()}
-            />
-          </View>
-        </OpSection>
+          </OpCard>
+        </OpGroup>
       ) : null}
-    </OpScreen>
+    </OpPage>
   );
 }
 
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (s: string) => void;
-  placeholder: string;
-}) {
+/** A small uppercase word beside a destination's name: its kind, or "off". */
+function Badge({ label }: { label: string }) {
   return (
-    <View style={{ gap: 6 }}>
-      <Txt size={10.5} weight="bold" em={0.08} upper color="rgba(20,18,16,.45)">
+    <View
+      style={{
+        paddingVertical: 2,
+        paddingHorizontal: 6,
+        borderRadius: radius.badge,
+        backgroundColor: operative.band,
+      }}
+    >
+      <Txt size={9.5} weight="bold" em={0.08} upper color={onOperative.muted}>
         {label}
       </Txt>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="rgba(20,18,16,.3)"
-        style={{
-          height: 44,
-          borderRadius: radius.control,
-          borderWidth: 1,
-          borderColor: onOperative.line,
-          paddingHorizontal: 12,
-          color: ink,
-        }}
-      />
     </View>
   );
 }

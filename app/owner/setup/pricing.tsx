@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
+import { OpField, OpNotice } from '@/components/operative';
 import {
-  OpButton,
-  OpField,
-  OpHeader,
-  OpMono,
-  OpNotice,
-  OpRow,
-  OpScreen,
-  OpSection,
-} from '@/components/operative';
-import { gold, ink, onOperative, radius } from '@/theme/tokens';
+  OpActionButton,
+  OpCard,
+  OpEmpty,
+  OpGroup,
+  OpMenuGroup,
+  OpPage,
+  OpPill,
+  OpPills,
+} from '@/components/kitOperative';
+import { gold, ink, onOperative } from '@/theme/tokens';
+import { mono } from '@/theme/typography';
 import { setPriceRule, venuePriceRules, type PriceRule } from '@/data/manage';
 import { venueDetail, type VenuePitch } from '@/data/discovery';
 import { useSession } from '@/state/session';
@@ -30,7 +31,6 @@ import { useI18n } from '@/i18n';
  */
 export default function Pricing() {
   const { reason, t } = useI18n();
-  const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
 
@@ -90,88 +90,76 @@ export default function Pricing() {
   };
 
   return (
-    <OpScreen>
-      <OpHeader title={t.ownPricing} onBack={() => router.back()} />
-
+    <OpPage
+      title={t.ownPricing}
+      subtitle={pitches.find((p) => p.id === pitchId)?.label ?? venue?.name}
+      footer={<OpActionButton label={t.ownSavePrice} onPress={save} disabled={!pitchId} flex />}
+    >
       {pitches.length > 1 ? (
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          {pitches.map((p) => {
-            const on = p.id === pitchId;
-            return (
-              <Pressable
-                key={p.id}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={p.label}
-                onPress={() => setPitchId(p.id)}
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 13,
-                  borderRadius: radius.chip,
-                  borderWidth: 1,
-                  borderColor: on ? ink : onOperative.hairline,
-                  backgroundColor: on ? ink : 'transparent',
-                }}
-              >
-                <Txt size={12} weight="semibold" color={on ? '#FFFDF9' : ink}>
-                  {p.label}
-                </Txt>
-              </Pressable>
-            );
-          })}
-        </View>
+        <OpPills>
+          {pitches.map((p) => (
+            <OpPill key={p.id} label={p.label} on={p.id === pitchId} onPress={() => setPitchId(p.id)} />
+          ))}
+        </OpPills>
       ) : null}
 
       <OpNotice text={notice} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
-      <OpSection
+      <OpGroup
         title={t.ownInForce}
-        action={
-          <Pressable accessibilityRole="button" hitSlop={10} onPress={() => setShowHistory((s) => !s)}>
-            <Txt size={11} weight="semibold" color={ink}>
-              {showHistory ? t.ownHideHistory : t.ownShowHistory}
-            </Txt>
-          </Pressable>
-        }
+        action={showHistory ? t.ownHideHistory : t.ownShowHistory}
+        onAction={() => setShowHistory((s) => !s)}
       >
-        <View style={{ gap: 8 }}>
-          {shown.map((r) => (
-            <OpRow key={r.ruleId} accent={r.live} style={r.live ? undefined : { opacity: 0.55 }}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={13} weight="semibold" color={ink}>
-                  {r.pitchLabel} · {r.startHour}:00–{r.endHour}:00
-                </Txt>
-                <Txt size={10.5} color="rgba(20,18,16,.45)">
-                  {r.live ? t.liveFrom(r.validFrom) : `${r.validFrom} → ${r.validTo ?? '—'}`}
+        {shown.length > 0 ? (
+          <OpMenuGroup>
+            {shown.map((r) => (
+              <View
+                key={r.ruleId}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  paddingVertical: 13,
+                  paddingHorizontal: 14,
+                  opacity: r.live ? 1 : 0.55,
+                }}
+              >
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Txt size={14} weight="semibold" color={ink}>
+                    {r.pitchLabel} · {r.startHour}:00–{r.endHour}:00
+                  </Txt>
+                  <Txt size={11.5} color={onOperative.faint}>
+                    {r.live ? t.liveFrom(r.validFrom) : `${r.validFrom} → ${r.validTo ?? '—'}`}
+                  </Txt>
+                </View>
+                {/* Gold for the rule in force: it is the price a player is
+                    quoted tonight. Superseded ones stay ink, and greyed. */}
+                <Txt size={15} weight="bold" color={r.live ? gold.ink : ink} style={{ fontFamily: mono }}>
+                  {r.priceEgp}
                 </Txt>
               </View>
-              <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                <OpMono>{r.priceEgp}</OpMono>
-                <Txt size={10} color="rgba(20,18,16,.42)">
-                </Txt>
-              </View>
-            </OpRow>
-          ))}
-          {shown.length === 0 && !loading ? (
-            <Txt size={12.5} color={onOperative.dim}>
-              {t.ownNoPriceSet}
-            </Txt>
-          ) : null}
-        </View>
-      </OpSection>
+            ))}
+          </OpMenuGroup>
+        ) : null}
+        {shown.length === 0 && !loading ? <OpEmpty title={t.ownNoPriceSet} /> : null}
+      </OpGroup>
 
-      <OpSection
-        title={t.ownSetPrice}
-        hint={t.ownPricingHint}
-      >
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          <OpField label={t.ownFrom} value={from} onChangeText={setFrom} keyboardType="number-pad" width={72} />
-          <OpField label={t.ownTo} value={to} onChangeText={setTo} keyboardType="number-pad" width={72} />
-          <OpField label={t.ownPrice} value={price} onChangeText={setPrice} keyboardType="number-pad" width={92} />
-        </View>
-        <OpButton label={t.ownSavePrice} onPress={save} disabled={!pitchId} />
-      </OpSection>
-    </OpScreen>
+      <OpGroup title={t.ownSetPrice} hint={t.ownPricingHint}>
+        <OpCard>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <OpField label={t.ownFrom} value={from} onChangeText={setFrom} keyboardType="number-pad" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <OpField label={t.ownTo} value={to} onChangeText={setTo} keyboardType="number-pad" />
+            </View>
+            <View style={{ flex: 1.3 }}>
+              <OpField label={t.ownPrice} value={price} onChangeText={setPrice} keyboardType="number-pad" />
+            </View>
+          </View>
+        </OpCard>
+      </OpGroup>
+    </OpPage>
   );
 }

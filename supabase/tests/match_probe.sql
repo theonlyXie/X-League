@@ -73,6 +73,12 @@ begin
   return query select 'a finished checked-in booking is awaiting its result',
                       r.awaiting_result::text, r.awaiting_result and r.match_id is null;
 
+  -- Book again: the row names the venue it was at, so Home can link to it.
+  select mb.venue_id into r from my_bookings(50) mb where mb.booking_id = v_bk;
+  return query select 'my_bookings says which venue, for booking again',
+                      coalesce(r.venue_id::text, '(none)'),
+                      r.venue_id = (select p.venue_id from booking b join pitch p on p.id = b.pitch_id where b.id = v_bk);
+
   -- The same list, seen by somebody who played but did not book it: my_bookings
   -- is the captain's list, and only the captain may report.
   perform set_config('request.jwt.claims', json_build_object('sub', KARIM)::text, true);

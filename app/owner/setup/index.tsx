@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import { OpRow, OpScreen, OpSection } from '@/components/operative';
-import { ChevronRight } from '@/components/icons';
-import { ink, onOperative } from '@/theme/tokens';
+import { OpHeading, OpMenuGroup, OpMenuRow, OpPage, opIconInk, type OpTone } from '@/components/kitOperative';
+import { Calendar, Ban, Clock, Home, PriceTag, Users, Wallet } from '@/components/icons';
+import { ink, onOperative, operative, radius } from '@/theme/tokens';
 import { useSession } from '@/state/session';
 import { useI18n } from '@/i18n';
 
@@ -19,14 +19,23 @@ import { useI18n } from '@/i18n';
  * string table while this menu rendered English in both languages — the same
  * shape of bug as the tab bar, and equally invisible to key parity, which can
  * only check that a key exists and never that a screen reached for it.
+ *
+ * Grouped the way a venue thinks about them: what it sells and when, then who
+ * works it and how it is paid, then how it looks to players. Pricing and money
+ * in carry the gold tile because on this surface gold means money.
  */
-const ITEMS = [
-  { label: 'ownHours', hint: 'ownHoursBlurb', route: '/owner/setup/hours' },
-  { label: 'ownPricing', hint: 'ownPricingBlurb', route: '/owner/setup/pricing' },
-  { label: 'ownClosures', hint: 'ownClosuresBlurb', route: '/owner/setup/closures' },
-  { label: 'ownStaff', hint: 'ownStaffBlurb', route: '/owner/setup/staff' },
-  { label: 'ownMoneyIn', hint: 'ownMoneyInBlurb', route: '/owner/setup/money-in' },
-  { label: 'ownProfile', hint: 'ownProfileBlurb', route: '/owner/setup/profile' },
+const GROUPS = [
+  [
+    { label: 'ownHours', hint: 'ownHoursBlurb', route: '/owner/setup/hours', Icon: Clock, tone: 'plain' },
+    { label: 'ownPricing', hint: 'ownPricingBlurb', route: '/owner/setup/pricing', Icon: PriceTag, tone: 'money' },
+    { label: 'ownClosures', hint: 'ownClosuresBlurb', route: '/owner/setup/closures', Icon: Ban, tone: 'plain' },
+  ],
+  [
+    { label: 'ownStaff', hint: 'ownStaffBlurb', route: '/owner/setup/staff', Icon: Users, tone: 'plain' },
+    { label: 'ownBooking', hint: 'ownBookingBlurb', route: '/owner/setup/booking', Icon: Calendar, tone: 'plain' },
+    { label: 'ownMoneyIn', hint: 'ownMoneyInBlurb', route: '/owner/setup/money-in', Icon: Wallet, tone: 'money' },
+  ],
+  [{ label: 'ownProfile', hint: 'ownProfileBlurb', route: '/owner/setup/profile', Icon: Home, tone: 'plain' }],
 ] as const;
 
 export default function OwnerSetup() {
@@ -36,24 +45,71 @@ export default function OwnerSetup() {
   const venue = activeVenue;
 
   return (
-    <OpScreen>
-      <OpSection title={venue?.name ?? t.ownSetup} hint={venue ? t.ownSignedInAs(venue.role) : undefined}>
-        <View style={{ gap: 8 }}>
-          {ITEMS.map((item) => (
-            <OpRow key={item.route} onPress={() => router.push(item.route as never)}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={13.5} weight="semibold" color={ink}>
-                  {t[item.label]}
-                </Txt>
-                <Txt size={10.5} color="rgba(20,18,16,.45)">
-                  {t[item.hint]}
-                </Txt>
-              </View>
-              <ChevronRight size={14} color={onOperative.dim} />
-            </OpRow>
-          ))}
+    <OpPage gap={16}>
+      <OpHeading title={t.ownSetup} />
+
+      {/* Whose setup this is, the way the account screen opens with who you
+          are: the menu below changes this venue and no other. */}
+      {venue ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 13,
+            padding: 14,
+            borderRadius: radius.cardInner,
+            borderWidth: 1,
+            borderColor: onOperative.hairline,
+            backgroundColor: operative.surface,
+          }}
+        >
+          <View
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: radius.pill,
+              backgroundColor: operative.band,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Txt size={15} weight="bold" color={ink}>
+              {venue.name.slice(0, 2).toUpperCase()}
+            </Txt>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Txt size={16} weight="bold" color={ink} numberOfLines={1}>
+              {venue.name}
+            </Txt>
+            <Txt size={12} color={onOperative.muted}>
+              {/* The role as a word, not its enum value — this read "Signed
+                  in as manager" in English inside an Arabic sentence. */}
+              {t.ownSignedInAs(
+                venue.role === 'owner'
+                  ? t.ownerRoleOwner
+                  : venue.role === 'manager'
+                    ? t.ownerRoleManager
+                    : t.ownerRoleStaff,
+              )}
+            </Txt>
+          </View>
         </View>
-      </OpSection>
-    </OpScreen>
+      ) : null}
+
+      {GROUPS.map((group, g) => (
+        <OpMenuGroup key={g}>
+          {group.map((item) => (
+            <OpMenuRow
+              key={item.route}
+              icon={<item.Icon size={19} color={opIconInk(item.tone as OpTone)} />}
+              tone={item.tone as OpTone}
+              title={t[item.label]}
+              detail={t[item.hint]}
+              onPress={() => router.push(item.route as never)}
+            />
+          ))}
+        </OpMenuGroup>
+      ))}
+    </OpPage>
   );
 }

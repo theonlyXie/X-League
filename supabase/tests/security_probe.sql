@@ -79,7 +79,7 @@ internals as (
      and p.proname in (
        'notify', 'write_audit', 'is_blocked_between', 'staff_user_id', 'staff_email',
        'issue_recovery_code', 'award_match_points', 'rebuild_standings', 'rebuild_card',
-       'conversation_audience', 'points_for', 'generate_booking_code'
+       'points_for', 'generate_booking_code', 'club_bounty_committed'
      )
      and (has_function_privilege('anon', p.oid, 'execute')
        or has_function_privilege('authenticated', p.oid, 'execute'))

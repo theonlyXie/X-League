@@ -21,6 +21,10 @@ import { BookingProvider } from '@/state/booking';
 import { SessionProvider, useSession } from '@/state/session';
 import { CardProvider } from '@/state/card';
 import { RefreshProvider } from '@/state/refresh';
+import { UnreadProvider } from '@/state/unread';
+import { AreaProvider } from '@/state/area';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WELCOME_SEEN } from '@/lib/welcome';
 import { Boundary } from '@/components/Boundary';
 import { installLastResortHandler } from '@/lib/lastResort';
 import { noteScreen, takeCrash } from '@/lib/breadcrumb';
@@ -59,6 +63,8 @@ export default function RootLayout() {
         <CardProvider>
           <BookingProvider>
           <RefreshProvider>
+          <UnreadProvider>
+          <AreaProvider>
           <StatusBar style="light" />
           <Gate />
           <Trail />
@@ -78,11 +84,14 @@ export default function RootLayout() {
             {/* Not a modal any more. It is the first thing the app shows to
                 somebody with no account, and a modal reads as an interruption
                 of a screen behind it — here there is nothing behind it. */}
+            <Stack.Screen name="welcome" />
             <Stack.Screen name="sign-in" />
             <Stack.Screen name="open-a-venue" />
             <Stack.Screen name="blocked" />
             <Stack.Screen name="onboarding" />
           </Stack>
+          </AreaProvider>
+          </UnreadProvider>
           </RefreshProvider>
           </BookingProvider>
         </CardProvider>
@@ -173,16 +182,28 @@ function Gate() {
   const navigation = useRootNavigationState();
   const router = useRouter();
 
-  const onSignIn = segments[0] === 'sign-in';
+  const first = segments[0] as string | undefined;
+  const onDoor = first === 'sign-in' || first === 'welcome';
+
+  // The first launch meets the welcome cards before the door; every launch
+  // after it goes straight to the door. Null until the flag has been read, so
+  // a returning player is never flashed the welcome while storage answers.
+  const [welcomed, setWelcomed] = useState<boolean | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(WELCOME_SEEN)
+      .then((v) => setWelcomed(v === '1'))
+      .catch(() => setWelcomed(true));
+  }, [onDoor]);
 
   useEffect(() => {
     if (!isLive) return;
     if (!navigation?.key) return;
     if (restoring) return;
     if (signedIn || guest) return;
-    if (onSignIn) return;
-    router.replace('/sign-in');
-  }, [navigation?.key, restoring, signedIn, guest, onSignIn, router]);
+    if (onDoor) return;
+    if (welcomed === null) return;
+    router.replace(welcomed ? '/sign-in' : '/welcome');
+  }, [navigation?.key, restoring, signedIn, guest, onDoor, welcomed, router]);
 
   return null;
 }

@@ -4,7 +4,8 @@ import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Eyebrow } from '@/components/ui';
+import { Eyebrow } from '@/components/ui';
+import { ActionButton } from '@/components/kit';
 import { ArrowLeft, Check, ChevronDown } from '@/components/icons';
 import { VoidMark } from '@/components/VoidMark';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
@@ -163,30 +164,22 @@ export default function SignIn() {
             accessibilityLabel={t.back}
             hitSlop={10}
             onPress={() => router.back()}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: radius.icon,
-              borderWidth: 1,
-              borderColor: 'rgba(243,238,229,.14)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
           >
-            <ArrowLeft size={16} color={onVoid.secondary} />
+            <ArrowLeft size={22} color={onVoid.primary} />
           </Pressable>
         ) : null}
       </View>
 
-      <View style={{ alignItems: 'center', paddingVertical: 4 }}>
-        <VoidMark size={116} rings={2} />
-      </View>
-
-      <View style={{ gap: 8 }}>
-        <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
+      {/* The redesign's door: a title and a line, left-aligned, straight into
+          the fields. The mark stays, smaller, because this is still X League's
+          door and not anybody's. */}
+      <View style={{ gap: 10 }}>
+        <VoidMark size={64} rings={2} />
+        <Txt size={28} weight="bold" em={-0.02} color={onVoid.primary}>
           {mode === 'in' ? t.authEnter : t.authJoin}
         </Txt>
-        <Txt size={13} lh={1.6} color={onVoid.muted}>
+        <Txt size={14} lh={1.55} color={onVoid.muted}>
           {mode === 'in' ? t.authEnterBlurb : t.authJoinBlurb}
         </Txt>
       </View>
@@ -298,11 +291,8 @@ export default function SignIn() {
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <Button
+      <ActionButton
         label={busy ? t.authWorking : mode === 'in' ? t.authSignIn : t.authCreate}
-        height={52}
-        round={radius.control}
-        size={15}
         disabled={!ready || busy}
         onPress={submit}
       />
@@ -420,9 +410,9 @@ function Field({
   const { rtl } = useI18n();
   const box = {
     height: 52,
-    borderRadius: radius.control,
+    borderRadius: radius.row,
     borderWidth: 1,
-    borderColor: goldAlpha.edge,
+    borderColor: onVoid.line,
     backgroundColor: void_.surface,
   } as const;
 
@@ -434,7 +424,9 @@ function Field({
 
   return (
     <View style={{ gap: 8 }}>
-      <Eyebrow>{label}</Eyebrow>
+      <Txt size={13} weight="semibold" color={onVoid.secondary}>
+        {label}
+      </Txt>
 
       {prefix ? (
         // The affix sits inside the field's border rather than beside it, so
@@ -454,8 +446,8 @@ function Field({
               justifyContent: 'center',
               borderRightWidth: rtl ? 0 : 1,
               borderLeftWidth: rtl ? 1 : 0,
-              borderRightColor: goldAlpha.edge,
-              borderLeftColor: goldAlpha.edge,
+              borderRightColor: onVoid.line,
+              borderLeftColor: onVoid.line,
             }}
           >
             {/* Not a field. It cannot be edited, cleared or tabbed into,

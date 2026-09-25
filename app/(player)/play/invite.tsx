@@ -4,9 +4,11 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Divider, Eyebrow } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
-import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
+import { Button } from '@/components/ui';
+import { ActionButton, Card, MenuGroup, SearchField, SectionTitle } from '@/components/kit';
+import { ChevronLeft } from '@/components/icons';
+import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
+import { face } from '@/theme/typography';
 import { findPlayers, inviteToBooking, squadCounts, type FoundPlayer, type SquadCounts } from '@/data/squad';
 import { useI18n } from '@/i18n';
 import { isLive } from '@/lib/supabase';
@@ -26,7 +28,7 @@ export default function Invite() {
   const router = useRouter();
   const params = useLocalSearchParams<{ booking?: string }>();
   const bookingId = params.booking ?? null;
-  const { reason, t, num } = useI18n();
+  const { reason, t, num, rtl } = useI18n();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoundPlayer[]>([]);
@@ -98,36 +100,39 @@ export default function Invite() {
       : counts.acceptedSubs >= counts.subCapacity);
 
   return (
-    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
         <View style={{ gap: 2, flex: 1 }}>
-          <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
+          <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
             {t.invitePlayers}
           </Txt>
           {counts ? (
-            <Txt size={11.5} color={onVoid.faint}>
+            <Txt size={11.5} weight="semibold" color={gold.base}>
               {t.startersOf(num(counts.acceptedStarters), num(counts.starterCapacity))} ·{' '}
               {t.subsOf(num(counts.acceptedSubs), num(counts.subCapacity))}
             </Txt>
           ) : null}
         </View>
+      </View>
+
+      {/* The field names what it searches; the two-letter floor the server
+          search needs is said under it until it has been met. */}
+      <View style={{ gap: 6 }}>
+        <SearchField value={query} onChangeText={setQuery} placeholder={t.searchPlayers} />
+        {query.trim().length < 2 ? (
+          <Txt size={11.5} color={onVoid.faint}>
+            {t.searchPlayersHint}
+          </Txt>
+        ) : null}
       </View>
 
       {/* Which shirt is being offered changes what capacity means. */}
@@ -141,18 +146,19 @@ export default function Invite() {
               accessibilityState={{ selected: on }}
               accessibilityLabel={k === 'starter' ? t.starter : t.sub}
               onPress={() => setSlotKind(k)}
+              hitSlop={4}
               style={{
                 flex: 1,
                 height: 40,
-                borderRadius: radius.chip,
+                borderRadius: radius.pill,
                 alignItems: 'center',
                 justifyContent: 'center',
-                ...(on
-                  ? { backgroundColor: gold.base }
-                  : { borderWidth: 1, borderColor: 'rgba(243,238,229,.14)' }),
+                borderWidth: 1,
+                borderColor: on ? goldAlpha.accent : onVoid.line,
+                backgroundColor: on ? goldAlpha.fill : 'transparent',
               }}
             >
-              <Txt size={13} weight={on ? 'bold' : 'semibold'} color={on ? void_.bg : onVoid.muted}>
+              <Txt size={13} weight={on ? 'bold' : 'semibold'} color={on ? gold.base : onVoid.secondary}>
                 {k === 'starter' ? t.starter : t.sub}
               </Txt>
             </Pressable>
@@ -166,121 +172,110 @@ export default function Invite() {
         </Txt>
       ) : null}
 
-      <View style={{ gap: 10 }}>
-        <Eyebrow>{t.searchPlayers}</Eyebrow>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t.searchPlayersHint}
-          placeholderTextColor={onVoid.dim}
-          autoCapitalize="none"
-          style={{
-            height: 46,
-            paddingHorizontal: 14,
-            borderRadius: radius.control,
-            borderWidth: 1,
-            borderColor: onVoid.edge,
-            color: onVoid.primary,
-            backgroundColor: void_.surface,
-          }}
-        />
+      {searching || query.trim().length >= 2 || results.length > 0 ? (
+        <View style={{ gap: 12 }}>
+          {searching ? <ActivityIndicator color={gold.base} /> : null}
 
-        {searching ? <ActivityIndicator color={gold.base} /> : null}
+          {!searching && query.trim().length >= 2 && results.length === 0 ? (
+            <Txt size={12.5} color={onVoid.dim}>
+              {t.noPlayersFound}
+            </Txt>
+          ) : null}
 
-        {!searching && query.trim().length >= 2 && results.length === 0 ? (
-          <Txt size={12.5} color={onVoid.dim}>
-            {t.noPlayersFound}
-          </Txt>
-        ) : null}
-
-        <View style={{ gap: 8 }}>
-          {results.map((p) => {
-            const already = invitedIds.includes(p.playerId);
-            return (
-              <View
-                key={p.playerId}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingVertical: 11,
-                  paddingHorizontal: 14,
-                  borderRadius: radius.control,
-                  backgroundColor: void_.surface,
-                  borderWidth: 1,
-                  borderColor: onVoid.edgeFaint,
-                }}
-              >
-                <View
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: radius.pill,
-                    backgroundColor: void_.inset,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Txt size={11} weight="bold" color={gold.base}>
-                    {p.displayName.slice(0, 2).toUpperCase()}
-                  </Txt>
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Txt size={13.5} weight="semibold" color={onVoid.primary}>
-                    {p.displayName}
-                  </Txt>
-                  <Txt size={11} color={onVoid.faint}>
-                    {[p.position, p.preferredArea].filter(Boolean).join(' · ')}
-                  </Txt>
-                </View>
-                {p.ovr != null ? (
-                  <Txt size={14} weight="bold" color={gold.base}>
-                    {num(p.ovr)}
-                  </Txt>
-                ) : null}
-                <Button
-                  label={already ? t.invited : t.invite}
-                  height={34}
-                  round={radius.chip}
-                  size={12}
-                  disabled={already || full}
-                  onPress={() => invite({ playerId: p.playerId })}
-                />
-              </View>
-            );
-          })}
+          {results.length > 0 ? (
+            <MenuGroup>
+              {results.map((p) => {
+                const already = invitedIds.includes(p.playerId);
+                return (
+                  <View
+                    key={p.playerId}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: radius.pill,
+                        backgroundColor: void_.inset,
+                        borderWidth: 1,
+                        borderColor: onVoid.edgeFaint,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Txt size={12} weight="bold" color={gold.base}>
+                        {p.displayName.slice(0, 2).toUpperCase()}
+                      </Txt>
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Txt size={14} weight="semibold" color={onVoid.primary} numberOfLines={1}>
+                        {p.displayName}
+                      </Txt>
+                      <Txt size={11.5} color={onVoid.faint} numberOfLines={1}>
+                        {[p.position, p.preferredArea].filter(Boolean).join(' · ')}
+                      </Txt>
+                    </View>
+                    {p.ovr != null ? (
+                      <Txt size={15} weight="bold" color={gold.base}>
+                        {num(p.ovr)}
+                      </Txt>
+                    ) : null}
+                    <Button
+                      label={already ? t.invited : t.invite}
+                      variant={already ? 'ghost' : 'primary'}
+                      height={34}
+                      round={radius.pill}
+                      size={12}
+                      disabled={already || full}
+                      onPress={() => invite({ playerId: p.playerId })}
+                    />
+                  </View>
+                );
+              })}
+            </MenuGroup>
+          ) : null}
         </View>
-      </View>
+      ) : null}
 
-      <Divider />
-
-      <View style={{ gap: 10 }}>
-        <Eyebrow>{t.addGuest}</Eyebrow>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+      <Card>
+        <SectionTitle title={t.addGuest} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
           <TextInput
             value={guest}
             onChangeText={setGuest}
             placeholder={t.guestName}
-            placeholderTextColor={onVoid.dim}
+            placeholderTextColor={onVoid.disabled}
+            accessibilityLabel={t.guestName}
             style={{
               flex: 1,
-              height: 46,
+              // Without this a web input keeps its intrinsic width and pushes
+              // the Invite button out of the card.
+              minWidth: 0,
+              height: 50,
               paddingHorizontal: 14,
-              borderRadius: radius.control,
+              borderRadius: radius.row,
               borderWidth: 1,
-              borderColor: onVoid.edge,
+              borderColor: onVoid.line,
               color: onVoid.primary,
-              backgroundColor: void_.surface,
+              backgroundColor: void_.inset,
+              fontFamily: face.regular,
+              fontSize: 15,
+              textAlign: rtl ? 'right' : 'left',
             }}
           />
-          <Button
+          <ActionButton
             label={t.invite}
-            height={46}
             disabled={guest.trim().length === 0 || full}
             onPress={() => invite({ guestName: guest.trim() })}
           />
         </View>
-      </View>
+      </Card>
 
       {notice ? (
         <Txt size={12.5} color={burgundy.action}>

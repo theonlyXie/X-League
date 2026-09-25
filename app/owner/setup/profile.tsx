@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { Txt } from '@/components/Txt';
-import {
-  OpButton,
-  OpField,
-  OpHeader,
-  OpNotice,
-  OpScreen,
-  OpSection,
-  OpStanding,
-} from '@/components/operative';
+import { OpField, OpNotice, OpStanding } from '@/components/operative';
+import { OpActionButton, OpCard, OpGroup, OpPage } from '@/components/kitOperative';
+import { CheckCircle } from '@/components/icons';
 import { gold, ink, onOperative, radius } from '@/theme/tokens';
 import { updateVenueProfile } from '@/data/manage';
 import { venueDetail, type VenueDetail } from '@/data/discovery';
@@ -28,7 +21,6 @@ import { useVenueStanding } from '@/state/standing';
  */
 export default function VenueProfile() {
   const { reason, t } = useI18n();
-  const router = useRouter();
   const { activeVenue } = useSession();
   const venue = activeVenue;
 
@@ -76,9 +68,47 @@ export default function VenueProfile() {
     void load();
   }, [load]);
 
+  const save = async () => {
+    if (!venue) return;
+    const res = await updateVenueProfile(venue.venueId, {
+      name,
+      area,
+      phone,
+      entryNote,
+      houseRules,
+      amenities: amenities
+        .split(',')
+        .map((a) => a.trim())
+        .filter(Boolean),
+      mapUrl: mapUrl.trim(),
+    });
+    if (res.ok) {
+      setSaved(true);
+      setNotice(null);
+      void load();
+    } else {
+      setSaved(false);
+      setNotice(reason(res.reason) ?? null);
+    }
+  };
+
   return (
-    <OpScreen>
-      <OpHeader title={t.ownProfile} onBack={() => router.back()} />
+    <OpPage
+      title={t.ownProfile}
+      subtitle={venue?.name}
+      // Pinned, because the form is longer than a phone and Save used to sit
+      // under the last field, out of sight while every other field was edited.
+      footer={
+        <>
+          {saved ? (
+            <Txt size={12} weight="semibold" color={onOperative.muted} style={{ flexShrink: 1 }}>
+              {t.ownHoursSaved}
+            </Txt>
+          ) : null}
+          <OpActionButton label={t.ownSave} onPress={() => void save()} flex />
+        </>
+      }
+    >
       <OpNotice text={notice} />
       {loading ? <ActivityIndicator color={ink} /> : null}
 
@@ -92,15 +122,17 @@ export default function VenueProfile() {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 8,
-            paddingVertical: 10,
-            paddingHorizontal: 12,
-            borderRadius: radius.chip,
+            gap: 10,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderRadius: radius.row,
             borderWidth: 1,
             borderColor: 'rgba(198,163,75,.5)',
+            backgroundColor: 'rgba(198,163,75,.08)',
           }}
         >
-          <Txt size={11.5} color={gold.ink}>
+          <CheckCircle size={18} color={gold.ink} />
+          <Txt size={12.5} weight="semibold" color={gold.ink} style={{ flex: 1 }}>
             {t.ownVerifiedByX}
           </Txt>
         </View>
@@ -114,63 +146,45 @@ export default function VenueProfile() {
         />
       ) : null}
 
-      <OpSection title={t.ownDetails}>
-        <OpField label={t.ownName} value={name} onChangeText={setName} />
-        <OpField label={t.ownArea} value={area} onChangeText={setArea} />
-        <OpField label={t.ownPhone} value={phone} onChangeText={setPhone} />
-      </OpSection>
+      <OpGroup title={t.ownDetails}>
+        <OpCard>
+          <OpField label={t.ownName} value={name} onChangeText={setName} />
+          <OpField label={t.ownArea} value={area} onChangeText={setArea} />
+          <OpField label={t.ownPhone} value={phone} onChangeText={setPhone} />
+        </OpCard>
+      </OpGroup>
 
-      <OpSection title={t.ownAtGateSection} hint={t.ownEntryNoteHint}>
-        <OpField label={t.ownEntryNote} value={entryNote} onChangeText={setEntryNote} placeholder={t.ownEgEntryNote} />
-      </OpSection>
+      <OpGroup title={t.ownAtGateSection} hint={t.ownEntryNoteHint}>
+        <OpCard>
+          <OpField label={t.ownEntryNote} value={entryNote} onChangeText={setEntryNote} placeholder={t.ownEgEntryNote} />
+        </OpCard>
+      </OpGroup>
 
-      <OpSection title={t.ownHouseRules}>
-        <OpField label={t.ownRules} value={houseRules} onChangeText={setHouseRules} />
-      </OpSection>
+      <OpGroup title={t.ownHouseRules}>
+        <OpCard>
+          <OpField label={t.ownRules} value={houseRules} onChangeText={setHouseRules} multiline />
+        </OpCard>
+      </OpGroup>
 
       {/* VEN-009: the deep link a player's "Navigate" button opens. Nothing
           could set it, so that button did nothing for every venue. */}
-      <OpSection title={t.ownFindUs} hint={t.ownMapHint}>
-        <OpField label={t.ownMapLink} value={mapUrl} onChangeText={setMapUrl} placeholder={t.ownEgMapLink} />
-      </OpSection>
+      <OpGroup title={t.ownFindUs} hint={t.ownMapHint}>
+        <OpCard>
+          <OpField
+            label={t.ownMapLink}
+            value={mapUrl}
+            onChangeText={setMapUrl}
+            placeholder={t.ownEgMapLink}
+            autoCapitalize="none"
+          />
+        </OpCard>
+      </OpGroup>
 
-      <OpSection title={t.ownFacilities} hint={t.ownAmenitiesHint}>
-        <OpField label={t.ownAmenities} value={amenities} onChangeText={setAmenities} placeholder={t.ownEgAmenities} />
-      </OpSection>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <OpButton
-          label={t.ownSave}
-          onPress={async () => {
-            if (!venue) return;
-            const res = await updateVenueProfile(venue.venueId, {
-              name,
-              area,
-              phone,
-              entryNote,
-              houseRules,
-              amenities: amenities
-                .split(',')
-                .map((a) => a.trim())
-                .filter(Boolean),
-              mapUrl: mapUrl.trim(),
-            });
-            if (res.ok) {
-              setSaved(true);
-              setNotice(null);
-              void load();
-            } else {
-              setSaved(false);
-              setNotice(reason(res.reason) ?? null);
-            }
-          }}
-        />
-        {saved ? (
-          <Txt size={11.5} color={onOperative.dim}>
-            {t.ownHoursSaved}
-          </Txt>
-        ) : null}
-      </View>
-    </OpScreen>
+      <OpGroup title={t.ownFacilities} hint={t.ownAmenitiesHint}>
+        <OpCard>
+          <OpField label={t.ownAmenities} value={amenities} onChangeText={setAmenities} placeholder={t.ownEgAmenities} />
+        </OpCard>
+      </OpGroup>
+    </OpPage>
   );
 }

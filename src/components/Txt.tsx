@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Text, TextProps, TextStyle } from 'react-native';
 import { familyFor, tracking, Weight } from '@/theme/typography';
-import { useI18n } from '@/i18n';
+import { useI18nOptional } from '@/i18n';
 
 type Props = Omit<TextProps, 'style'> & {
   /** Font size in points, exactly as the design states it. */
@@ -34,7 +34,20 @@ export function Txt({
   children,
   ...rest
 }: Props) {
-  const { rtl } = useI18n();
+  // Optional on purpose: the error boundary is mounted above the provider so
+  // that it catches a failure inside it, and it draws its message with this
+  // component. Demanding a provider here is what turned every caught error
+  // into a silent death — see `useI18nOptional`.
+  const rtl = useI18nOptional()?.rtl ?? false;
+
+  // Tracking is a Latin device. Arabic is cursive: adding space between its
+  // letters does not loosen the word, it *disconnects* it — which is why the
+  // card read `مبد ئي` and `مو ثّقة`, and why the eyebrows came apart into
+  // `أدلة ا لمباريات`. Every one of those is an `em` from the design applied
+  // to a translated string. The design's tracking still applies wherever the
+  // text is Latin, including Latin inside an Arabic interface.
+  const spaced = em !== undefined && !ARABIC.test(textOf(children));
+
   return (
     <Text
       {...rest}
@@ -46,7 +59,7 @@ export function Txt({
           writingDirection: rtl ? 'rtl' : 'ltr',
           fontSize: size,
           ...(color ? { color } : null),
-          ...(em !== undefined ? { letterSpacing: tracking(size, em) } : null),
+          ...(spaced ? { letterSpacing: tracking(size, em!) } : null),
           ...(lh !== undefined ? { lineHeight: size * lh } : null),
           ...(upper ? { textTransform: 'uppercase' as const } : null),
           ...(align ? { textAlign: align } : null),
@@ -57,6 +70,17 @@ export function Txt({
       {rtl ? isolate(children) : children}
     </Text>
   );
+}
+
+/** Arabic, Persian and the presentation forms — anything that joins. */
+const ARABIC = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
+
+/** The text a node will actually draw, for deciding how to draw it. */
+function textOf(children: ReactNode): string {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(textOf).join('');
+  return '';
 }
 
 /**
@@ -79,8 +103,26 @@ export function Txt({
 // place in this app where a number is read aloud to a stranger.
 const LATIN_RUN = /(\+?[A-Za-z0-9][A-Za-z0-9\u0027\u2019.,:;!?()\/+\-–—&%#@ ]*[A-Za-z0-9.)\]%]|\+?[A-Za-z0-9])/g;
 
+/**
+ * Digits and nothing else, in either numeral set.
+ *
+ * Deliberately narrow. A run of digits cannot be reordered against itself, so
+ * dropping the isolate around one is safe. Admit a separator \u2014 `3\u20131`, `5-a` \u2014
+ * and it is not: a neutral between two numbers resolves to the paragraph's own
+ * direction, which is how `5-a-side` became `a-side-5` in the first place.
+ */
+const BARE_NUMBER = /^[\s0-9\u0660-\u0669]+$/;
+
 function isolate(children: ReactNode): ReactNode {
-  if (typeof children === 'string') return children.replace(LATIN_RUN, '\u2068$1\u2069');
+  if (typeof children === 'string') {
+    // A number standing alone has nothing to be reordered against, so the
+    // isolate buys nothing \u2014 and a control character the face does not cover
+    // is a control character something may decide to draw. The card's overall
+    // rating is the largest piece of type in the app and the worst place to
+    // find out.
+    if (BARE_NUMBER.test(children)) return children;
+    return children.replace(LATIN_RUN, '\u2068$1\u2069');
+  }
   if (typeof children === 'number') return isolate(String(children));
 
   if (Array.isArray(children)) {

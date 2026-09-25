@@ -42,7 +42,6 @@ looked at with an empty `.env`.
 | Player card | P-08 / P-09 | `/me` |
 | Rate a match | P-09 | `/play/rate` |
 | Teams | P-10 | `/teams` |
-| Chat | P-12 / P-14 | `/chat` |
 | Match lobby | P-13 | `/play/lobby` |
 | Cups | P-15 – P-20 | `/cups` |
 | Notifications | — | `/notifications` |
@@ -73,6 +72,31 @@ every function checks authority for itself regardless.
 The three surfaces share one identity, so Player and Owner mode switch without
 signing out (RBAC-005): the switch lives on the player card under **Workspace**,
 and the black `OWNER` chip in the venue header switches back.
+
+## Running it on an iPhone
+
+On a Mac, with Xcode and a paid Apple Developer account. No cloud build and no
+Expo account: `prebuild` generates an ordinary Xcode project from `app.json`,
+and everything after that is `xcodebuild`.
+
+```bash
+npm run ios:device                        # debug build, on a connected iPhone
+npm run ios:device -- --release           # what a player gets: no bundler attached
+npm run ios:device -- --team ABCDE12345   # set the signing team without the GUI
+npm run ios:device -- --clean             # regenerate ios/ after an app.json change
+```
+
+`scripts/ios-dev.sh` is `expo prebuild` and `expo run:ios` with the checks in
+front of them, and the checks are the point: Command Line Tools selected instead
+of Xcode, Developer Mode off on the phone, a missing signing team and pods out of
+step are between them almost every first-run failure, and each one is minutes to
+diagnose from the error Xcode prints and seconds from a sentence naming it.
+
+Two things it will not do. It does not apply migrations — a build pointed at a
+database missing them shows a working app that cannot sign anybody up, so the
+script says so before it starts. And it only reaches phones you can plug in:
+TestFlight is Xcode → Product → Archive, and `ios.buildNumber` in `app.json` has
+to go up before every upload.
 
 ## Building an APK
 
@@ -113,7 +137,7 @@ app/                     expo-router routes; directory structure is the URL stru
   (player)/              player tabs — the group adds no path segment
     play/                everything downstream of Play, so the Play tick stays
                          gold through the whole booking flow
-    cups/  chat/         the other two tabs
+    cups/                the other tab
   owner/                 owner tabs, Operative surfaces
     setup/               pricing, closures, staff, venue profile
   teams/  notifications  reachable from the profile rather than a tab
@@ -127,7 +151,7 @@ src/
   data/discovery.ts      venues, reviews, cancellation, standing
   data/squad.ts          squads, invitations, teams, player search
   data/progress.ts       matches, peer ratings, XP
-  data/social.ts         conversations, notifications, reports
+  data/social.ts         reaching somebody, notifications, reports
   data/cups.ts           tournaments
   data/manage.ts         Owner Mode configuration and the admin console
   state/booking.tsx      slot selection, the hold countdown, owner check-in
@@ -353,17 +377,45 @@ whether a pitch-hour is sold twice. Standings are appended snapshots rather than
 a live aggregate, because a table shown mid-tournament has to be reproducible
 afterwards and a points rule that changes must not rewrite history.
 
-### Conversations
+### Reaching somebody
 
-A conversation is derived from a relationship that already exists — a squad, a
-team, or two people who have shared a pitch. Player search honours PRO-006
-visibility, so messaging honours the same boundary; otherwise it is an open
-channel to any account whose name somebody can guess. There is deliberately no
-"new message" button.
+X League used to host its own messaging — lobby rooms, team rooms, club rooms,
+direct messages, and a thread a venue and a captain settled a payment in. It
+does not any more. Running a channel means running the moderation behind it
+every hour of every day, and the product's job is to get a match booked and
+played.
+
+Where there was a room there is a button that opens WhatsApp, which everybody
+playing football in Egypt already has, and which has spent a decade building the
+blocking and reporting this would otherwise have built badly.
+
+The privacy rule did not get looser. A phone number is more exposing than a
+message box, so `whatsapp_for_player` answers only for a club-mate, a team-mate,
+or somebody in the same match, refuses in both directions of a block, and is
+never granted to `anon`. The number is fetched when somebody presses the button
+rather than when a screen draws, so the app never holds a roster of numbers it
+was not shown for a reason. `booking_whatsapp` is the same rule for the one
+conversation about money: the venue to its captain, the captain to the venue.
 
 A notification is a row rather than a push. Delivery is a separate concern, but
 the record of what a player was told survives whether or not a device was
 reachable.
+
+### A share of a cup
+
+A captain inviting somebody to a club can name a percentage of a cup prize on
+the invitation. The player sees it before they answer, and sees what it is worth
+against the pot of every cup their club is entered in, because "10%" cannot be
+weighed until it says EGP 1,200.
+
+X League does not hold or pay this money — there is no prize pot in the schema
+and entry fees are settled by InstaPay between a captain and a venue. The
+percentage is the agreed term, written down at the moment it is offered, and the
+captain pays it. A club cannot promise away more than 100% of a prize, which is
+the argument the feature exists to prevent rather than formalise.
+
+Ordinary matches have none of this. A Thursday booking has no prize, so a squad
+invitation is accept or decline, as it always was.
 
 ## Design system
 
@@ -399,7 +451,7 @@ it is used at.
 ## Not yet built
 
 This list went stale and has been rewritten against the tree rather than against
-the plan. Tournaments, messaging, clubs, refereeing, the owner setup screens and
+the plan. Tournaments, clubs, refereeing, the owner setup screens and
 the console all exist; `docs/FLOWS.md` describes what the product actually does,
 screen by screen, and is the document to trust.
 
@@ -415,10 +467,9 @@ promises one and does nothing is worse than its absence.
 
 **A date picker.** The third day chip is "Day after", not a picker.
 
-**Realtime.** Nothing is pushed. Chat polls while it is open — four seconds in a
-room, twelve on the list, stopped when the screen is behind another one — and
-the owner surfaces pull to refresh. A socket needs a select grant and a policy on
-the table it watches, and this schema grants no table access to anybody.
+**Realtime.** Nothing is pushed. The unread count polls once a minute and the
+owner surfaces pull to refresh. A socket needs a select grant and a policy on the
+table it watches, and this schema grants no table access to anybody.
 
 **Phone OTP, when there is an SMS provider.** The password path above is what
 runs today and needs no provider. Switching to OTP later is a provider account,

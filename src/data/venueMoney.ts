@@ -73,12 +73,19 @@ export async function deleteVenuePaymentChannel(
   return { ok: !!row?.ok, reason: row?.reason ?? undefined };
 }
 
-/** The captain says they sent it. Opens the room and returns it. */
+/**
+ * The captain says they sent it.
+ *
+ * It used to open a room and hand it back so the screen could drop the captain
+ * into a thread with the venue. There is no thread: the claim is a booking
+ * event and a notification to the venue's staff, and if either side needs to
+ * say more they have each other's number.
+ */
 export async function claimBookingPayment(
   bookingId: string,
   kind: ChannelKind,
   note: string,
-): Promise<{ ok: boolean; conversationId?: string; reason?: string }> {
+): Promise<{ ok: boolean; reason?: string }> {
   const { data, error } = await supabase().rpc('claim_booking_payment', {
     p_booking_id: bookingId,
     p_kind: kind,
@@ -86,11 +93,7 @@ export async function claimBookingPayment(
   });
   if (error) throw error;
   const row = (data as any[])[0];
-  return {
-    ok: !!row?.ok,
-    conversationId: row?.conversation_id ?? undefined,
-    reason: row?.reason ?? undefined,
-  };
+  return { ok: !!row?.ok, reason: row?.reason ?? undefined };
 }
 
 /** The venue says it arrived. This is the half that settles the booking. */
@@ -142,18 +145,3 @@ export async function venuePaymentClaims(venueId: string): Promise<PaymentClaim[
   }));
 }
 
-/** The room this booking is settled in. Created the first time it is asked for. */
-export async function venueConversation(
-  bookingId: string,
-): Promise<{ ok: boolean; conversationId?: string; reason?: string }> {
-  const { data, error } = await supabase().rpc('venue_conversation', {
-    p_booking_id: bookingId,
-  });
-  if (error) throw error;
-  const row = (data as any[])[0];
-  return {
-    ok: !!row?.ok,
-    conversationId: row?.conversation_id ?? undefined,
-    reason: row?.reason ?? undefined,
-  };
-}

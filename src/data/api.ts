@@ -130,16 +130,44 @@ export async function nearestAlternatives(pitchId: string, startsAt: string): Pr
   }));
 }
 
-/** BKG-005: safe to call twice — a retry returns the original booking code. */
+/**
+ * BKG-005: safe to call twice — a retry returns the original booking code.
+ *
+ * Two outcomes now succeed, and they are different screens. At a venue that
+ * takes money at the gate this confirms as it always did and hands back a code.
+ * At a venue that has not agreed to that, it *asks*: the hour is held, the
+ * venue answers, and there is no code until they do. Both are `ok`, which is
+ * why the caller is given the state rather than left to infer it from a null
+ * code — a missing code has meant "this failed" everywhere in this app since
+ * the spine was written, and it would be read that way again.
+ */
 export async function confirmBooking(
   bookingId: string,
-): Promise<{ ok: true; code: string } | { ok: false; reason: string }> {
+): Promise<
+  | { ok: true; state: 'confirmed'; code: string }
+  | { ok: true; state: 'requested' }
+  | { ok: false; reason: string }
+> {
   const { data, error } = await supabase().rpc('confirm_booking', { p_booking_id: bookingId });
   if (error) throw error;
-  const row = (data as { ok: boolean; code: string | null; reason: string | null }[])[0];
-  return row.ok
-    ? { ok: true, code: row.code! }
-    : { ok: false, reason: row.reason ?? 'That hold is no longer active.' };
+  const row = (data as { ok: boolean; code: string | null; state: string | null; reason: string | null }[])[0];
+  if (!row?.ok) return { ok: false, reason: row?.reason ?? 'That hold is no longer active.' };
+  return row.state === 'requested'
+    ? { ok: true, state: 'requested' }
+    : { ok: true, state: 'confirmed', code: row.code! };
+}
+
+/**
+ * Whether this venue lets players book outright and settle at the gate.
+ *
+ * Read before the button is drawn, because "Book" and "Request" are different
+ * promises and the person deciding has to be told which one they are making.
+ * Readable signed-out, since they often are.
+ */
+export async function venuePayAtVenue(venueId: string): Promise<boolean> {
+  const { data, error } = await supabase().rpc('venue_pay_at_venue', { p_venue_id: venueId });
+  if (error) throw error;
+  return Boolean(data);
 }
 
 /** Leaving checkout without confirming. Safe to call on an already-dead hold. */

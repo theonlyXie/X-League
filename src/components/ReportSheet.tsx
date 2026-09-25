@@ -27,7 +27,7 @@ export function ReportSheet({
   open,
   onClose,
 }: {
-  kind: 'player' | 'venue' | 'message' | 'booking';
+  kind: 'player' | 'venue' | 'booking';
   subjectId: string;
   subjectName?: string;
   open: boolean;

@@ -1,10 +1,9 @@
 import { ReactNode } from 'react';
-import { Pressable, ScrollView, View, ViewStyle } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
 import { Txt } from './Txt';
-import { ArrowLeft } from './icons';
 import { burgundy, gold, ink, onOperative, operative, radius } from '@/theme/tokens';
-import { mono } from '@/theme/typography';
+import { face, mono } from '@/theme/typography';
 
 /**
  * The Operative surface, as a small kit.
@@ -13,91 +12,10 @@ import { mono } from '@/theme/typography';
  * type, 8–12 px corners, and ink rather than gold for emphasis — gold stays
  * reserved for money and for the app-sourced booking. Every screen in those two
  * areas was repeating the same six shapes, so they live here once.
+ *
+ * The page, section, header and row shapes moved to `kitOperative.tsx` with
+ * the redesign; what is left here is what it kept as it was.
  */
-
-export function OpScreen({ children, gap = 18 }: { children: ReactNode; gap?: number }) {
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: operative.bg }}
-      contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28, gap }}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      {children}
-    </ScrollView>
-  );
-}
-
-export function OpSection({
-  title,
-  hint,
-  children,
-  action,
-}: {
-  title: string;
-  hint?: string;
-  children: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <View style={{ gap: 10 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <Txt size={9.5} weight="semibold" em={0.14} upper color={onOperative.faint}>
-          {title}
-        </Txt>
-        {action}
-      </View>
-      {hint ? (
-        <Txt size={11} lh={1.5} color="rgba(20,18,16,.5)">
-          {hint}
-        </Txt>
-      ) : null}
-      {children}
-    </View>
-  );
-}
-
-/** A panel row: the workhorse of every list in Owner Mode. */
-export function OpRow({
-  children,
-  onPress,
-  accent,
-  style,
-}: {
-  children: ReactNode;
-  onPress?: () => void;
-  /** Gold edge for anything about money or an app booking. */
-  accent?: boolean;
-  style?: ViewStyle;
-}) {
-  const body = (
-    <View
-      style={[
-        {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-          paddingVertical: 12,
-          paddingHorizontal: 14,
-          borderRadius: radius.panel,
-          backgroundColor: operative.surface,
-          borderWidth: 1,
-          borderColor: accent ? 'rgba(198,163,75,.5)' : onOperative.hairline,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
-
-  if (!onPress) return body;
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}>
-      {body}
-    </Pressable>
-  );
-}
 
 export function OpButton({
   label,
@@ -147,6 +65,11 @@ export function OpButton({
   );
 }
 
+/**
+ * A label over its input, as on the sign-in screen: the label in sentence case
+ * at reading size rather than a 9.5 px uppercase eyebrow, the box tall enough
+ * to hit with a thumb at the gate.
+ */
 export function OpField({
   label,
   value,
@@ -154,6 +77,9 @@ export function OpField({
   placeholder,
   keyboardType,
   width,
+  hint,
+  multiline,
+  autoCapitalize,
 }: {
   label: string;
   value: string;
@@ -161,10 +87,13 @@ export function OpField({
   placeholder?: string;
   keyboardType?: 'default' | 'number-pad';
   width?: number;
+  hint?: string | null;
+  multiline?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words';
 }) {
   return (
-    <View style={{ gap: 5, width }}>
-      <Txt size={9.5} weight="semibold" em={0.12} upper color={onOperative.faint}>
+    <View style={{ gap: 7, width }}>
+      <Txt size={12.5} weight="semibold" color={onOperative.secondary} numberOfLines={1}>
         {label}
       </Txt>
       <TextInput
@@ -173,21 +102,31 @@ export function OpField({
         placeholder={placeholder}
         placeholderTextColor={onOperative.disabled}
         keyboardType={keyboardType ?? 'default'}
+        multiline={multiline}
+        autoCapitalize={autoCapitalize}
         // The label above is a sibling `Txt`, which a screen reader has no way
         // to associate with this input: every field in Owner Mode announced
         // itself as an unlabelled text box.
         accessibilityLabel={label}
         style={{
-          height: 40,
-          paddingHorizontal: 12,
-          borderRadius: radius.chip,
+          height: multiline ? 92 : 48,
+          paddingHorizontal: 14,
+          paddingTop: multiline ? 12 : undefined,
+          textAlignVertical: multiline ? 'top' : 'center',
+          borderRadius: radius.row,
           borderWidth: 1,
-          borderColor: onOperative.hairline,
+          borderColor: onOperative.line,
           backgroundColor: operative.surface,
           color: ink,
-          fontSize: 13,
+          fontFamily: face.semibold,
+          fontSize: 15,
         }}
       />
+      {hint ? (
+        <Txt size={11.5} lh={1.45} color={onOperative.faint}>
+          {hint}
+        </Txt>
+      ) : null}
     </View>
   );
 }
@@ -208,8 +147,8 @@ export function OpTile({
     <View
       style={{
         flex: 1,
-        padding: 12,
-        borderRadius: radius.panel,
+        padding: 13,
+        borderRadius: radius.cardInner,
         backgroundColor: operative.surface,
         borderWidth: 1,
         borderColor: accent ? 'rgba(198,163,75,.5)' : onOperative.hairline,
@@ -223,7 +162,9 @@ export function OpTile({
         {value}
       </Txt>
       {sub ? (
-        <Txt size={10} color="rgba(20,18,16,.42)">
+        // The ramp's own step. `.42` came to 2.8:1 on the surface — the unit
+        // under every figure on the Money and Reviews tabs was below AA.
+        <Txt size={10} color={onOperative.dim}>
           {sub}
         </Txt>
       ) : null}
@@ -240,35 +181,6 @@ export function OpMono({ children, size = 12.5 }: { children: ReactNode; size?: 
   );
 }
 
-/** Back, and what this screen is. */
-export function OpHeader({ title, onBack }: { title: string; onBack: () => void }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        onPress={onBack}
-        hitSlop={8}
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: radius.chip,
-          borderWidth: 1,
-          borderColor: onOperative.hairline,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ArrowLeft size={15} color={ink} />
-      </Pressable>
-      <Txt size={17} weight="bold" em={-0.02} color={ink}>
-        {title}
-      </Txt>
-    </View>
-  );
-}
-
-/** Whatever the server said when it refused. */
 /**
  * Where the venue stands with the platform.
  *
@@ -315,6 +227,7 @@ export function OpStanding({
   );
 }
 
+/** Whatever the server said when it refused. */
 export function OpNotice({ text }: { text: string | null }) {
   if (!text) return null;
   return (

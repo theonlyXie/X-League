@@ -1,8 +1,9 @@
+import { ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from './Txt';
-import { ChevronDown } from './icons';
+import { Calendar, ChevronDown, Gear, Home, StarLine, Wallet } from './icons';
 import { gold, ink, onOperative, operative, radius, void_ } from '@/theme/tokens';
 import { VENUE } from '@/data/owner';
 import { useSession } from '@/state/session';
@@ -26,12 +27,16 @@ import { useI18n } from '@/i18n';
  */
 type OwnerTabKey = 'ownTabToday' | 'ownTabCalendar' | 'ownTabMoney' | 'ownTabReviews' | 'ownTabSetup';
 
-const ITEMS: { key: OwnerTabKey; route: string }[] = [
-  { key: 'ownTabToday', route: 'index' },
-  { key: 'ownTabCalendar', route: 'calendar' },
-  { key: 'ownTabMoney', route: 'money' },
-  { key: 'ownTabReviews', route: 'reviews' },
-  { key: 'ownTabSetup', route: 'setup' },
+/**
+ * Each tab carries an icon over its label, as the redesign's bar does — a
+ * manager glancing down mid-shift finds a shape faster than a word.
+ */
+const ITEMS: { key: OwnerTabKey; route: string; Icon: (p: { size?: number; color: string }) => ReactNode }[] = [
+  { key: 'ownTabToday', route: 'index', Icon: Home },
+  { key: 'ownTabCalendar', route: 'calendar', Icon: Calendar },
+  { key: 'ownTabMoney', route: 'money', Icon: Wallet },
+  { key: 'ownTabReviews', route: 'reviews', Icon: StarLine },
+  { key: 'ownTabSetup', route: 'setup', Icon: Gear },
 ];
 
 export function OwnerTabBar({ state, navigation }: TabBarProps) {
@@ -42,11 +47,11 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
   return (
     <View
       style={{
-        height: 78 + insets.bottom,
+        height: 64 + insets.bottom,
         paddingBottom: insets.bottom,
         borderTopWidth: 1,
         borderTopColor: onOperative.hairline,
-        backgroundColor: operative.band,
+        backgroundColor: operative.surface,
         flexDirection: 'row',
         alignItems: 'flex-start',
         paddingHorizontal: 6,
@@ -66,12 +71,17 @@ export function OwnerTabBar({ state, navigation }: TabBarProps) {
               if (active) return;
               navigation.navigate(item.route as never);
             }}
-            style={{ flex: 1, alignItems: 'center', paddingTop: 11, gap: 7 }}
+            style={{ flex: 1, alignItems: 'center', gap: 4 }}
           >
+            {/* The bar across the top of the active tab, kept from before: ink,
+                not gold, on shift software. */}
             <View
-              style={{ width: 16, height: 2, borderRadius: 2, backgroundColor: active ? ink : 'transparent' }}
+              style={{ width: 22, height: 2, borderRadius: 2, backgroundColor: active ? ink : 'transparent' }}
             />
-            <Txt size={10.5} weight="semibold" color={color}>
+            <View style={{ paddingTop: 5 }}>
+              <item.Icon size={21} color={color} />
+            </View>
+            <Txt size={10.5} weight={active ? 'bold' : 'semibold'} color={color} numberOfLines={1}>
               {label}
             </Txt>
           </Pressable>

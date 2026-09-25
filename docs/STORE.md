@@ -38,10 +38,12 @@ from the app, Me → Change password — and change it here too.
 > **Prizes.** Cup prizes are trophies and standing. There is no cash prize and
 > no wagering.
 >
-> **User-generated content.** Chat rooms come from a booking, a team or a club.
-> Hold any message to report it or to block its author; blocked people's
-> messages disappear and they cannot open a direct conversation. Reports reach
-> our console and we act within 24 hours.
+> **User-generated content.** X League hosts no messaging. Players who share a
+> club, a team or a match can open WhatsApp on each other from the app; nobody
+> else is shown a number, and a block removes it in both directions. What people
+> write inside X League is limited to their own name, a photo, a club name and a
+> crest. Players and venues can be reported, reports reach our console, and we
+> act within 24 hours.
 >
 > **Account deletion.** Me → Delete my account, in two taps. Also available
 > without installing the app at /delete-account.
@@ -78,18 +80,20 @@ an app bundle; it has never been run, because that needs credentials.
    competition named like a keyboard test. Rename it or replace it with a real
    one before submitting; on its own it can read as an unfinished app.
 4. **Store paperwork.** Privacy labels (Apple) and the Data safety form (Play),
-   matching the privacy policy: phone number, name, optional photo, area, chat
-   messages, football record. No location, no analytics, no advertising.
-5. **Age rating — read this one twice.** X League is open to players of any
-   age, and cups are 15+. That is a decision with teeth: an app that knowingly
-   admits children *and* has open chat, photo upload and personal data falls
-   under Google Play's Families policy and Apple's rules for apps aimed at
-   minors, and in some countries needs verifiable parental consent. Answer both
-   questionnaires honestly — chat, user photos, minors — and expect questions.
+   matching the privacy policy: phone number, name, optional photo, area,
+   football record. No messages — the app hosts none. No location, no analytics,
+   no advertising.
+5. **Age rating.** X League is open to players of any age, and cups are 15+.
+   This got considerably easier when in-app messaging was removed: there is no
+   chat to declare, which is the single question that pulls an app with minors
+   on it into Google Play's Families policy and Apple's rules for apps aimed at
+   minors. Answer both questionnaires honestly — user photos, minors, and the
+   fact that the app can open WhatsApp on a number — and expect questions about
+   the last one.
 
-   The cheapest way to make this pass, if review pushes back: turn chat and
-   photo upload off for accounts under a chosen age. The birth year is already
-   collected, so it is a rule rather than a rebuild.
+   What remains, if review pushes back: photo upload, and handing one player
+   another's number. Both can be turned off for accounts under a chosen age.
+   The birth year is already collected, so it is a rule rather than a rebuild.
 6. **Screenshots** of the real app, in Arabic, with no test data in frame.
    `app.json` sets `supportsTablet: true`, which means Apple reviews it on iPad
    and iPad screenshots are required. If the app is not meant for iPad, set that
@@ -114,8 +118,14 @@ organisation rather than an individual if the app is to be published as X League
 — that needs a D-U-N-S number and takes days to weeks, so start it first. This
 is the long pole in the whole submission.
 
-**2 · Register the bundle identifier** `com.xleague.app` in the developer
+**2 · Register the bundle identifier** `com.thedevark.xleague` in the developer
 portal. It already matches `app.json`.
+
+It was `com.xleague.app` until somebody tried to register it and got "Failed
+Registering Bundle Identifier": identifiers are unique across every Apple
+developer account in the world, and that one was already taken. The lesson for
+next time is that the error does not say so — it reads like a problem with your
+account rather than with the name.
 
 **3 · Build.** `npx eas login`, then:
 
@@ -209,7 +219,8 @@ Data safety form, the content rating questionnaire and the screenshots.
 ## Done in the app
 
 - Account deletion, in the app and at a public URL.
-- Report a message, block a player, unblock from Me → Blocked players, mute a room.
+- Report a player or a venue, block a player, unblock from Me → Blocked players.
+  A block also withdraws the number, in both directions.
 - Privacy policy, terms and deletion page published on the console.
 - The terms are linked from sign-up and the age is confirmed with a tick.
 - Export compliance, permission strings and the version are in `app.json`.

@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { TextInput } from '@/components/TextField';
-import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button, Eyebrow } from '@/components/ui';
-import { ArrowLeft } from '@/components/icons';
-import { burgundy, gold, onVoid, radius, void_ } from '@/theme/tokens';
+import {
+  ActionButton,
+  BackHeader,
+  Card,
+  SafeTop,
+  SectionTitle,
+  StickyFooter,
+  Unreachable,
+  VenuePhoto,
+} from '@/components/kit';
+import { Star } from '@/components/icons';
+import { gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { completeMatch, matchAgreement } from '@/data/progress';
 import { myBookings, submitReview, type PastBooking } from '@/data/discovery';
 import { useCard } from '@/state/card';
@@ -115,161 +123,136 @@ export default function ReportResult() {
   // to confirm a match at an hour it did not kick off at.
   const when = booking ? moment(booking.startsAt) : null;
 
+  // Its own header rather than `Screen`'s, so the report can sit in a pinned
+  // bar like checkout's. The keyboard handling `Screen` gave for free is kept
+  // here by hand: the review note is typed near the bottom of the page.
   return (
-    <Screen contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))}
-          hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: 'rgba(243,238,229,.14)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ArrowLeft size={16} color={onVoid.secondary} />
-        </Pressable>
-        <View style={{ gap: 2, flex: 1 }}>
-          <Txt size={19} weight="bold" em={-0.02} color={onVoid.primary}>
-            {t.resultTitle}
-          </Txt>
-          <Txt size={11.5} color={onVoid.faint}>
-            {t.resultBlurb}
-          </Txt>
-        </View>
-      </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: void_.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <SafeTop />
+      <BackHeader
+        title={t.resultTitle}
+        onBack={() => (router.canGoBack() ? router.back() : router.replace('/me'))}
+      />
 
-      {loading ? (
-        <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-          <ActivityIndicator color={gold.base} />
-        </View>
-      ) : null}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 20, gap: 16 }}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
+      >
+        <Txt size={12.5} lh={1.55} color={onVoid.muted}>
+          {t.resultBlurb}
+        </Txt>
 
-      {error ? (
-        <View
-          style={{
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-            borderRadius: radius.chip,
-            borderWidth: 1,
-            borderColor: 'rgba(101,21,37,.5)',
-            backgroundColor: 'rgba(101,21,37,.09)',
-          }}
-        >
-          <Txt size={12.5} weight="semibold" color={burgundy.action}>
-            {error}
-          </Txt>
-        </View>
-      ) : null}
+        {loading ? (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator color={gold.base} />
+          </View>
+        ) : null}
 
-      {/* Which match, in words. */}
-      {booking ? (
-        <View
-          style={{
-            padding: 14,
-            borderRadius: radius.control,
-            backgroundColor: void_.surface,
-            borderWidth: 1,
-            borderColor: onVoid.edgeFaint,
-            gap: 3,
-          }}
-        >
-          <Txt size={14} weight="semibold" color={onVoid.primary}>
-            {booking.venueName}
-          </Txt>
-          <Txt size={12} color={onVoid.muted}>
-            {booking.pitchLabel}
-            {when ? ` · ${when}` : ''}
-          </Txt>
-        </View>
-      ) : null}
+        {error ? <Unreachable label={error} /> : null}
+
+        {/* Which match, in words. */}
+        {booking ? (
+          <Card pad={12}>
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+              <VenuePhoto uri={booking.coverUrl} height={72} round={radius.chip} style={{ width: 80 }} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Txt size={15} weight="bold" color={onVoid.primary} numberOfLines={2}>
+                  {booking.venueName}
+                </Txt>
+                <Txt size={12} color={onVoid.muted}>
+                  {booking.pitchLabel}
+                  {when ? ` · ${when}` : ''}
+                </Txt>
+              </View>
+            </View>
+          </Card>
+        ) : null}
+
+        {!loading ? (
+          <>
+            <Card>
+              <SectionTitle title={t.refereeScore} />
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <ScoreDial label={t.resultHome} value={home} onChange={setHome} format={num} />
+                <ScoreDial label={t.resultAway} value={away} onChange={setAway} format={num} />
+              </View>
+            </Card>
+
+            <Card>
+              <SectionTitle title={t.reviewVenue} />
+              <Txt size={12} lh={1.5} color={onVoid.faint}>
+                {t.reviewVenueBlurb}
+              </Txt>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const on = n <= stars;
+                  return (
+                    <Pressable
+                      key={n}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: stars === n }}
+                      accessibilityLabel={t.reviewStars(num(n))}
+                      onPress={() => setStars(stars === n ? 0 : n)}
+                      style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Star size={30} color={on ? gold.base : onVoid.line} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {stars > 0 ? (
+                <TextInput
+                  value={note}
+                  onChangeText={setNote}
+                  multiline
+                  accessibilityLabel={t.reviewNote}
+                  placeholder={t.reviewNote}
+                  placeholderTextColor={onVoid.disabled}
+                  style={{
+                    minHeight: 84,
+                    borderRadius: radius.row,
+                    borderWidth: 1,
+                    borderColor: onVoid.line,
+                    backgroundColor: void_.inset,
+                    padding: 12,
+                    color: onVoid.primary,
+                    fontSize: 13.5,
+                    textAlignVertical: 'top',
+                  }}
+                />
+              ) : null}
+            </Card>
+          </>
+        ) : null}
+      </ScrollView>
 
       {!loading ? (
-        <>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <ScoreDial label={t.resultHome} value={home} onChange={setHome} format={num} />
-            <ScoreDial label={t.resultAway} value={away} onChange={setAway} format={num} />
-          </View>
-
-          <View style={{ gap: 10 }}>
-            <Eyebrow>{t.reviewVenue}</Eyebrow>
-            <Txt size={11.5} color={onVoid.faint}>
-              {t.reviewVenueBlurb}
-            </Txt>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {[1, 2, 3, 4, 5].map((n) => {
-                const on = n <= stars;
-                return (
-                  <Pressable
-                    key={n}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: stars === n }}
-                    accessibilityLabel={t.reviewStars(num(n))}
-                    onPress={() => setStars(stars === n ? 0 : n)}
-                    style={{
-                      flex: 1,
-                      height: 44,
-                      borderRadius: radius.chip,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderWidth: 1,
-                      borderColor: on ? gold.base : onVoid.line,
-                      backgroundColor: on ? 'rgba(198,163,75,.14)' : 'transparent',
-                    }}
-                  >
-                    <Txt size={14} weight="bold" color={on ? gold.base : onVoid.muted}>
-                      {num(n)}
-                    </Txt>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {stars > 0 ? (
-              <TextInput
-                value={note}
-                onChangeText={setNote}
-                multiline
-                accessibilityLabel={t.reviewNote}
-                placeholder={t.reviewNote}
-                placeholderTextColor={onVoid.disabled}
-                style={{
-                  minHeight: 64,
-                  borderRadius: radius.chip,
-                  borderWidth: 1,
-                  borderColor: onVoid.line,
-                  padding: 12,
-                  color: onVoid.primary,
-                  fontSize: 13.5,
-                  textAlignVertical: 'top',
-                }}
-              />
-            ) : null}
-          </View>
-
-          <View style={{ gap: 10 }}>
-            <Button label={t.resultSubmit} onPress={() => submit(true)} disabled={saving} />
+        <StickyFooter>
+          <View style={{ flex: 1, gap: 4 }}>
+            <ActionButton label={t.resultSubmit} onPress={() => submit(true)} disabled={saving} />
             {/* Not every five-a-side ends with an agreed score, and the card
                 cares that the match happened rather than who won. */}
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={t.resultSkipScore}
               onPress={() => submit(false)}
               disabled={saving}
-              style={{ paddingVertical: 12, alignItems: 'center' }}
+              style={{ paddingVertical: 10, alignItems: 'center', opacity: saving ? 0.45 : 1 }}
             >
-              <Txt size={12.5} color={onVoid.muted}>
+              <Txt size={12.5} weight="semibold" color={onVoid.muted}>
                 {t.resultSkipScore}
               </Txt>
             </Pressable>
           </View>
-        </>
+        </StickyFooter>
       ) : null}
-    </Screen>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -293,15 +276,15 @@ function ScoreDial({
       style={{
         flex: 1,
         padding: 14,
-        borderRadius: radius.control,
-        backgroundColor: void_.surface,
-        borderWidth: 1,
-        borderColor: onVoid.edgeFaint,
+        borderRadius: radius.row,
+        backgroundColor: void_.inset,
         alignItems: 'center',
         gap: 10,
       }}
     >
-      <Eyebrow>{label}</Eyebrow>
+      <Txt size={12.5} weight="semibold" color={onVoid.secondary}>
+        {label}
+      </Txt>
       <Txt size={40} weight="bold" em={-0.03} color={gold.base}>
         {format(value)}
       </Txt>
@@ -334,15 +317,14 @@ function Step({
         width: 44,
         height: 38,
         borderRadius: radius.chip,
-        backgroundColor: void_.inset,
         borderWidth: 1,
-        borderColor: onVoid.edgeFaint,
+        borderColor: goldAlpha.edge,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: disabled ? 0.35 : 1,
       }}
     >
-      <Txt size={18} weight="semibold" color={onVoid.secondary}>
+      <Txt size={18} weight="semibold" color={gold.base}>
         {label}
       </Txt>
     </Pressable>

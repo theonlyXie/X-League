@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { TextInput as RNTextInput, type TextInputProps } from 'react-native';
+import { Platform, TextInput as RNTextInput, type TextInputProps } from 'react-native';
 import { useI18n } from '@/i18n';
 
 /**
@@ -16,7 +16,12 @@ import { useI18n } from '@/i18n';
  *
  * The caller's own style is applied last and still wins: the phone field is
  * left-to-right in both languages, because a phone number is.
+ *
+ * On the web build the browser's own focus ring is turned off: it drew a white
+ * rectangle inside the rounded, gold-edged boxes every screen puts round a field.
  */
+const NO_RING = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null;
+
 export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextField(props, ref) {
   const { rtl } = useI18n();
   return (
@@ -25,6 +30,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextFi
       {...props}
       style={[
         { textAlign: rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' },
+        NO_RING,
         props.style,
       ]}
     />

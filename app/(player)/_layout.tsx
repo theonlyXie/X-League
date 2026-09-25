@@ -11,7 +11,6 @@ export default function PlayerLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="play" />
       <Tabs.Screen name="cups" />
-      <Tabs.Screen name="chat" />
       <Tabs.Screen name="me" />
     </Tabs>
   );
