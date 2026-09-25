@@ -8,7 +8,8 @@ import { Txt } from '@/components/Txt';
 import { Button, Divider, Eyebrow } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
 import { PressScale } from '@/components/motion';
-import { ArrowLeft } from '@/components/icons';
+import { ChevronLeft, Megaphone } from '@/components/icons';
+import { ActionButton, Card } from '@/components/kit';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import {
   acceptOffer,
@@ -163,19 +164,12 @@ export default function CallForPlayers() {
           accessibilityLabel={t.back}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/play'))}
           hitSlop={8}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.icon,
-            borderWidth: 1,
-            borderColor: onVoid.line,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
         >
-          <ArrowLeft size={16} color={onVoid.secondary} />
+          <ChevronLeft size={22} color={onVoid.primary} />
         </Pressable>
-        <Txt size={20} weight="semibold" color={onVoid.primary}>
+        <Megaphone size={20} color={gold.base} />
+        <Txt size={20} weight="bold" em={-0.02} color={onVoid.primary}>
           {t.callForPlayers}
         </Txt>
       </View>
@@ -254,8 +248,10 @@ export default function CallForPlayers() {
         </View>
       ) : null}
 
-      <View style={{ gap: 10 }}>
-        <Eyebrow>{t.whatYouNeed}</Eyebrow>
+      <Card>
+        <Txt size={15} weight="bold" color={onVoid.primary}>
+          {t.whatYouNeed}
+        </Txt>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {POSITIONS.map((code) => {
             const on = picked.includes(code);
@@ -285,9 +281,12 @@ export default function CallForPlayers() {
         <Txt size={11.5} lh={1.5} color={onVoid.faint}>
           {picked.length ? t.positionsPicked : t.anyPositionBlurb}
         </Txt>
-      </View>
+      </Card>
 
-      <View style={{ gap: 8 }}>
+      <Card>
+        <Txt size={15} weight="bold" color={onVoid.primary}>
+          {t.callMessage}
+        </Txt>
         <TextInput
           value={note}
           onChangeText={setNote}
@@ -295,18 +294,20 @@ export default function CallForPlayers() {
           placeholderTextColor={onVoid.dim}
           multiline
           style={{
-            minHeight: 60,
-            maxHeight: 120,
+            minHeight: 110,
+            maxHeight: 160,
             paddingHorizontal: 14,
             paddingTop: 12,
-            borderRadius: radius.control,
+            borderRadius: radius.row,
             borderWidth: 1,
-            borderColor: onVoid.edge,
+            borderStyle: 'dashed',
+            borderColor: onVoid.line,
             color: onVoid.primary,
-            backgroundColor: void_.surface,
+            backgroundColor: void_.bg,
+            textAlignVertical: 'top',
           }}
         />
-      </View>
+      </Card>
 
       <Pressable
         accessibilityRole="button"
@@ -351,15 +352,13 @@ export default function CallForPlayers() {
       ) : null}
 
       <View style={{ gap: 10 }}>
-        <Button
+        <ActionButton
           label={call ? t.updateCall : t.sendCall}
-          height={46}
+          icon={<Megaphone size={18} color={void_.bg} />}
           disabled={busy}
           onPress={() => void publish()}
         />
-        {call ? (
-          <Button label={t.stopCalling} variant="ghost" height={42} disabled={busy} onPress={() => void stop()} />
-        ) : null}
+        {call ? <ActionButton label={t.stopCalling} variant="ghost" disabled={busy} onPress={() => void stop()} /> : null}
       </View>
 
       <Txt size={11.5} lh={1.5} color={onVoid.faint}>

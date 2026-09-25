@@ -3,7 +3,8 @@ import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button } from '@/components/ui';
+import { ActionButton } from '@/components/kit';
+import { Clock } from '@/components/icons';
 import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { useBooking } from '@/state/booking';
 import { venueDetail, type VenueDetail } from '@/data/discovery';
@@ -57,6 +58,22 @@ export default function Requested() {
       }}
     >
       <View style={{ alignItems: 'center', gap: 10 }}>
+        {/* A clock, not a tick: nothing is confirmed yet. */}
+        <View
+          style={{
+            width: 96,
+            height: 96,
+            borderRadius: radius.pill,
+            borderWidth: 1,
+            borderColor: 'rgba(198,163,75,.35)',
+            backgroundColor: 'rgba(198,163,75,.07)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 8,
+          }}
+        >
+          <Clock size={46} color={gold.base} />
+        </View>
         <Txt size={11} weight="bold" em={0.26} upper color={gold.base}>
           {t.requestSent}
         </Txt>
@@ -95,13 +112,8 @@ export default function Requested() {
           not agreed to is how somebody ends up telling eleven friends about an
           hour that gets declined an hour later. */}
       <View style={{ width: '100%', gap: 10 }}>
-        <Button
-          label={t.done}
-          height={50}
-          round={radius.control}
-          size={15}
-          onPress={() => router.replace('/play')}
-        />
+        <ActionButton label={t.done} onPress={() => router.replace('/play')} />
+        <ActionButton label={t.viewBookings} variant="ghost" onPress={() => router.push('/bookings')} />
       </View>
     </Screen>
   );

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Linking, View } from 'react-native';
+import { Linking, Pressable, Share as NativeShare, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { Button } from '@/components/ui';
+import { ActionButton, Card } from '@/components/kit';
+import { Calendar, CheckCircle, Share } from '@/components/icons';
 import { VoidMark } from '@/components/VoidMark';
 import { gold, onVoid, radius, void_ } from '@/theme/tokens';
 import { mono } from '@/theme/typography';
@@ -50,58 +51,41 @@ export default function Confirmation() {
   // Nothing was taken up front; the whole price is settled at the venue.
   const total = (slotPrices[slot] ?? (showcase ? BOOKING.hourly : 0)) + BOOKING.bookingFee;
 
+  const when = t.bookingWhen(shortDate(`${date}T12:00:00Z`), hourLabel(slotHour), hourLabel(slotEndHour));
+  const venueName = venue ? [venue.name, pitchLabel].filter(Boolean).join(' · ') : showcase ? `${BOOKING.venue} · ${BOOKING.pitch}` : '';
+  const entry = venue?.entryNote ?? (showcase ? t.gateNote : null);
+
+  const share = () => {
+    NativeShare.share({
+      message: t.shareBookingMessage(venueName, when, code, mapsUrl ?? ''),
+    }).catch(() => {});
+  };
+
   return (
-    <Screen
-      contentStyle={{
-        paddingTop: 20,
-        paddingHorizontal: 20,
-        paddingBottom: 28,
-        alignItems: 'center',
-        gap: 22,
-      }}
-    >
-      <VoidMark size={190} glow />
-
-      <View style={{ alignItems: 'center', gap: 8 }}>
-        <Txt size={11} weight="bold" em={0.26} upper color={gold.base}>
-          {t.yourePlaying}
-        </Txt>
-        <Txt size={26} weight="bold" em={-0.02} color={onVoid.primary}>
-          {t.tonightAtTime(hourLabel(slotHour))}
-        </Txt>
-      </View>
-
-      <View
-        style={{
-          width: '100%',
-          borderRadius: radius.card,
-          borderWidth: 1,
-          borderColor: 'rgba(243,238,229,.1)',
-          backgroundColor: void_.surface,
-          padding: 18,
-          gap: 16,
-        }}
-      >
-        <View style={{ gap: 4 }}>
-          <Txt size={17} weight="bold" color={onVoid.primary}>
-            {venue
-              ? [venue.name, pitchLabel].filter(Boolean).join(' · ')
-              : showcase
-                ? `${BOOKING.venue} · ${BOOKING.pitch}`
-                : ''}
+    <Screen contentStyle={{ paddingTop: 24, paddingHorizontal: 20, paddingBottom: 32, gap: 22 }}>
+      {/* The Ceremony surface — the one moment the X-to-void mark is drawn at
+          full size, with the redesign's tick at its heart. */}
+      <View style={{ alignItems: 'center', gap: 16 }}>
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <VoidMark size={170} glow />
+          <View style={{ position: 'absolute' }}>
+            <CheckCircle size={64} color={gold.base} filled />
+          </View>
+        </View>
+        <View style={{ alignItems: 'center', gap: 8 }}>
+          <Txt size={11} weight="bold" em={0.26} upper color={gold.base}>
+            {t.yourePlaying}
           </Txt>
-          <Txt size={12.5} color={onVoid.muted}>
-            {/* The day this booking is actually for. This was the string
-                literal 'Tue 18 Aug' in the source, so every confirmation on
-                every date said the same Tuesday in August. */}
-            {t.bookingWhen(
-              shortDate(`${date}T12:00:00Z`),
-              hourLabel(slotHour),
-              hourLabel(slotEndHour),
-            )}
+          <Txt size={26} weight="bold" em={-0.02} align="center" color={onVoid.primary}>
+            {t.bookingConfirmed}
+          </Txt>
+          <Txt size={13} lh={1.55} align="center" color={onVoid.muted}>
+            {venueName ? t.confirmedBlurb(venueName, when) : when}
           </Txt>
         </View>
+      </View>
 
+      <Card>
         <View
           style={{
             flexDirection: 'row',
@@ -114,8 +98,9 @@ export default function Confirmation() {
             borderStyle: 'dashed',
             borderColor: 'rgba(198,163,75,.35)',
           }}
+          accessibilityLabel={t.bookingCodeIs(code)}
         >
-          <View style={{ gap: 4 }} accessibilityLabel={t.bookingCodeIs(code)}>
+          <View style={{ gap: 4 }}>
             <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
               {t.bookingCode}
             </Txt>
@@ -123,57 +108,88 @@ export default function Confirmation() {
               {code}
             </Txt>
           </View>
-          <View style={{ flex: 1 }} />
-          <View style={{ alignItems: 'flex-end', gap: 4 }}>
-            <Txt size={9.5} em={0.2} upper color={onVoid.dim}>
-              {t.cashAtGate}
-            </Txt>
-            <Txt size={15} weight="bold" color={onVoid.primary}>
-              {money(total)}
-            </Txt>
-          </View>
         </View>
 
-        {/* The venue's own entry note, or nothing. `t.gateNote` reads
-            "Gate 2 · ask for Pitch A · arrive 10 minutes early" — a fixture
-            that lives in the strings file rather than the fixtures file, and
-            so did not read as one. It was sending players to a gate that may
-            not exist at the venue they booked. */}
-        {venue?.entryNote ?? (showcase ? t.gateNote : null) ? (
-          <Txt size={12} color={onVoid.faint}>
-            {venue?.entryNote ?? t.gateNote}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 }}>
+          <Fact label={t.venue} value={venueName} />
+          <Fact label={t.cashAtGate} value={money(total)} />
+          <Fact label={t.paymentMethod} value={t.payAtVenue} />
+          <Fact label={t.time} value={when} />
+        </View>
+
+        {/* The venue's own entry note, or nothing — never a fixture gate. */}
+        {entry ? (
+          <Txt size={12} lh={1.5} color={onVoid.faint}>
+            {entry}
           </Txt>
         ) : null}
-      </View>
 
-      <View style={{ width: '100%', gap: 10 }}>
-        {/* VEN-009: navigation deep-links out to an installed maps app —
-            when there is somewhere to deep-link to. The button used to be
-            drawn unconditionally and did nothing at all, silently, for any
-            venue with no pin or map link on file. */}
+        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: onVoid.edgeFaint, paddingTop: 12 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t.share}
+            onPress={share}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 6 }}
+          >
+            <Share size={17} color={gold.base} />
+            <Txt size={13} weight="semibold" color={onVoid.primary}>
+              {t.share}
+            </Txt>
+          </Pressable>
+          <View style={{ width: 1, backgroundColor: onVoid.edgeFaint }} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t.viewBookings}
+            onPress={() => router.push('/bookings')}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 6 }}
+          >
+            <Calendar size={17} color={gold.base} />
+            <Txt size={13} weight="semibold" color={onVoid.primary}>
+              {t.viewBookings}
+            </Txt>
+          </Pressable>
+        </View>
+      </Card>
+
+      <View style={{ gap: 10 }}>
+        {/* VEN-009: only when there is somewhere to deep-link to. */}
         {mapsUrl ? (
-          <Button
+          <ActionButton
             label={t.navigateToVenue}
-            height={50}
-            round={radius.control}
-            size={15}
             onPress={() => {
               Linking.openURL(mapsUrl).catch(() => {});
             }}
           />
         ) : null}
-        <Button
+        <ActionButton
           label={t.inviteYourSquad}
           variant="ghost"
-          height={50}
-          round={radius.control}
-          size={15}
-          style={{ borderColor: onVoid.line }}
-          onPress={() =>
-            router.replace(bookingId ? `/play/lobby?booking=${bookingId}` : '/play/lobby')
-          }
+          onPress={() => router.replace(bookingId ? `/play/lobby?booking=${bookingId}` : '/play/lobby')}
         />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.backToHome}
+          onPress={() => router.replace('/')}
+          style={{ paddingVertical: 12, alignItems: 'center' }}
+        >
+          <Txt size={13.5} weight="semibold" color={onVoid.muted}>
+            {t.backToHome}
+          </Txt>
+        </Pressable>
       </View>
     </Screen>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ width: '50%', gap: 4, paddingRight: 10 }}>
+      <Txt size={11} color={onVoid.faint}>
+        {label}
+      </Txt>
+      <Txt size={13} weight="semibold" color={onVoid.primary}>
+        {value}
+      </Txt>
+    </View>
   );
 }

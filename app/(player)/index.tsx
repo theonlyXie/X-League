@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { Link, useRouter } from 'expo-router';
-import { ActivityIndicator, Linking, Pressable, RefreshControl, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
-import { NotificationBell } from '@/components/NotificationBell';
-import { AvatarStack, Button, CornerVoid, Divider, Eyebrow, TurfSwatch } from '@/components/ui';
+import { AreaHeader } from '@/components/AreaHeader';
+import { AvatarStack, Button, CornerVoid, Eyebrow } from '@/components/ui';
+import { CompactVenueCard, Pill, SearchField, SectionTitle, VenueCard } from '@/components/kit';
+import { Ball, ChevronRight, Trophy } from '@/components/icons';
+import { sortVenues } from '@/data/discovery';
+import type { TextKey } from '@/i18n/strings';
 import { cssAngle } from '@/theme/gradient';
 import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
 import { PLAYER } from '@/data/player';
@@ -25,7 +29,7 @@ import { isLive } from '@/lib/supabase';
  */
 export default function Home() {
   const router = useRouter();
-  const { reason, t, num, money, hour, longDate } = useI18n();
+  const { reason, t, num, money, hour, shortDate } = useI18n();
   const { signedIn, displayName } = useSession();
   const home = useHome();
 
@@ -38,6 +42,8 @@ export default function Home() {
   const level = home.evidence?.level ?? 1;
 
   const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+  const [order, setOrder] = useState<'near' | 'price' | 'rating'>('near');
+  const recommended = useMemo(() => sortVenues(home.nearby, order), [home.nearby, order]);
 
   const nextMapUrl =
     home.next?.mapUrl ??
@@ -73,36 +79,29 @@ export default function Home() {
         ) : undefined
       }
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <View style={{ gap: 3, flexShrink: 1 }}>
-          <Eyebrow>{longDate(new Date().toISOString())}</Eyebrow>
-          <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-            {firstName ? `${t.greetingEvening}, ${firstName}` : t.greetingEvening}
-          </Txt>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Link href="/me" asChild>
+      {/* The redesign's opening: where the feed is for, the bell, and a way
+          to look for somewhere. The greeting moved under it, smaller, because
+          the place is what changes what this screen shows and the name is not. */}
+      <View style={{ gap: 14 }}>
+        <AreaHeader />
+        <SearchField placeholder={t.searchForAPitch} onPress={() => router.push('/play')} />
+        {/* Only for somebody who has a card to open. A guest on a live build
+            used to be greeted as the design's sample player. */}
+        {firstName && (signedIn || !isLive) ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t.yourCardAtLevel(num(level))}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              paddingVertical: 6,
-              paddingRight: 10,
-              paddingLeft: 6,
-              borderWidth: 1,
-              borderColor: 'rgba(198,163,75,.3)',
-              borderRadius: radius.pill,
-            }}
+            onPress={() => router.push('/me')}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
           >
             <View
               style={{
-                width: 26,
-                height: 26,
+                width: 30,
+                height: 30,
                 borderRadius: radius.pill,
                 backgroundColor: void_.inset,
+                borderWidth: 1,
+                borderColor: 'rgba(198,163,75,.3)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -111,13 +110,14 @@ export default function Home() {
                 {initials}
               </Txt>
             </View>
+            <Txt size={14} weight="semibold" color={onVoid.secondary} style={{ flex: 1 }}>
+              {`${t.greetingEvening}, ${firstName}`}
+            </Txt>
             <Txt size={10} weight="bold" em={0.1} color={gold.base}>
               LVL {num(level)}
             </Txt>
           </Pressable>
-        </Link>
-        <NotificationBell />
-        </View>
+        ) : null}
       </View>
 
       {home.unreachable ? <Unreachable label={t.offline} onRetry={home.reload} retry={t.retry} /> : null}
@@ -218,21 +218,129 @@ export default function Home() {
         />
       )}
 
+      {/* Where this player has played before, one card per ground. */}
+      {home.bookAgain.length > 0 ? (
+        <View style={{ gap: 12 }}>
+          <SectionTitle title={t.bookAgain} />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -20 }}
+            contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}
+          >
+            {home.bookAgain.map((b) => (
+              <CompactVenueCard
+                key={b.venueId!}
+                name={b.venueName}
+                area={b.area}
+                coverUrl={b.coverUrl}
+                detail={t.lastPlayed(shortDate(b.startsAt))}
+                onPress={() => router.push(`/play/venue?venue=${b.venueId}`)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {/* The redesign's "Choose your sport", for a product that is football
+          only: the choice here is the size of the game. */}
+      <View style={{ gap: 12 }}>
+        <SectionTitle title={t.pickYourFormat} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {FORMATS.map((f) => (
+            <Pressable
+              key={f.key}
+              accessibilityRole="button"
+              accessibilityLabel={t[f.label]}
+              onPress={() => router.push(`/play?format=${encodeURIComponent(f.key)}`)}
+              style={({ pressed }) => ({
+                flex: 1,
+                alignItems: 'center',
+                gap: 8,
+                paddingVertical: 14,
+                borderRadius: radius.cardInner,
+                borderWidth: 1,
+                borderColor: pressed ? goldAlpha.edge : onVoid.edge,
+                backgroundColor: void_.surface,
+              })}
+            >
+              <View
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: radius.pill,
+                  backgroundColor: goldAlpha.fill,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ball size={26} color={gold.base} />
+              </View>
+              <Txt size={12.5} weight="semibold" color={onVoid.secondary}>
+                {t[f.label]}
+              </Txt>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* The redesign's promotional banner, pointed at the one thing X League
+          has to promote that is its own: the cups. */}
+      <Pressable accessibilityRole="button" accessibilityLabel={t.promoTitle} onPress={() => router.push('/cups')}>
+        <LinearGradient
+          colors={['#1A160C', void_.surface]}
+          {...cssAngle(120)}
+          style={{
+            borderRadius: radius.signature,
+            borderWidth: 1,
+            borderColor: goldAlpha.edge,
+            padding: 20,
+            overflow: 'hidden',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 16,
+          }}
+        >
+          <View style={{ flex: 1, gap: 6 }}>
+            <Txt size={21} weight="bold" em={-0.02} color={onVoid.primary}>
+              {t.promoTitle}
+            </Txt>
+            <Txt size={12.5} lh={1.5} color={onVoid.muted}>
+              {t.promoBody}
+            </Txt>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 4 }}>
+              <Txt size={13} weight="bold" color={gold.base}>
+                {t.promoCta}
+              </Txt>
+              <ChevronRight size={15} color={gold.base} />
+            </View>
+          </View>
+          <Trophy size={54} color={gold.base} />
+        </LinearGradient>
+      </Pressable>
+
       {/* VEN-003: real venues, with the slot counts the timeline actually has. */}
       <View style={{ gap: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Eyebrow>{t.liveNearYou}</Eyebrow>
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel={t.seeAllSlots(num(home.liveSlots))}
-            hitSlop={12}
-            onPress={() => router.push('/play')}
-          >
-            <Txt size={11.5} weight="semibold" color={gold.base}>
-              {t.slotsCount(num(home.liveSlots))}
-            </Txt>
-          </Pressable>
-        </View>
+        <SectionTitle
+          title={t.recommended}
+          action={home.liveSlots > 0 ? t.slotsCount(num(home.liveSlots)) : undefined}
+          onAction={() => router.push('/play')}
+        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: -20 }}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
+        >
+          {(['near', 'price', 'rating'] as const).map((k) => (
+            <Pill
+              key={k}
+              label={k === 'near' ? t.sortNearest : k === 'price' ? t.sortCheapest : t.sortTopRated}
+              on={order === k}
+              onPress={() => setOrder(k)}
+            />
+          ))}
+        </ScrollView>
 
         {home.nearby.length === 0 && !home.loading ? (
           <Txt size={12.5} color={onVoid.dim}>
@@ -240,60 +348,17 @@ export default function Home() {
           </Txt>
         ) : null}
 
-        <View style={{ gap: 8 }}>
-          {home.nearby.slice(0, 3).map((venue) => (
-            <Pressable
+        <View style={{ gap: 14 }}>
+          {recommended.slice(0, 6).map((venue) => (
+            <VenueCard
               key={venue.venueId}
-              accessibilityRole="button"
-              accessibilityLabel={`${venue.name}, ${venue.openSlots} slots`}
-              onPress={() => router.push(`/play/pitch?venue=${venue.venueId}`)}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderRadius: radius.control,
-                backgroundColor: void_.surface,
-                borderWidth: 1,
-                borderColor: pressed ? goldAlpha.edge : onVoid.edgeFaint,
-              })}
-            >
-              <TurfSwatch size={42} round={radius.chip} />
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt size={14.5} weight="semibold" color={onVoid.primary} numberOfLines={1}>
-                  {venue.name}
-                </Txt>
-                {/* No open hours means no cheapest hour, and `EGP 0/hr` beside
-                    "Fully booked tonight" reads as a price rather than as the
-                    absence of one. */}
-                <Txt size={11.5} color={onVoid.faint} numberOfLines={1}>
-                  {venue.distanceKm != null
-                    ? venue.minPriceEgp > 0
-                      ? t.venueMeta(num(venue.distanceKm), money(venue.minPriceEgp))
-                      : t.venueMetaNoPrice(num(venue.distanceKm))
-                    : [venue.area, venue.minPriceEgp > 0 ? t.perHour(money(venue.minPriceEgp)) : null]
-                        .filter(Boolean)
-                        .join(' · ')}
-                </Txt>
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 4, maxWidth: 130 }}>
-                {venue.nextSlot ? (
-                  <>
-                    <Txt size={11} weight="bold" color={gold.base}>
-                      {hour(venue.nextSlot)}
-                    </Txt>
-                    <Txt size={10} color={onVoid.dim}>
-                      {t.slotsCount(num(venue.openSlots))}
-                    </Txt>
-                  </>
-                ) : (
-                  <Txt size={10} color={onVoid.dim}>
-                    {t.fullyBooked}
-                  </Txt>
-                )}
-              </View>
-            </Pressable>
+              venue={{
+                ...venue,
+                verified: venue.verification === 'verified',
+                nextSlot: venue.nextSlot ? hour(venue.nextSlot) : null,
+              }}
+              onPress={() => router.push(`/play/venue?venue=${venue.venueId}`)}
+            />
           ))}
         </View>
       </View>
@@ -546,3 +611,9 @@ function Unreachable({
     </Pressable>
   );
 }
+
+const FORMATS: { key: string; label: TextKey }[] = [
+  { key: '5-a-side', label: 'amFiveASide' },
+  { key: '7-a-side', label: 'amSevenASide' },
+  { key: '11-a-side', label: 'amElevenASide' },
+];

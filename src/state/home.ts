@@ -3,6 +3,7 @@ import { isLive } from '@/lib/supabase';
 import { useRefreshTick } from '@/state/refresh';
 import { today } from '@/data/venue';
 import { useSession } from '@/state/session';
+import { useArea } from '@/state/area';
 import {
   myBookings,
   myNextBooking,
@@ -42,6 +43,12 @@ export type HomeState = {
    */
   awaitingResult: PastBooking | null;
   nearby: VenueSummary[];
+  /**
+   * Grounds this player has booked before, most recent first, one card per
+   * venue. The redesign opens with these: the pitch you played at last week is
+   * the likeliest one you want again.
+   */
+  bookAgain: PastBooking[];
   /** Total saleable slots across the venues shown, for the "12 slots" link. */
   liveSlots: number;
   evidence: CardEvidence | null;
@@ -49,7 +56,10 @@ export type HomeState = {
 };
 
 export function useHome(): HomeState {
-  const { signedIn, restoring, governorate } = useSession();
+  const { signedIn, restoring } = useSession();
+  // The area picked on Home's location line, which defaults to the player's
+  // own governorate — see `state/area`.
+  const { area: governorate } = useArea();
   const [loading, setLoading] = useState(true);
   const [unreachable, setUnreachable] = useState(false);
   const [next, setNext] = useState<NextBooking | null>(null);
@@ -58,6 +68,7 @@ export function useHome(): HomeState {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [awaitingResult, setAwaitingResult] = useState<PastBooking | null>(null);
   const [nearby, setNearby] = useState<VenueSummary[]>([]);
+  const [bookAgain, setBookAgain] = useState<PastBooking[]>([]);
   const [evidence, setEvidence] = useState<CardEvidence | null>(null);
   const [nonce, setNonce] = useState(0);
 
@@ -89,7 +100,7 @@ export function useHome(): HomeState {
         // disagreeing about what day it is, on the screen people open first.
         // The player's own governorate first. Null — a guest, or somebody
         // who has not answered — is all of Egypt, exactly as before.
-        const venues = await searchVenues({ date: today(), limit: 6, governorate });
+        const venues = await searchVenues({ date: today(), limit: 10, governorate });
         if (cancelled) return;
         setNearby(venues);
 
@@ -99,6 +110,7 @@ export function useHome(): HomeState {
           setInvitations([]);
           setAwaitingResult(null);
           setEvidence(null);
+          setBookAgain([]);
           return;
         }
 
@@ -114,6 +126,19 @@ export function useHome(): HomeState {
         // The server decides what is awaiting a result — the same condition
         // `complete_match` enforces — so this only has to pick the most recent.
         setAwaitingResult(past.find((b) => b.awaitingResult) ?? null);
+
+        // One card per ground, and only grounds a booking actually happened
+        // at — a hold that lapsed or a request the venue turned down is not
+        // somewhere this player has played.
+        const seen = new Set<string>();
+        setBookAgain(
+          past.filter((b) => {
+            if (!b.venueId || seen.has(b.venueId)) return false;
+            if (!['confirmed', 'checked_in', 'completed'].includes(b.state)) return false;
+            seen.add(b.venueId);
+            return true;
+          }).slice(0, 8),
+        );
 
         // A player who accepted somebody else's invitation has a match tonight
         // without having booked anything, so Home has to look in both places.
@@ -176,6 +201,7 @@ export function useHome(): HomeState {
     invitations,
     awaitingResult,
     nearby,
+    bookAgain,
     liveSlots: nearby.reduce((sum, v) => sum + v.openSlots, 0),
     evidence,
     reload,

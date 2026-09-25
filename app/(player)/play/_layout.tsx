@@ -12,6 +12,7 @@ export default function PlayLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: void_.bg } }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="venue" />
       <Stack.Screen name="pitch" />
       <Stack.Screen name="checkout" />
       <Stack.Screen name="confirmation" />

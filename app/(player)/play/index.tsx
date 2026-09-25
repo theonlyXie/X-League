@@ -1,36 +1,48 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Screen } from '@/components/Screen';
 import { Txt } from '@/components/Txt';
 import { NotificationBell } from '@/components/NotificationBell';
-import { Eyebrow, TurfSwatch, hitSlopTo44 } from '@/components/ui';
-import { Star } from '@/components/icons';
-import { burgundy, gold, goldAlpha, onVoid, radius, void_ } from '@/theme/tokens';
-import { searchVenues, type VenueSummary } from '@/data/discovery';
+import { FilterSheet, Pill, SearchField, Unreachable, VenueRow, type SheetGroup } from '@/components/kit';
+import { ChevronDown, Sliders, Star } from '@/components/icons';
+import { gold, onVoid } from '@/theme/tokens';
+import { searchVenues, sortVenues, type VenueOrder, type VenueSummary } from '@/data/discovery';
 import { useI18n } from '@/i18n';
 import { dateFromToday } from '@/data/venue';
 import { isLive } from '@/lib/supabase';
+import { useArea } from '@/state/area';
 
 /**
- * P-03 Play — availability first (§1.3). The player states date and time before
- * results are returned, and results only ever show slots that are saleable at
- * query time (VEN-001, VEN-002).
+ * P-03 Search — availability first (§1.3), in the redesign's clothes.
  *
- * The filters are part of the query rather than applied to a list afterwards:
- * "how many slots does this venue have between 8 and 10" is a different number
- * from "how many does it have", and showing the second under the first filter
- * would be a lie the player only discovers on the next screen.
+ * The redesign's Search is a text field over a list. X League's was a day and
+ * a kick-off window over a list, because results only ever show slots that are
+ * saleable at query time (VEN-001, VEN-002). This is both: the field narrows
+ * what the availability query returned, and the day, the window, the format
+ * and the order live in the filter sheet, where the redesign keeps them.
+ *
+ * The filters that change the question — day, window, format — are part of
+ * the query rather than applied afterwards: "how many slots does this venue
+ * have between 8 and 10" is a different number from "how many does it have".
+ * The ones that only change the answer — the text, the order, the rating —
+ * work on what came back.
  */
 
 type DayKey = 'tonight' | 'tomorrow' | 'later';
-type WindowKey = 'early' | 'prime' | 'late';
+type WindowKey = 'early' | 'prime' | 'late' | 'any';
+type FormatKey = 'any' | '5-a-side' | '7-a-side' | '11-a-side';
+type RatingKey = 'any' | '4';
 
 const WINDOWS: Record<WindowKey, { from: number; to: number; label: string }> = {
   early: { from: 18, to: 20, label: '6–8 PM' },
   prime: { from: 20, to: 22, label: '8–10 PM' },
   late: { from: 22, to: 24, label: '10–12' },
+  any: { from: 0, to: 24, label: '' },
 };
+
+const DAY_OFFSET: Record<DayKey, number> = { tonight: 0, tomorrow: 1, later: 2 };
 
 /**
  * The search date, in the venue's zone.
@@ -42,26 +54,64 @@ const WINDOWS: Record<WindowKey, { from: number; to: number; label: string }> = 
  */
 const isoDate = (offset: number) => dateFromToday(offset);
 
+const RECENT_KEY = 'xl.recentSearches';
+
+type Filters = { day: DayKey; window: WindowKey; format: FormatKey; order: VenueOrder; rating: RatingKey };
+const DEFAULTS: Filters = { day: 'tonight', window: 'prime', format: 'any', order: 'near', rating: 'any' };
+
 export default function PlaySearch() {
   const router = useRouter();
-  const { t, num, money, hour } = useI18n();
+  const params = useLocalSearchParams<{ format?: string }>();
+  const { t, num } = useI18n();
+  const { hour } = useI18n();
+  const { area } = useArea();
 
-  const [day, setDay] = useState<DayKey>('tonight');
-  const [window_, setWindow] = useState<WindowKey>('prime');
+  const initialFormat = (['5-a-side', '7-a-side', '11-a-side'] as const).find((f) => f === params.format) ?? 'any';
+  const [filters, setFilters] = useState<Filters>({ ...DEFAULTS, format: initialFormat });
+  // What the sheet is editing, applied on Apply rather than on every tap, so
+  // the list does not reload three times while somebody is still choosing.
+  const [draft, setDraft] = useState<Filters>(filters);
+  const [sheet, setSheet] = useState(false);
+  const [sheetTab, setSheetTab] = useState('day');
+
+  const [query, setQuery] = useState('');
+  const [recent, setRecent] = useState<string[]>([]);
   const [venues, setVenues] = useState<VenueSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreachable, setUnreachable] = useState(false);
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
   const [nonce, setNonce] = useState(0);
 
-  const dayLabels: Record<DayKey, string> = {
-    tonight: t.tonight,
-    tomorrow: t.tomorrow,
-    // Two days out, said plainly. The chip used to be labelled "Pick date",
-    // which promises a picker this screen does not have.
-    later: t.dayAfter,
-  };
-  const dayOffset: Record<DayKey, number> = { tonight: 0, tomorrow: 1, later: 2 };
+  // Home's format tiles land here with `?format=`; follow them if the tab is
+  // already mounted rather than keeping whatever it was set to last time.
+  useEffect(() => {
+    if (initialFormat !== 'any') setFilters((f) => ({ ...f, format: initialFormat }));
+  }, [initialFormat]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(RECENT_KEY)
+      .then((raw) => {
+        const list = raw ? (JSON.parse(raw) as unknown) : [];
+        if (Array.isArray(list)) setRecent(list.filter((x): x is string => typeof x === 'string').slice(0, 6));
+      })
+      .catch(() => {});
+  }, []);
+
+  const remember = useCallback((text: string) => {
+    const q = text.trim();
+    if (q.length < 2) return;
+    setRecent((list) => {
+      const next = [q, ...list.filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 6);
+      AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const dayLabels: Record<DayKey, string> = { tonight: t.tonight, tomorrow: t.tomorrow, later: t.dayAfter };
+  const windowLabel = (w: WindowKey) => (w === 'any' ? t.anyTime : WINDOWS[w].label);
+  const formatLabel = (f: FormatKey) =>
+    f === 'any' ? t.anyFormat : f === '5-a-side' ? t.amFiveASide : f === '7-a-side' ? t.amSevenASide : t.amElevenASide;
+  const orderLabel = (o: VenueOrder) => (o === 'near' ? t.sortNearest : o === 'price' ? t.sortCheapest : t.sortTopRated);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
@@ -76,9 +126,11 @@ export default function PlaySearch() {
       setUnreachable(false);
       try {
         const rows = await searchVenues({
-          date: isoDate(dayOffset[day]),
-          fromHour: WINDOWS[window_].from,
-          toHour: WINDOWS[window_].to,
+          date: isoDate(DAY_OFFSET[filters.day]),
+          fromHour: WINDOWS[filters.window].from,
+          toHour: WINDOWS[filters.window].to,
+          format: filters.format === 'any' ? null : filters.format,
+          governorate: area,
         });
         if (cancelled) return;
         setVenues(rows);
@@ -92,124 +144,125 @@ export default function PlaySearch() {
     return () => {
       cancelled = true;
     };
-  }, [day, window_, nonce]);
+  }, [filters.day, filters.window, filters.format, area, nonce]);
 
-  const liveSlots = venues.reduce((sum, v) => sum + v.openSlots, 0);
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const matched = venues.filter(
+      (v) =>
+        (!q || v.name.toLowerCase().includes(q) || (v.area ?? '').toLowerCase().includes(q)) &&
+        (filters.rating === 'any' || (v.ratingAvg ?? 0) >= 4),
+    );
+    return sortVenues(matched, filters.order);
+  }, [venues, query, filters.order, filters.rating]);
+
+  const liveSlots = shown.reduce((sum, v) => sum + v.openSlots, 0);
   const secondsAgo = checkedAt ? Math.max(0, Math.round((Date.now() - checkedAt.getTime()) / 1000)) : 0;
+
+  const groups: SheetGroup[] = [
+    { key: 'day', label: t.filterDay, options: (Object.keys(dayLabels) as DayKey[]).map((k) => ({ key: k, label: dayLabels[k] })) },
+    {
+      key: 'window',
+      label: t.filterKickOff,
+      options: (['early', 'prime', 'late', 'any'] as WindowKey[]).map((k) => ({ key: k, label: windowLabel(k) })),
+    },
+    {
+      key: 'format',
+      label: t.format,
+      options: (['any', '5-a-side', '7-a-side', '11-a-side'] as FormatKey[]).map((k) => ({ key: k, label: formatLabel(k) })),
+    },
+    { key: 'order', label: t.sortBy, options: (['near', 'price', 'rating'] as VenueOrder[]).map((k) => ({ key: k, label: orderLabel(k) })) },
+    { key: 'rating', label: t.filterRating, options: [{ key: 'any', label: t.anyRating }, { key: '4', label: t.ratingFourPlus }] },
+  ];
+
+  const openSheet = (tab: string) => {
+    setDraft(filters);
+    setSheetTab(tab);
+    setSheet(true);
+  };
+
+  const date = isoDate(DAY_OFFSET[filters.day]);
 
   return (
     <Screen
-      contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 20 }}
+      contentStyle={{ paddingTop: 6, paddingHorizontal: 20, paddingBottom: 28, gap: 16 }}
       refreshControl={
-        isLive ? (
-          <RefreshControl refreshing={loading} onRefresh={reload} tintColor={gold.base} colors={[gold.base]} />
-        ) : undefined
+        isLive ? <RefreshControl refreshing={loading} onRefresh={reload} tintColor={gold.base} colors={[gold.base]} /> : undefined
       }
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Txt size={22} weight="bold" em={-0.02} color={onVoid.primary}>
-          {t.whenPlay}
+          {t.search}
         </Txt>
         <NotificationBell />
       </View>
 
-      <View style={{ gap: 10 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {(Object.keys(dayLabels) as DayKey[]).map((d) => {
-            const on = d === day;
-            return (
-              <Pressable
-                key={d}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={dayLabels[d]}
-                onPress={() => setDay(d)}
-                hitSlop={hitSlopTo44(40)}
-                style={{
-                  flex: 1,
-                  height: 40,
-                  borderRadius: radius.chip,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  ...(on
-                    ? { backgroundColor: gold.base }
-                    : { borderWidth: 1, borderColor: 'rgba(243,238,229,.14)' }),
-                }}
-              >
-                <Txt
-                  size={13}
-                  weight={on ? 'bold' : 'semibold'}
-                  color={on ? void_.bg : 'rgba(243,238,229,.65)'}
-                >
-                  {dayLabels[d]}
-                </Txt>
-              </Pressable>
-            );
-          })}
-        </View>
+      <SearchField
+        value={query}
+        onChangeText={setQuery}
+        placeholder={t.searchPitchOrArea}
+      />
 
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {(Object.keys(WINDOWS) as WindowKey[]).map((w) => {
-            const on = w === window_;
-            return (
-              <Pressable
-                key={w}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={`${WINDOWS[w].label} kick-off window`}
-                onPress={() => setWindow(w)}
-                hitSlop={hitSlopTo44(36)}
-                style={{
-                  flex: 1,
-                  height: 36,
-                  borderRadius: 10,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: on ? 'rgba(198,163,75,.45)' : 'rgba(243,238,229,.14)',
-                  ...(on ? { backgroundColor: 'rgba(198,163,75,.12)' } : null),
-                }}
-              >
-                <Txt
-                  size={12}
-                  weight={on ? 'bold' : 'regular'}
-                  color={on ? gold.base : 'rgba(243,238,229,.55)'}
-                >
-                  {WINDOWS[w].label}
-                </Txt>
-              </Pressable>
-            );
-          })}
+      {recent.length > 0 && !query ? (
+        <View style={{ gap: 10 }}>
+          <Txt size={13} weight="semibold" color={onVoid.muted}>
+            {t.recentSearches}
+          </Txt>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {recent.map((r) => (
+              <Pill key={r} label={r} size="sm" onPress={() => setQuery(r)} />
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginHorizontal: -20 }}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
+      >
+        <Pill label={t.filter} icon={<Sliders size={15} color={onVoid.secondary} />} onPress={() => openSheet('day')} />
+        <Pill
+          label={dayLabels[filters.day]}
+          on
+          icon={<ChevronDown size={14} color={gold.base} />}
+          onPress={() => openSheet('day')}
+        />
+        <Pill
+          label={windowLabel(filters.window)}
+          on={filters.window !== 'any'}
+          icon={<ChevronDown size={14} color={filters.window !== 'any' ? gold.base : onVoid.secondary} />}
+          onPress={() => openSheet('window')}
+        />
+        {filters.format !== 'any' ? (
+          <Pill label={formatLabel(filters.format)} on onPress={() => openSheet('format')} />
+        ) : null}
+        <Pill
+          label={orderLabel(filters.order)}
+          on={filters.order !== 'near'}
+          icon={<ChevronDown size={14} color={filters.order !== 'near' ? gold.base : onVoid.secondary} />}
+          onPress={() => openSheet('order')}
+        />
+        <Pill
+          label={t.ratingFourPlus}
+          on={filters.rating === '4'}
+          icon={<Star size={11} color={filters.rating === '4' ? gold.base : onVoid.secondary} />}
+          onPress={() => setFilters((f) => ({ ...f, rating: f.rating === '4' ? 'any' : '4' }))}
+        />
+      </ScrollView>
 
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <Eyebrow>{t.liveSlots(num(liveSlots))}</Eyebrow>
+        <Txt size={13} weight="semibold" color={onVoid.secondary}>
+          {t.liveSlots(num(liveSlots))}
+        </Txt>
         {/* VEN-002: results must say when availability was last confirmed. */}
-        <Txt size={11} color="rgba(243,238,229,.3)">
+        <Txt size={11} color={onVoid.disabled}>
           {loading ? t.checking : t.updatedAgo(num(secondsAgo))}
         </Txt>
       </View>
 
-      {unreachable ? (
-        <Pressable
-          accessibilityRole="alert"
-          accessibilityLabel={t.offline}
-          onPress={reload}
-          style={{
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-            borderRadius: radius.chip,
-            borderWidth: 1,
-            borderColor: 'rgba(101,21,37,.5)',
-            backgroundColor: 'rgba(101,21,37,.09)',
-          }}
-        >
-          <Txt size={12.5} weight="semibold" color={burgundy.action}>
-            {t.offline}
-          </Txt>
-        </Pressable>
-      ) : null}
+      {unreachable ? <Unreachable label={t.offline} onRetry={reload} /> : null}
 
       {loading && venues.length === 0 ? (
         <View style={{ paddingVertical: 40, alignItems: 'center' }}>
@@ -217,164 +270,43 @@ export default function PlaySearch() {
         </View>
       ) : null}
 
-      {!loading && venues.length === 0 && !unreachable ? (
+      {!loading && shown.length === 0 && !unreachable ? (
         <Txt size={13} color={onVoid.muted}>
-          {t.noVenues}
+          {query ? t.noMatchesFor(query.trim()) : t.noVenues}
         </Txt>
       ) : null}
 
-      <View style={{ gap: 12 }}>
-        {venues.map((venue) => (
-          <VenueCard
+      <View style={{ gap: 10 }}>
+        {shown.map((venue) => (
+          <VenueRow
             key={venue.venueId}
-            venue={venue}
-            onPress={() => router.push(`/play/pitch?venue=${venue.venueId}&date=${isoDate(dayOffset[day])}`)}
-            t={t}
-            num={num}
-            money={money}
-            hour={hour}
+            venue={{
+              ...venue,
+              verified: venue.verification === 'verified',
+              nextSlot: venue.nextSlot ? hour(venue.nextSlot) : null,
+            }}
+            onPress={() => {
+              remember(query);
+              router.push(`/play/venue?venue=${venue.venueId}&date=${date}`);
+            }}
           />
         ))}
       </View>
-    </Screen>
-  );
-}
 
-function VenueCard({
-  venue,
-  onPress,
-  t,
-  num,
-  money,
-  hour,
-}: {
-  venue: VenueSummary;
-  onPress: () => void;
-  t: ReturnType<typeof useI18n>['t'];
-  num: (v: number) => string;
-  money: (v: number) => string;
-  hour: (iso: string) => string;
-}) {
-  const soldOut = venue.openSlots === 0;
-  const verified = venue.verification === 'verified';
-
-  const meta = [
-    venue.distanceKm != null ? `${num(venue.distanceKm)} km` : venue.area,
-    ...venue.amenities.slice(0, 1),
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  const body = (
-    <>
-      <View style={{ flexDirection: 'row', gap: 12, padding: 14 }}>
-        <TurfSwatch size={56} round={radius.row} />
-        <View style={{ flex: 1, gap: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-            <Txt size={15.5} weight="bold" color={onVoid.primary}>
-              {venue.name}
-            </Txt>
-            {/* VEN-006: verification status is always visible. */}
-            {verified ? (
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: goldAlpha.accent,
-                  borderRadius: radius.badge,
-                  paddingVertical: 2,
-                  paddingHorizontal: 5,
-                }}
-              >
-                <Txt size={10} weight="bold" em={0.08} color={gold.base}>
-                  {t.verified}
-                </Txt>
-              </View>
-            ) : null}
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            {venue.ratingAvg != null ? <Star size={11} color={gold.base} /> : null}
-            <Txt size={11.5} color={onVoid.faint}>
-              {venue.ratingAvg != null
-                ? `${num(venue.ratingAvg)} (${num(venue.ratingCount)}) · ${meta}`
-                : meta}
-            </Txt>
-          </View>
-          {soldOut ? (
-            <Txt size={11.5} color={burgundy.onVoid}>
-              {t.fullyBooked}
-            </Txt>
-          ) : (
-            <Txt size={12} weight="semibold" color={onVoid.primary}>
-              {t.perHour(money(venue.minPriceEgp))}
-            </Txt>
-          )}
-        </View>
-      </View>
-
-      {soldOut ? null : (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            paddingHorizontal: 14,
-            paddingBottom: 14,
-          }}
-        >
-          {venue.nextSlot ? (
-            <View
-              style={{
-                height: 34,
-                paddingHorizontal: 14,
-                borderRadius: 10,
-                backgroundColor: gold.base,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Txt size={12} weight="bold" color={void_.bg}>
-                {hour(venue.nextSlot)}
-              </Txt>
-            </View>
-          ) : null}
-          <Txt size={11.5} color={onVoid.faint}>
-            {t.slotsLeftTonight(num(venue.openSlots))}
-          </Txt>
-        </View>
-      )}
-    </>
-  );
-
-  if (soldOut) {
-    return (
-      <View
-        style={{
-          borderRadius: radius.cardInner,
-          backgroundColor: void_.surface,
-          borderWidth: 1,
-          borderColor: onVoid.edgeFaint,
-          opacity: 0.55,
+      <FilterSheet
+        open={sheet}
+        onClose={() => setSheet(false)}
+        groups={groups}
+        value={draft as unknown as Record<string, string>}
+        onChange={(g, o) => setDraft((d) => ({ ...d, [g]: o }))}
+        onReset={() => setDraft(DEFAULTS)}
+        onApply={() => {
+          setFilters(draft);
+          setSheet(false);
         }}
-      >
-        {body}
-      </View>
-    );
-  }
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${venue.name}, ${venue.openSlots} slots, from ${money(venue.minPriceEgp)} per hour`}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        borderRadius: radius.cardInner,
-        backgroundColor: void_.surface,
-        borderWidth: 1,
-        borderColor: verified || pressed ? 'rgba(198,163,75,.28)' : onVoid.edgeFaint,
-        overflow: 'hidden',
-      })}
-    >
-      {body}
-    </Pressable>
+        active={sheetTab}
+        onActive={setSheetTab}
+      />
+    </Screen>
   );
 }

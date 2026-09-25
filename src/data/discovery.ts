@@ -236,6 +236,9 @@ export type PastBooking = {
    * `complete_match` would refuse.
    */
   awaitingResult: boolean;
+  /** The venue itself, so a past booking can be booked again. */
+  venueId: string | null;
+  coverUrl: string | null;
 };
 
 export async function myBookings(limit = 20): Promise<PastBooking[]> {
@@ -253,6 +256,8 @@ export async function myBookings(limit = 20): Promise<PastBooking[]> {
     reviewed: r.reviewed,
     matchId: r.match_id,
     awaitingResult: r.awaiting_result,
+    venueId: r.venue_id ?? null,
+    coverUrl: r.cover_url ?? null,
   }));
 }
 
@@ -325,4 +330,21 @@ export async function myStanding(): Promise<Standing | null> {
     cashAllowed: r.cash_allowed,
     seasonDays: r.season_days,
   };
+}
+
+/**
+ * The server's order is the default — verified first, then by distance where
+ * it has one — and the pills re-order what it returned rather than asking
+ * again. A venue with nothing left tonight sinks either way.
+ */
+export type VenueOrder = 'near' | 'price' | 'rating';
+
+export function sortVenues(venues: VenueSummary[], order: VenueOrder): VenueSummary[] {
+  if (order === 'near') return venues;
+  const open = (v: VenueSummary) => (v.openSlots > 0 ? 0 : 1);
+  return [...venues].sort((a, b) => {
+    if (open(a) !== open(b)) return open(a) - open(b);
+    if (order === 'price') return (a.minPriceEgp || Infinity) - (b.minPriceEgp || Infinity);
+    return (b.ratingAvg ?? -1) - (a.ratingAvg ?? -1) || b.ratingCount - a.ratingCount;
+  });
 }
